@@ -43,15 +43,7 @@ public class IssuerService {
 
     private static AWSPaymentCryptographyData client = DataPlaneUtils.getDataPlaneClient();
 
-    /*
-     * inBlockUnderPEK
-     * "6D064DD821983A3D"
-     * pinBlockUnderBDK
-     * "B541EC0E7D4F48A5"
-     */
-
     public static void main(String[] args) {
-
         //generatePinData();
         VerifyPinDataResult verifyPinDataResult = verifyPinData(encryptedPinBlock, pekAlias.getKeyArn(), pgkAlias.getKeyArn(),
                 pinVerificationValue, OUTPUT_PIN_BLOCK_FORMAT, PAN);
@@ -86,7 +78,6 @@ public class IssuerService {
     }
 
     private static void generatePinData() {
-
         // finds or generates a Pin Generation Key (used for generating random PINs)
         if (null == pgkAlias.getKeyArn()) {
             System.out.println("No PGK found, creating a new one.");

@@ -3,6 +3,8 @@ package aws.sample.paymentcryptography.p2pe;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
@@ -11,30 +13,32 @@ import javax.crypto.spec.SecretKeySpec;
 import org.apache.commons.codec.binary.Hex;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import aws.sample.paymentcryptography.hmac.TerminalHMACService;
 
+/* 
+ * Sample class to simulate merchant's payment terminal. This data defined in the DATA_FILE contains DUKTPT keys that are 
+ * pre generated from BDK and KSN.
+ * This class sends the payment authorization request (similar to what termial does) to the payment service and processes
+ * the HMAC response.
+ */
 public class PaymentTerminal {
     private static final String ALGORITHM = "DESede";
     private static final String MODE = "CBC";
     private static final String PADDING = "PKCS5Padding";
-    private static final String DATA_FILE = "/Users/akhnal/Documents/workspace/samples-for-payment-cryptography-service/java_sdk_example/src/main/java/aws/sample/paymentcryptography/p2pe/key-ksn-data.json";
+    private static final String DATA_FILE = "/java_sdk_example/src/main/java/aws/sample/paymentcryptography/p2pe/key-ksn-data.json";
     public static final String HMAC_DATA_PLAIN_TEXT = "4123412341234123";
 
     private static final String TRANSFORMATION = ALGORITHM + "/" + MODE + "/" + PADDING;
 
-    @Autowired
-    //private static TerminalHMACService terminalHMACService;
-
     public static void main(String[] args) throws Exception {
-
         RestTemplate restTemplate = new RestTemplate();
         String paymentAuthorizationUrl = "http://localhost:8080/authorizePayment/";
 
-        JSONObject data = getData(DATA_FILE);
+        System.out.println("curr dir is " + System.getProperty("user.dir"));
+        JSONObject data = getData(System.getProperty("user.dir") + DATA_FILE);
         JSONArray dataList = data.getJSONArray("data");
 
         dataList.forEach(dataObject -> {
@@ -79,12 +83,11 @@ public class PaymentTerminal {
     }
 
     public static String encryptData(String key, String track2Data, String ksn) throws Exception {
-
-        byte[] decodeHexByteArray = Hex.decodeHex(key);
+        byte[] keyByteArray = Hex.decodeHex(key);
         byte[] key24byte = new byte[24];
 
-        System.arraycopy(decodeHexByteArray, 0, key24byte, 0, 16);
-        System.arraycopy(decodeHexByteArray, 0, key24byte, 16, 8);
+        System.arraycopy(keyByteArray, 0, key24byte, 0, 16);
+        System.arraycopy(keyByteArray, 0, key24byte, 16, 8);
 
         Cipher chiper = Cipher.getInstance(TRANSFORMATION);
         chiper.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key24byte, ALGORITHM), new IvParameterSpec(new byte[8]));

@@ -9,7 +9,7 @@ import com.amazonaws.util.StringUtils;
 import aws.sample.paymentcryptography.ControlPlaneUtils;
 import aws.sample.paymentcryptography.DataPlaneUtils;
 
-public class PaymentProcessorPinTranslate {
+public class PaymentProcessorPinTranslateService {
 
     private static final String INPUT_PIN_BLOCK_FORMAT = "ISO_FORMAT_0";
     private static final String OUTPUT_PIN_BLOCK_FORMAT = "ISO_FORMAT_3";

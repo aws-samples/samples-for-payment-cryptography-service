@@ -8,11 +8,11 @@
     <relativePath/>
     <!-- lookup parent from repository -->
   </parent>
-  <groupId>aws.example.magnus</groupId>
-  <artifactId>aws-magnuscontrolplane-examples</artifactId>
+  <groupId>aws.samples</groupId>
+  <artifactId>aws-paymentcryptography-samples</artifactId>
   <packaging>jar</packaging>
   <version>1.0</version>
-  <name>AWS Magnus Examples</name>
+  <name>AWS Payment Cryptography Examples</name>
   <url>http://maven.apache.org</url>
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>

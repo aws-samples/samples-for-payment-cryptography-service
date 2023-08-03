@@ -8,8 +8,6 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
 
-import aws.sample.paymentcryptography.utils.Utils;
-
 public class PinTerminal {
 
     private static final String CARD_NUMBER = "9123412341234";
@@ -29,47 +27,33 @@ public class PinTerminal {
     private static final String TRANSFORMATION = ALGORITHM + "/" + MODE + "/" + PADDING;
 
     public static void main(String[] args) throws Exception {
-
-
         String encryptedData = encrypt(CURRENT_KEY, CARD_NUMBER, PIN);
-
         System.out.println("Encrypted data: " + encryptedData);
-
-        String decryptedData = decrypt(CURRENT_KEY, CARD_NUMBER, encryptedData);
-
-        System.out.println("Decrypted data: " + decryptedData);
+        //String decryptedData = decrypt(CURRENT_KEY, CARD_NUMBER, encryptedData);
+        //System.out.println("Decrypted data: " + decryptedData);
     }
 
     public static String encrypt(String dukpt_key, String pan, String pin) throws Exception {
-        String pinEncoded = format0Encode(pin, pan);
-        //String pinEncoded1 = encodePinBlockAsHex(pan, pin);
+        String pinEncoded = encodeForISO0Format(pin, pan);
         System.out.println("Pin block is " + pinEncoded);
         
-        
-        
-        byte[] maskedKey = Utils.xorBytes(Hex.decodeHex(dukpt_key), Hex.decodeHex(PIN_MASK));
+        byte[] maskedKey = xorBytes(Hex.decodeHex(dukpt_key), Hex.decodeHex(PIN_MASK));
 
-        //byte[] tmp = Hex.decodeHex(dukpt_key);
         byte[] key = new byte[24];
-        
-
-        //System.arraycopy(tmp, 0, key, 0, 16);
-        //System.arraycopy(tmp, 0, key, 16, 8);
         
         System.arraycopy(maskedKey, 0, key, 0, 16);
         System.arraycopy(maskedKey, 0, key, 16, 8);
 
-        //final IvParameterSpec iv = new IvParameterSpec(new byte[8]);
         Cipher chiper = Cipher.getInstance(TRANSFORMATION);
         chiper.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, ALGORITHM), new IvParameterSpec(new byte[8]));
 
         byte[] encVal = chiper.doFinal(Hex.decodeHex(pinEncoded));
-        String encryptedValue = Hex.encodeHexString(encVal);//Utils.b2h(encVal);
+        String encryptedValue = Hex.encodeHexString(encVal);
         return encryptedValue;
         
     }
 
-    public static String decrypt(String dukpt_key, String pan, String encryptedPin) throws Exception {
+    /* public static String decrypt(String dukpt_key, String pan, String encryptedPin) throws Exception {
         byte[] tmp = Hex.decodeHex(dukpt_key);
         byte[] key = new byte[24];
         System.arraycopy(tmp, 0, key, 0, 16);
@@ -82,7 +66,7 @@ public class PinTerminal {
         String pinEncoded = Hex.encodeHexString(plaintext);//Utils.b2h(plaintext);
         //return decodePinBlock(pan, pinEncoded);
         return format0decode(pinEncoded, pan);
-    }
+    } */
 
     /**
         The PIN block is constructed by XOR-ing two 64-bit fields: the plain text PIN field and the account number field, both of which comprise 16 four-bit nibbles.
@@ -104,16 +88,16 @@ public class PinTerminal {
 	 * @return pinblock in HEX format
      * @throws Exception
 	 */
-	public static String format0Encode(String pin, String pan) throws Exception {
+	public static String encodeForISO0Format(String pin, String pan) throws Exception {
 		try {
 			final String pinLenHead = StringUtils.leftPad(Integer.toString(pin.length()), 2, '0')+pin;
 			final String pinData = StringUtils.rightPad(pinLenHead, 16,'F');
-			final byte[] bPin = Hex.decodeHex(pinData.toCharArray());
-			final String panPart = extractPanAccountNumberPart(pan);
-			final String panData = StringUtils.leftPad(panPart, 16, '0');
-			final byte[] bPan = Hex.decodeHex(panData.toCharArray());
+			final byte[] pinToByteArray = Hex.decodeHex(pinData.toCharArray());
+            String pan12digits = pan.substring(pan.length() - 13, pan.length() - 1);
+			final String panData = StringUtils.leftPad(pan12digits, 16, '0');
+			final byte[] panToByteArray = Hex.decodeHex(panData.toCharArray());
 
-            final byte[] pinblock = Utils.xorBytes(bPin, bPan);
+            final byte[] pinblock = xorBytes(pinToByteArray, panToByteArray);
 			/* final byte[] pinblock = new byte[8];
 			for (int i = 0; i < 8; i++)
 				pinblock[i] = (byte) (bPin[i] ^ bPan[i]);
@@ -128,14 +112,14 @@ public class PinTerminal {
 	 * @param accountNumber PAN - primary account number
 	 * @return extract right-most 12 digits of the primary account number (PAN)
 	 */
-	public static String extractPanAccountNumberPart(String accountNumber) {
+	/* public static String extractPanAccountNumberPart(String accountNumber) {
 		String accountNumberPart = null;
 		if (accountNumber.length() > 12)
 			accountNumberPart = accountNumber.substring(accountNumber.length() - 13, accountNumber.length() - 1);
 		else
 			accountNumberPart = accountNumber;
 		return accountNumberPart;
-	}
+	} */
 	
 	/**
 	 * decode pinblock format 0 - ISO 9564
@@ -144,19 +128,15 @@ public class PinTerminal {
 	 * @return clean PIN
 	 * @throws Exception
 	 */
-	public static String format0decode(String pinblock, String pan) throws Exception {
+	/* public static String format0decode(String pinblock, String pan) throws Exception {
 		try {
-			final String panPart = extractPanAccountNumberPart(pan);
+			final String panPart = pan; //extractPanAccountNumberPart(pan);
 			final String panData = StringUtils.leftPad(panPart, 16, '0');
 			final byte[] bPan = Hex.decodeHex(panData);
 			
 			final byte[] bPinBlock = Hex.decodeHex(pinblock.toCharArray());
 			
-            final byte[] bPin = Utils.xorBytes(bPinBlock, bPan);
-			/* final byte[] bPin  = new byte[8];
-			for (int i = 0; i < 8; i++)
-				bPin[i] = (byte) (bPinBlock[i] ^ bPan[i]); */
-			
+            final byte[] bPin = xorBytes(bPinBlock, bPan);			
 			final String pinData = Hex.encodeHexString(bPin);
 			//final int pinLen = Integer.parseInt(pinData.substring(0, 2));
 			return pinData.substring(2,2+PIN.length());
@@ -166,38 +146,19 @@ public class PinTerminal {
 		} catch (DecoderException e) {
 			throw new RuntimeException("Hex decoder failed!",e);
 		}
-	}
+	} */
 
-    /* private static String bytesToHex(final byte[] bytes) {
-        final StringBuilder buf = new StringBuilder(bytes.length * 2);
-        for (final byte b : bytes) {
-            final String hex = Integer.toHexString(0xff & b);
-            if (hex.length() == 1) {
-                buf.append("0");
-            }
-            buf.append(hex);
+    public static byte[] xorBytes(byte[] byteArray1, byte[] byteArray2) throws Exception {
+        if (byteArray1.length != byteArray2.length) {
+            throw new Exception("Two arrays are not of the same length");
         }
-        return buf.toString();
-    } */
+        byte[] output = new byte[byteArray1.length];
+        for (int i = 0; i < byteArray1.length; i++) {
+            output[i] = (byte) ((byteArray1[i] ^ byteArray2[i]) & 0xFF);
+        }
 
-    /* public static String encodePinBlockAsHex(String pan, String pin) throws Exception {
-        pan = pan.substring(pan.length() - 12 - 1, pan.length() - 1);
-        String paddingPAN = "0000".concat(pan);
- 
-        String Fs = "FFFFFFFFFFFFFFFF";
-        String paddingPIN = "0" + pin.length() + pin + Fs.substring(2 + pin.length(), Fs.length());
- 
-        byte[] pinBlock = Utils.xorBytes(Hex.decodeHex(paddingPAN), Hex.decodeHex(paddingPIN));
- 
-        return Utils.b2h(pinBlock);
+        return output;
+        
     }
-*/
-/*     public static String decodePinBlock(String pan, String pinEncoded) throws Exception {
-        pan = pan.substring(pan.length() - 12 - 1, pan.length() - 1);
-        String paddingPAN = "0000".concat(pan);
-        byte[] pinBlock = Utils.xorBytes(Hex.decodeHex(paddingPAN), Hex.decodeHex(pinEncoded));
-        return Utils.b2h(pinBlock).substring(2, PIN.length()+2);
-    }
- */ 
     
 }

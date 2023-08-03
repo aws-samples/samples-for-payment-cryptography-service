@@ -1,7 +1,5 @@
 package aws.sample.paymentcryptography.hmac;
 
-import java.util.logging.Logger;
-
 import org.springframework.stereotype.Component;
 
 import com.amazonaws.services.paymentcryptography.model.Alias;
