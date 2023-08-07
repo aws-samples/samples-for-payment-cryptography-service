@@ -16,7 +16,6 @@ import org.springframework.web.client.RestTemplate;
 
 import aws.sample.paymentcryptography.ServiceConstants;
 import aws.sample.paymentcryptography.TerminalConstants;
-import aws.sample.paymentcryptography.hmac.TerminalHMACService;
 
 /* 
  * Sample class to simulate merchant's payment terminal. This data defined in the DATA_FILE contains DUKTPT keys that are 
@@ -62,7 +61,7 @@ public class PaymentTerminal {
     }
 
     private static boolean validateHMAC(String dataFromPaymentService) throws Exception {
-        String hmacOnTerminal = TerminalHMACService.getMac(HMAC_DATA_PLAIN_TEXT);
+        String hmacOnTerminal = HMACTerminalTester.getMac(HMAC_DATA_PLAIN_TEXT);
         return hmacOnTerminal.trim().toLowerCase().startsWith(dataFromPaymentService);
     }
 
