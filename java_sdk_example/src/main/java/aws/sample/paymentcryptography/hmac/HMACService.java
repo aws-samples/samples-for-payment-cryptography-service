@@ -20,11 +20,11 @@ import com.amazonaws.util.StringUtils;
 
 import aws.sample.paymentcryptography.ControlPlaneUtils;
 import aws.sample.paymentcryptography.DataPlaneUtils;
+import aws.sample.paymentcryptography.ServiceConstants;
 
 @Component
 public class HMACService {
 
-    private static final String MESSAGE = "4123412341234123";
     private static final String HMAC_KEY_ALIAS = "alias/tr34-hmac-key-import";
 
     public String createHMACKey() {
@@ -63,7 +63,7 @@ public class HMACService {
                 .withAlgorithm(MacAlgorithm.ISO9797_ALGORITHM3);
         GenerateMacRequest generateMacRequest = new GenerateMacRequest()
                 .withKeyIdentifier(hmacKeyArn)
-                .withMessageData(MESSAGE)
+                .withMessageData(ServiceConstants.HMAC_DATA_PLAIN_TEXT)
                 .withGenerationAttributes(macAttributes);
         GenerateMacResult macGenerateResult = DataPlaneUtils.getDataPlaneClient().generateMac(generateMacRequest);
         return macGenerateResult;
@@ -76,7 +76,7 @@ public class HMACService {
                 .withKeyIdentifier(hmacKeyArn)
                 .withVerificationAttributes(macAttributes)
                 .withMac(mac)
-                .withMessageData(MESSAGE);
+                .withMessageData(ServiceConstants.HMAC_DATA_PLAIN_TEXT);
         VerifyMacResult macVerificationResult = DataPlaneUtils.getDataPlaneClient().verifyMac(verifyMacRequest);
         return macVerificationResult;
     }

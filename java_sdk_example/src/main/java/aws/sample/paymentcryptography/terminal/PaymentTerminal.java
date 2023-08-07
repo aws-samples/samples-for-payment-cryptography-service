@@ -62,6 +62,7 @@ public class PaymentTerminal {
 
     private static boolean validateHMAC(String dataFromPaymentService) throws Exception {
         String hmacOnTerminal = HMACTerminalTester.getMac(HMAC_DATA_PLAIN_TEXT);
+        System.out.println("MAC from payment service - " + dataFromPaymentService + ", MAC from terminal - " + hmacOnTerminal);
         return hmacOnTerminal.trim().toLowerCase().startsWith(dataFromPaymentService);
     }
 

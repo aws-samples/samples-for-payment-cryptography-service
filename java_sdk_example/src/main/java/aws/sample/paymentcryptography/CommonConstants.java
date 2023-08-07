@@ -21,4 +21,6 @@ public interface CommonConstants {
 
     public static final String PAYMENT_PROCESSOR_SERVICE_AUTHORIZE_PAYMENT_API = "/payment-processor/authorizePayment/";
 
+    public static final String HMAC_DATA_PLAIN_TEXT = "4123412341234123";
+
 }

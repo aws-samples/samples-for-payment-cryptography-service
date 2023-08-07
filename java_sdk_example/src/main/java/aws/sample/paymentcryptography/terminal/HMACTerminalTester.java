@@ -12,13 +12,11 @@ import aws.sample.paymentcryptography.TerminalConstants;
 
 public class HMACTerminalTester {
 
-    public static final String HMAC_DATA_PLAIN_TEXT = "4123412341234123";
-
     public static void main(String[] args) throws DecoderException {
 
         final BlockCipher cipher = new DESEngine();
         final KeyParameter keyParameter = new KeyParameter(Hex.decodeHex(TerminalConstants.MAC_KEY_PLAIN_TEXT.toCharArray()));
-        final byte[] dataToMac = Hex.decodeHex(HMAC_DATA_PLAIN_TEXT.toCharArray());
+        final byte[] dataToMac = Hex.decodeHex(TerminalConstants.HMAC_DATA_PLAIN_TEXT.toCharArray());
         final byte[] genMac = generateIso9797Alg3Mac(keyParameter, cipher, dataToMac);
 
         System.out.println("hmac is " + Hex.encodeHexString(genMac));
