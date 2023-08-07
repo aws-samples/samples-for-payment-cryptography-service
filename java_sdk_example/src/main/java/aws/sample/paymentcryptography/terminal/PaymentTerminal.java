@@ -1,10 +1,8 @@
-package aws.sample.paymentcryptography.p2pe;
+package aws.sample.paymentcryptography.terminal;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
@@ -16,6 +14,8 @@ import org.json.JSONObject;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
+import aws.sample.paymentcryptography.ServiceConstants;
+import aws.sample.paymentcryptography.TerminalConstants;
 import aws.sample.paymentcryptography.hmac.TerminalHMACService;
 
 /* 
@@ -25,17 +25,13 @@ import aws.sample.paymentcryptography.hmac.TerminalHMACService;
  * the HMAC response.
  */
 public class PaymentTerminal {
-    private static final String ALGORITHM = "DESede";
-    private static final String MODE = "CBC";
-    private static final String PADDING = "PKCS5Padding";
     private static final String DATA_FILE = "/java_sdk_example/src/main/java/aws/sample/paymentcryptography/p2pe/key-ksn-data.json";
     public static final String HMAC_DATA_PLAIN_TEXT = "4123412341234123";
 
-    private static final String TRANSFORMATION = ALGORITHM + "/" + MODE + "/" + PADDING;
-
     public static void main(String[] args) throws Exception {
         RestTemplate restTemplate = new RestTemplate();
-        String paymentAuthorizationUrl = "http://localhost:8080/authorizePayment/";
+        String paymentAuthorizationUrl = ServiceConstants.HOST
+                + ServiceConstants.PAYMENT_PROCESSOR_SERVICE_AUTHORIZE_PAYMENT_API;
 
         System.out.println("curr dir is " + System.getProperty("user.dir"));
         JSONObject data = getData(System.getProperty("user.dir") + DATA_FILE);
@@ -89,8 +85,9 @@ public class PaymentTerminal {
         System.arraycopy(keyByteArray, 0, key24byte, 0, 16);
         System.arraycopy(keyByteArray, 0, key24byte, 16, 8);
 
-        Cipher chiper = Cipher.getInstance(TRANSFORMATION);
-        chiper.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key24byte, ALGORITHM), new IvParameterSpec(new byte[8]));
+        Cipher chiper = Cipher.getInstance(TerminalConstants.TRANSFORMATION_WITH_PKCS5_PADDING);
+        chiper.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key24byte, TerminalConstants.ALGORITHM),
+                new IvParameterSpec(new byte[8]));
 
         String hexEncocedData = Hex.encodeHexString(track2Data.getBytes("UTF-8"));
         byte[] encVal = chiper.doFinal(Hex.decodeHex(hexEncocedData));

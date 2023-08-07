@@ -26,22 +26,6 @@ public class HMACService {
 
     private static final String MESSAGE = "4123412341234123";
     private static final String HMAC_KEY_ALIAS = "alias/tr34-hmac-key-import";
-    private static final String IMPORTED_HMAC_KEY_ARN = "arn:aws:payment-cryptography:us-east-1:886958290065:key/ljz6vqbyq2mrnyqt";
-
-    /* public static void main(String[] args) {
-
-        String hmacKeyArn = createHMACKey();
-
-        GenerateMacResult macGenerateResult = generateMac(hmacKeyArn);
-        Logger.getGlobal().info("MAC Key Check Value - " + macGenerateResult.getKeyCheckValue() + "\t MAC - "
-                + macGenerateResult.getMac());
-
-        VerifyMacResult macVerificatioResult = getMacVerification(hmacKeyArn, macGenerateResult.getMac());
-        Logger.getGlobal().info("MAC Verification Key Check Value - " + macVerificatioResult.getKeyCheckValue());
-
-        Logger.getGlobal().info(
-                "Mac Verified = " + (macGenerateResult.getKeyCheckValue().equals(macVerificatioResult.getKeyCheckValue())));
-    } */
 
     public String createHMACKey() {
         Alias hmacKeyAlias = ControlPlaneUtils.getOrCreateAlias(HMAC_KEY_ALIAS);

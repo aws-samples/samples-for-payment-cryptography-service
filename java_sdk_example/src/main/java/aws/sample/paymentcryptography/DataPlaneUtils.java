@@ -1,10 +1,6 @@
 package aws.sample.paymentcryptography;
 
-import static aws.sample.paymentcryptography.Constants.DATA_ENDPOINT;
-import static aws.sample.paymentcryptography.Constants.REGION;
-
-import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.paymentcryptographydata.AWSPaymentCryptographyData;
 import com.amazonaws.services.paymentcryptographydata.AWSPaymentCryptographyDataClientBuilder;
 import com.amazonaws.services.paymentcryptographydata.model.CardGenerationAttributes;
@@ -35,14 +31,13 @@ public class DataPlaneUtils {
 
                 dataPlaneClient = AWSPaymentCryptographyDataClientBuilder
                                 .standard()
-                                .withCredentials(new EnvironmentVariableCredentialsProvider())
-                                .withEndpointConfiguration(new EndpointConfiguration(DATA_ENDPOINT, REGION))
+                                .withRegion(Regions.US_EAST_1)
                                 .build();
 
                 return dataPlaneClient;
         }
 
-        public static String generateVisaPinBlock(
+        public static GeneratePinDataResult generateVisaPinBlock(
                         String pekArn,
                         String pgkArn,
                         String pinBlockFormat,
@@ -61,7 +56,7 @@ public class DataPlaneUtils {
 
                 AWSPaymentCryptographyData client = getDataPlaneClient();
                 GeneratePinDataResult result = client.generatePinData(request);
-                return result.getEncryptedPinBlock();
+                return result;
         }
 
         public static String translateVisaPinBlockPekToBdk(
@@ -93,7 +88,7 @@ public class DataPlaneUtils {
                 return result.getPinBlock();
         }
 
-        public static String translateVisaPinBlockBdkToPek(
+        public static TranslatePinDataResult translateVisaPinBlockBdkToPek(
                         String inKeyArn,
                         String inPinBlockFormat,
                         String inPinBlock,
@@ -107,21 +102,22 @@ public class DataPlaneUtils {
                 DukptDerivationAttributes dupktAttributes = new DukptDerivationAttributes()
                                 .withKeySerialNumber(keySerialNumber);
 
-                /*
-                 * if (outDukptDerivationType != null) {
-                 * dupktAttributes.setDukptKeyDerivationType(outDukptDerivationType);
-                 * }
-                 */
+                if (outDukptDerivationType != null) {
+                        dupktAttributes.setDukptKeyDerivationType(outDukptDerivationType);
+                }
+
                 TranslatePinDataRequest request = new TranslatePinDataRequest()
                                 .withIncomingKeyIdentifier(inKeyArn)
-                                .withOutgoingKeyIdentifier(outKeyArn)
                                 .withIncomingTranslationAttributes(inAttributes)
+                                .withEncryptedPinBlock(inPinBlock)
+                                .withOutgoingKeyIdentifier(outKeyArn)
                                 .withOutgoingTranslationAttributes(outAttributes)
-                                .withIncomingDukptAttributes(dupktAttributes)
-                                .withEncryptedPinBlock(inPinBlock);
+                                .withIncomingDukptAttributes(dupktAttributes);
+
                 AWSPaymentCryptographyData client = getDataPlaneClient();
                 TranslatePinDataResult result = client.translatePinData(request);
-                return result.getPinBlock();
+                // return result.getPinBlock();
+                return result;
         }
 
         private static TranslationIsoFormats getIsoFormatAttributes(String isoFormat, String primaryAccountNumber) {
@@ -167,50 +163,4 @@ public class DataPlaneUtils {
                 return result;
         }
 
-        /*
-         * public static GenerateCardDataResult generateCardDataValue(CardDataArguments
-         * arguments, CardDataGenerationType type, String keyIdentifier){
-         * GenerateCardDa cardDataRequest = new GenerateCardDataRequest()
-         * .withCardDataGenerationArguments(arguments)
-         * .withCardDataType(type)
-         * .withCardDataGenerationKeyIdentifier(keyIdentifier);
-         * 
-         * AWSPaymentCryptographyData client = getDataPlaneClient();
-         * GenerateCardDataResult result = client.generateCardData(cardDataRequest);
-         * return result;
-         * }
-         */
-
-        /*
-         * public static VerifyCardDataResult verifyCardDataValue(CardDataArguments
-         * cardDataArguments, String cardDataValue, String
-         * cardDataVerificationKeyIdentifier) {
-         * VerifyCardDataRequest verifyCardDataRequest = new VerifyCardDataRequest()
-         * .withCardDataType(CardDataVerificationType.CARD_VERIFICATION_VALUE_2)
-         * .withCardDataValue(cardDataValue)
-         * .withCardDataVerificationKeyIdentifier(cardDataVerificationKeyIdentifier)
-         * .withCardDataVerificationArguments(cardDataArguments);
-         * 
-         * AWSMagnusDataPlane client = getDataPlaneClient();
-         * VerifyCardDataResult result = client.verifyCardData(verifyCardDataRequest);
-         * return result;
-         * 
-         * }
-         */
-
-        public static VerifyCardValidationDataResult verifyCardDataValue(
-                        CardVerificationAttributes cardVerificationAttributes, String cardDataValue,
-                        String cardDataVerificationKeyIdentifier) {
-                VerifyCardValidationDataRequest verifyCardValidationDataRequest = new VerifyCardValidationDataRequest()
-                                .withVerificationAttributes(cardVerificationAttributes)
-                                // .withCardDataType(CardDataVerificationType.CARD_VERIFICATION_VALUE_2)
-                                .withKeyIdentifier(cardDataVerificationKeyIdentifier);
-                // .withCardVerificationAttributes(cardVerificationAttributes);
-
-                AWSPaymentCryptographyData client = getDataPlaneClient();
-                VerifyCardValidationDataResult result = client
-                                .verifyCardValidationData(verifyCardValidationDataRequest);
-                return result;
-
-        }
 }

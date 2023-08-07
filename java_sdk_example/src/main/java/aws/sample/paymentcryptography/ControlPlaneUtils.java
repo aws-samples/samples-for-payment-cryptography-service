@@ -1,10 +1,6 @@
 package aws.sample.paymentcryptography;
 
-import static aws.sample.paymentcryptography.Constants.CONTROL_ENDPOINT;
-import static aws.sample.paymentcryptography.Constants.REGION;
-
-import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.paymentcryptography.AWSPaymentCryptographyAsync;
 import com.amazonaws.services.paymentcryptography.AWSPaymentCryptographyAsyncClientBuilder;
 import com.amazonaws.services.paymentcryptography.model.Alias;
@@ -27,8 +23,7 @@ public class ControlPlaneUtils {
 
         }
         controlPlaneClient = AWSPaymentCryptographyAsyncClientBuilder.standard()
-                .withCredentials(new EnvironmentVariableCredentialsProvider())
-                .withEndpointConfiguration(new EndpointConfiguration(CONTROL_ENDPOINT, REGION))
+                .withRegion(Regions.US_EAST_1)
                 .build();
         return controlPlaneClient;
     }
