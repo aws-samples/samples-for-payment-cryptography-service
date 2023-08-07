@@ -25,7 +25,7 @@ public class PinTerminal {
 
     public static void testPEKPinEncryptionAndValidation() throws Exception {
         String encodedPin = encodeForISO0Format(PIN, TerminalConstants.PAN);
-        System.out.println("--------- testPEKPinEncryptionAndValidation Pin block is " + encodedPin);
+        System.out.println("---------\ntestPEKPinEncryptionAndValidation Pin block is " + encodedPin);
         String pekEncryptedBlock = encryptPINWithPEK(TerminalConstants.PEK, encodedPin);
         System.out.println(("PEK encrypted block - " + pekEncryptedBlock));
 
@@ -64,7 +64,7 @@ public class PinTerminal {
 
     public static void testDukptPinEncryptionAndValidation() throws Exception {
         String encodedPin = encodeForISO0Format(PIN, TerminalConstants.PAN);
-        System.out.println("--------- testDukptPinEncryptionAndValidation: Pin block is " + encodedPin);
+        System.out.println("---------\ntestDukptPinEncryptionAndValidation: Pin block is " + encodedPin);
         String dukptEncryptedBlock = encryptPINWithDukpt(TerminalConstants.DUKPT_CURRENT_KEY, encodedPin);
         System.out.println(("DUKPT encrypted block - " + dukptEncryptedBlock));
 

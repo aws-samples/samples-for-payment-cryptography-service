@@ -4,7 +4,7 @@ if [[ -z $* ]] ; then
     echo 'If there are arguments to the class, put them in quotes after the class name.'
     exit 1
 fi
-export CLASSPATH=target/aws-magnus-examples-1.0.jar
+export CLASSPATH=target/aws-paymentcryptography-samples-1.0.jar
 export className=$1
 echo "## Running $className..."
 shift

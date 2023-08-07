@@ -24,7 +24,7 @@ import aws.sample.paymentcryptography.TerminalConstants;
  * the HMAC response.
  */
 public class PaymentTerminal {
-    private static final String DATA_FILE = "/java_sdk_example/src/main/java/aws/sample/paymentcryptography/p2pe/key-ksn-data.json";
+    private static final String DATA_FILE = "/src/main/java/aws/sample/paymentcryptography/p2pe/key-ksn-data.json";
     public static final String HMAC_DATA_PLAIN_TEXT = "4123412341234123";
 
     public static void main(String[] args) throws Exception {
