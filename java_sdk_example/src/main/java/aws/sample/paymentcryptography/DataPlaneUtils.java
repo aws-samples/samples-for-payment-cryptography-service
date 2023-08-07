@@ -4,7 +4,6 @@ import com.amazonaws.regions.Regions;
 import com.amazonaws.services.paymentcryptographydata.AWSPaymentCryptographyData;
 import com.amazonaws.services.paymentcryptographydata.AWSPaymentCryptographyDataClientBuilder;
 import com.amazonaws.services.paymentcryptographydata.model.CardGenerationAttributes;
-import com.amazonaws.services.paymentcryptographydata.model.CardVerificationAttributes;
 import com.amazonaws.services.paymentcryptographydata.model.DukptDerivationAttributes;
 import com.amazonaws.services.paymentcryptographydata.model.GenerateCardValidationDataRequest;
 import com.amazonaws.services.paymentcryptographydata.model.GenerateCardValidationDataResult;
@@ -16,8 +15,6 @@ import com.amazonaws.services.paymentcryptographydata.model.TranslatePinDataResu
 import com.amazonaws.services.paymentcryptographydata.model.TranslationIsoFormats;
 import com.amazonaws.services.paymentcryptographydata.model.TranslationPinDataIsoFormat034;
 import com.amazonaws.services.paymentcryptographydata.model.TranslationPinDataIsoFormat1;
-import com.amazonaws.services.paymentcryptographydata.model.VerifyCardValidationDataRequest;
-import com.amazonaws.services.paymentcryptographydata.model.VerifyCardValidationDataResult;
 import com.amazonaws.services.paymentcryptographydata.model.VisaPin;
 
 public class DataPlaneUtils {

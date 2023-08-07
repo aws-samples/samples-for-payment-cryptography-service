@@ -1,52 +1,26 @@
-# Magnus examples
+# Payment Cryptography Service Samples
 
-These have been tested on MacOS and may require modifications to work on other systems.
+These JAVA samples are to show payment flows supported by [`AWS Payment Cryptography`](https://aws.amazon.com/payment-cryptography/).
 
 ## Instructions
 
 ### Install Maven
 
-How exactly you do this depends on the OS. If you're on a Mac and have Homebrew installed, `brew install maven` should do it.
+The samples need Maven to run. You can install it from https://maven.apache.org/install.html if not already installed on your system.
 
-### Add the packages to Maven
+### Build the samples app 
 
-```
-mvn install:install-file \
--Dfile=AWSMagnusControlPlaneJavaClient-1.12.x.jar \
--DgroupId=com.amazonaws.services.magnuscontrolplane \
--DartifactId=magnuscontrolplane \
--Dversion=1.12.x \
--Dpackaging=jar
-
-mvn install:install-file \
--Dfile=AWSMagnusDataPlaneJavaClient-1.12.x.jar \
--DgroupId=com.amazonaws.services.magnusdataplane \
--DartifactId=magnusdataplane \
--Dversion=1.12.x \
--Dpackaging=jar
-```
-
-### Build this stuff
-
-If you have make installed:
+cd samples-for-payment-cryptography-service/java_sdk_example
 
 ```
-make clean
-make
-```
-
-If you don't:
-
-```
-mvn clean
-mvn package
+mvn clean install
 ```
 
 In both cases the clean step is unnecessary if it's the first time you're building it.
 
 ### Set up your creds
 
-The examples pull your AWS credentials from environment variables, so you'll need to get them from whatever system you use and add them to the environment like so:
+The examples pull your AWS credentials from environment variables or your credentials file. If using environment variables, you can exporrt them like below :
 
 ```
 export AWS_ACCESS_KEY_ID=ASIA....
@@ -56,13 +30,51 @@ export AWS_SESSION_TOKEN=wxyz....
 
 ### Run the examples
 
-There are four examples. Most of the detailed API interaction logic is in the ControlPlaneUtils and DataPlaneUtils classes; the four below use those helper functions to call the API.
+There are samples for 2 flows below. The flows are setup on simulated terminal such as store terminal that processes payment or ATM that can be used for pin setup or pin verification.
+
+```
+aws.sample.paymentcryptography.terminal.PaymentTerminal
+```
+
+This class is setup for P2PE flow and uses pre created DUKPT to encrypt data from PaymentTerminal to send to Payment Processor API endpoint.
+The test data is defined on `key-ksn-data.json` file. For every increment of KSN counter (last 2 digits of KSN), a corresponding DUKPT has been pre-created.
+
+To run - 
+
+- cd `samples-for-payment-cryptography-service/java_sdk_example`
+- Start the server which runs `PaymentProcessorService`
+  - `./run_example.sh paymentcryptography.Application`
+- Run the `PaymentTerminal`
+    - `./run_example.sh paymentcryptography.terminal.PaymentTerminal`
+
+```
+aws.sample.paymentcryptography.terminal.PinTerminal
+```
+
+This class is setup for 2 flows 1/new pin setup, 2/ pin verification. 
+These flows are setup for both `PEK` (where `PinTerminal` such as bank's ATM) directly talks to issuer and `DUKPT` (where `PinTerminal` such as thrid party ATM) connects with Payment Service PIN translator (`PaymentProcessorPinTranslateService`) which then connects to the `IssuerService`
+
+The PEK based flow is - `PinTerminal` -> `IssuerService`.
+
+The DUKPT based flow is - `PinTerminal` ->  `PaymentProcessorPinTranslateService` -> `IssuerService`.
+
+In reas scenario, only DUKPT or PEK based flow would exist based on the type of service for pin sertup/verify.
+
+To run - 
+- cd `samples-for-payment-cryptography-service/java_sdk_example`
+- Start the server which runs `PaymentProcessorService`
+  - `./run_example.sh paymentcryptography.Application`
+- Run the `PinTerminal`
+    - `./run_example.sh paymentcryptography.terminal.PinTerminal`
+
+## Helper classes
+Following are helper classes to support the flows defined above. 
 
 #### CreateAlias
 
 This will create an alias, either with a name you provide or a random one if you don't specify anything. The main purpose of this is to demonstrate basic operations against the API.
 
-`./run_example.sh CreateAlias` or `./run_example.sh CreateAlias "alias/testalias-abcde"`
+`./run_example.sh paymentcryptography.CreateAlias` or `./run_example.sh paymentcryptography.CreateAlias "alias/testalias-abcde"`
 
 #### ListAliases
 
@@ -70,7 +82,7 @@ This will list all the aliases in your account, plus what key they point to (if 
 
 The main purpose of this example is to let you inspect your resources and see how pagination works.
 
-`./run_example.sh ListAliases`
+`./run_example.sh paymentcryptography.ListAliases`
 
 #### ListKeys
 
@@ -78,20 +90,4 @@ This will list all the keys in your account, with a bit of info about each one's
 
 The main purpose of this example is to let you inspect your resources and see how pagination works, as well as show some ways in which interacting with keys is different than interacting with aliases (for example, the attributes are nested more deeply, and ListKeys only returns the ARN, not all the info about the object, so an additional GetKey call is necessary).
 
-`./run_example.sh ListKeys`
-
-#### Create Params For Import
-
-This will create the params for import.
-
-The main purpose of this example is to provide the inputs needed to import a Zone Master Key/KEK using TR-34. This API is not idempotent
-(that is it returns different results each time), but each result is valid until the time specified in the request.
-`./run_example.sh CreateParamsForImport`
-
-#### Demo
-
-This will create keys behind aliases, generate a pin block, then translate that pin block to a different key and format. It takes one optional argument, which it'll append as a suffix on the alias names. If it's run multiple times, it'll use the same keys instead of generating new ones unless you change the suffix.
-
-The main purpose of this example is to show how to perform basic dataplane operations.
-
-`./run_example Demo` or `./run_example Demo "-1"`
+`./run_example.sh paymentcryptography.ListKeys`

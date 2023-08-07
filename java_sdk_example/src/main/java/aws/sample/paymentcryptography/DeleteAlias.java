@@ -1,7 +1,5 @@
 package aws.sample.paymentcryptography;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import com.amazonaws.services.paymentcryptography.AWSPaymentCryptography;
@@ -10,7 +8,6 @@ import com.amazonaws.services.paymentcryptography.model.DeleteAliasRequest;
 import com.amazonaws.services.paymentcryptography.model.DeleteAliasResult;
 import com.amazonaws.services.paymentcryptography.model.DeleteKeyRequest;
 import com.amazonaws.services.paymentcryptography.model.DeleteKeyResult;
-import com.amazonaws.services.paymentcryptography.model.GetAliasRequest;
 import com.amazonaws.services.paymentcryptography.model.ListAliasesRequest;
 import com.amazonaws.services.paymentcryptography.model.ListAliasesResult;
 
