@@ -40,7 +40,7 @@ public class PaymentProcessorService {
 
         DecryptDataRequest decryptDataRequest = new DecryptDataRequest();
         decryptDataRequest.setCipherText(encryptedData);
-        decryptDataRequest.setKeyIdentifier(ServiceConstants.BDK_ARN);
+        decryptDataRequest.setKeyIdentifier(ServiceConstants.BDK_ALIAS);
         decryptDataRequest.setDecryptionAttributes(decryptionAttributes);
 
         DecryptDataResult decryptDataResult = dataPlaneClient.decryptData(decryptDataRequest);

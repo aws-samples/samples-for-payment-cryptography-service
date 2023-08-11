@@ -28,7 +28,7 @@ public class PaymentProcessorPinTranslateService {
 
         String acquirerWorkingKeyArn = getAcquirerWorkingKeyArn();
         TranslatePinDataResult translatePinDataResult = DataPlaneUtils.translateVisaPinBlockBdkToPek(
-                ServiceConstants.BDK_ARN,
+                ServiceConstants.BDK_ALIAS,
                 ServiceConstants.ISO_0_PIN_BLOCK_FORMAT,
                 encryptedPinBLock,
                 acquirerWorkingKeyArn,
@@ -61,7 +61,7 @@ public class PaymentProcessorPinTranslateService {
 
         String acquirerWorkingKeyArn = getAcquirerWorkingKeyArn();
         TranslatePinDataResult translatePinDataResult = DataPlaneUtils.translateVisaPinBlockBdkToPek(
-                ServiceConstants.BDK_ARN,
+                ServiceConstants.BDK_ALIAS,
                 ServiceConstants.ISO_0_PIN_BLOCK_FORMAT,
                 encryptedPin,
                 acquirerWorkingKeyArn,

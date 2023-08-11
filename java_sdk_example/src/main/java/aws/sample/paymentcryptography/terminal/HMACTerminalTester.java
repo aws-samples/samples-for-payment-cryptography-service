@@ -16,7 +16,7 @@ public class HMACTerminalTester {
 
         final BlockCipher cipher = new DESEngine();
         final KeyParameter keyParameter = new KeyParameter(Hex.decodeHex(TerminalConstants.MAC_KEY_PLAIN_TEXT.toCharArray()));
-        final byte[] dataToMac = Hex.decodeHex(TerminalConstants.HMAC_DATA_PLAIN_TEXT.toCharArray());
+        final byte[] dataToMac = Hex.encodeHexString(TerminalConstants.HMAC_DATA_PLAIN_TEXT.getBytes()).getBytes();
         final byte[] genMac = generateIso9797Alg3Mac(keyParameter, cipher, dataToMac);
 
         System.out.println("hmac is " + Hex.encodeHexString(genMac));

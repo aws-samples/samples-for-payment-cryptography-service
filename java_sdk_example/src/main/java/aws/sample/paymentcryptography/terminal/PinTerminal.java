@@ -41,7 +41,7 @@ public class PinTerminal {
                 .append(TerminalConstants.PAN).toString();
 
         ResponseEntity<String> setPinResponse = restTemplate.getForEntity(finaSetPinlUrl, String.class);
-        System.out.println("Issuer service response for PEK Pin set is " + setPinResponse.getBody());
+        System.out.println("Response from issuer service for (PEK encrypted) pin set operation is " + setPinResponse.getBody());
         JSONObject setPinResponseObject = new JSONObject(setPinResponse.getBody());
 
         if (setPinResponseObject.has("pvv")) {
@@ -57,7 +57,7 @@ public class PinTerminal {
                     .append(setPinResponseObject.getString("pvv")).toString();
 
             ResponseEntity<String> verifyPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl, String.class);
-            System.out.println("Issuer service response for PEK Pin verify is " + verifyPinResponse.getBody());
+            System.out.println("Response from issuer service for (PEK encrypted) pin verify operation is " + verifyPinResponse.getBody());
         }
 
     }
@@ -80,7 +80,7 @@ public class PinTerminal {
                 .append(TerminalConstants.PAN).toString();
 
         ResponseEntity<String> setPinResponse = restTemplate.getForEntity(finaSetPinlUrl, String.class);
-        System.out.println("Issuer service response for DUPT Pin set is " + setPinResponse.getBody());
+        System.out.println("Response from PinTranslate service for (DUKPT encrypted) pin set operation is " + setPinResponse.getBody());
         JSONObject setPinResponseObject = new JSONObject(setPinResponse.getBody());
 
         if (setPinResponseObject.has("pvv")) {
@@ -96,7 +96,7 @@ public class PinTerminal {
                     .append(setPinResponseObject.getString("pvv")).toString();
 
             ResponseEntity<String> verifyPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl, String.class);
-            System.out.println("Issuer service response for DUKPT Pin verify is " + verifyPinResponse.getBody());
+            System.out.println("Response from PinTranslate service for (DUKPT encrypted) pin set operation is " + verifyPinResponse.getBody());
         }
     }
 

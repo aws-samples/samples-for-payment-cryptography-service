@@ -25,7 +25,6 @@ import aws.sample.paymentcryptography.TerminalConstants;
  */
 public class PaymentTerminal {
     private static final String DATA_FILE = "/src/main/java/aws/sample/paymentcryptography/p2pe/key-ksn-data.json";
-    public static final String HMAC_DATA_PLAIN_TEXT = "4123412341234123";
 
     public static void main(String[] args) throws Exception {
         RestTemplate restTemplate = new RestTemplate();
@@ -61,7 +60,8 @@ public class PaymentTerminal {
     }
 
     private static boolean validateHMAC(String dataFromPaymentService) throws Exception {
-        String hmacOnTerminal = HMACTerminalTester.getMac(HMAC_DATA_PLAIN_TEXT);
+        System.out.println("Hex is - " + Hex.encodeHexString(ServiceConstants.HMAC_DATA_PLAIN_TEXT.getBytes()));
+        String hmacOnTerminal = HMACTerminalTester.getMac(Hex.encodeHexString(ServiceConstants.HMAC_DATA_PLAIN_TEXT.getBytes()));
         System.out.println("MAC from payment service - " + dataFromPaymentService + ", MAC from terminal - " + hmacOnTerminal);
         return hmacOnTerminal.trim().toLowerCase().startsWith(dataFromPaymentService);
     }

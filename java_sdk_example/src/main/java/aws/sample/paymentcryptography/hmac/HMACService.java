@@ -1,5 +1,6 @@
 package aws.sample.paymentcryptography.hmac;
 
+import org.apache.commons.codec.binary.Hex;
 import org.springframework.stereotype.Component;
 
 import com.amazonaws.services.paymentcryptography.model.Alias;
@@ -25,10 +26,8 @@ import aws.sample.paymentcryptography.ServiceConstants;
 @Component
 public class HMACService {
 
-    private static final String HMAC_KEY_ALIAS = "alias/tr34-hmac-key-import";
-
     public String createHMACKey() {
-        Alias hmacKeyAlias = ControlPlaneUtils.getOrCreateAlias(HMAC_KEY_ALIAS);
+        Alias hmacKeyAlias = ControlPlaneUtils.getOrCreateAlias(ServiceConstants.HMAC_KEY_ALIAS);
 
         if (!StringUtils.isNullOrEmpty(hmacKeyAlias.getKeyArn())) {
             return hmacKeyAlias.getKeyArn();
@@ -63,7 +62,7 @@ public class HMACService {
                 .withAlgorithm(MacAlgorithm.ISO9797_ALGORITHM3);
         GenerateMacRequest generateMacRequest = new GenerateMacRequest()
                 .withKeyIdentifier(hmacKeyArn)
-                .withMessageData(ServiceConstants.HMAC_DATA_PLAIN_TEXT)
+                .withMessageData(Hex.encodeHexString(ServiceConstants.HMAC_DATA_PLAIN_TEXT.getBytes()))
                 .withGenerationAttributes(macAttributes);
         GenerateMacResult macGenerateResult = DataPlaneUtils.getDataPlaneClient().generateMac(generateMacRequest);
         return macGenerateResult;
