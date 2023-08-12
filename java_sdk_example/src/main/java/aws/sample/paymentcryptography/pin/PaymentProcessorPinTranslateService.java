@@ -93,7 +93,7 @@ public class PaymentProcessorPinTranslateService {
      * through a key exchange process.
      */
     private static String getAcquirerWorkingKeyArn() {
-        Alias acquirerWorkingKeyAlias = ControlPlaneUtils.getOrCreateAlias(ServiceConstants.ACQUIRER_WORKING_KEY_ALIAS);
+        Alias acquirerWorkingKeyAlias = ControlPlaneUtils.getOrCreateAlias(ServiceConstants.PIN_TRANSLATION_KEY_ALIAS);
         if (StringUtils.isNullOrEmpty(acquirerWorkingKeyAlias.getKeyArn())) {
             Logger.getGlobal().info("No AWS PEK found, creating a new one.");
             Key acquirerWorkingKey = ControlPlaneUtils.createPEK(ServiceConstants.PEK_ALGORITHM);

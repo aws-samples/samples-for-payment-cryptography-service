@@ -1,7 +1,10 @@
 package aws.sample.paymentcryptography.p2pe;
 
+import java.io.UnsupportedEncodingException;
+
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,7 +31,7 @@ public class PaymentProcessorService {
     @GetMapping(ServiceConstants.PAYMENT_PROCESSOR_SERVICE_AUTHORIZE_PAYMENT_API)
     @ResponseBody
     public String authorizePayment(@RequestParam String encryptedData, @RequestParam String ksn)
-            throws DecoderException {
+            throws DecoderException, UnsupportedEncodingException, JSONException {
         AWSPaymentCryptographyData dataPlaneClient = DataPlaneUtils.getDataPlaneClient();
 
         DukptEncryptionAttributes dukptEncryptionAttributes = new DukptEncryptionAttributes()

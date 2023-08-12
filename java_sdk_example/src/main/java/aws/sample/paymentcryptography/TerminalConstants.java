@@ -7,7 +7,7 @@ public interface TerminalConstants extends CommonConstants{
     // Pre-calculated this outside the code for brevity. KSN FFFF9876543210E00001 was used to derive this key
     public final String DUKPT_CURRENT_KEY = "91E7A69D04B61A30AE4965847D94A2E2";
     
-    public final String MAC_KEY_PLAIN_TEXT = "8A8349794C9EE9A4C2927098F249FED6";
+    public final String MAC_KEY_PLAIN_TEXT = "75BDAEF54587CAE6563A5CE57B4B9F9F";
 
     // Clear text PEK key.
     public final String PEK = "545e2aadfd5ec42f2f5be5e3adc75e9b290252a1a219b380";

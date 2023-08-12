@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.amazonaws.services.paymentcryptography.model.Alias;
-import com.amazonaws.services.paymentcryptography.model.Key;
 import com.amazonaws.services.paymentcryptographydata.AWSPaymentCryptographyData;
 import com.amazonaws.services.paymentcryptographydata.model.GeneratePinDataRequest;
 import com.amazonaws.services.paymentcryptographydata.model.GeneratePinDataResult;
@@ -25,14 +24,15 @@ import aws.sample.paymentcryptography.ServiceConstants;
 @RestController
 public class IssuerService {
 
-    private static final String pekAliasName = String.format("alias/demo-pek");
-    private static final String atmPekAliasName = String.format("alias/atmPek");
+    /* private static final String pekAliasName = String.format("alias/demo-pek");
     private static final String bdkAliasName = String.format("alias/demo-bdk");
-    private static final String pgkAliasName = String.format("alias/demo-pgk");
-    private static Alias atmPekAlias = ControlPlaneUtils.getOrCreateAlias(atmPekAliasName);
     private static Alias pekAlias = ControlPlaneUtils.getOrCreateAlias(pekAliasName);
-    private static Alias bdkAlias = ControlPlaneUtils.getOrCreateAlias(bdkAliasName);
-    private static Alias pgkAlias = ControlPlaneUtils.getOrCreateAlias(pgkAliasName);
+    private static Alias bdkAlias = ControlPlaneUtils.getOrCreateAlias(bdkAliasName); */
+
+    private static final String issuerPekAliasName = ServiceConstants.ISSUER_PEK_ALIAS;
+    private static final String pinValidationKeyAliasName = ServiceConstants.PIN_VALIDATION_KEY_ALIAS;
+    private static Alias issuerPekAlias = ControlPlaneUtils.getOrCreateAlias(issuerPekAliasName);    
+    private static Alias pinValidationKeyAlias = ControlPlaneUtils.getOrCreateAlias(pinValidationKeyAliasName);
 
     private static AWSPaymentCryptographyData client = DataPlaneUtils.getDataPlaneClient();
 
@@ -50,8 +50,8 @@ public class IssuerService {
         PinGenerationAttributes attributes = new PinGenerationAttributes()
                 .withVisaPinVerificationValue(pinVerificationValue);
         GeneratePinDataRequest request = new GeneratePinDataRequest()
-                .withGenerationKeyIdentifier(pgkAlias.getKeyArn())
-                .withEncryptionKeyIdentifier(atmPekAlias.getKeyArn())
+                .withGenerationKeyIdentifier(pinValidationKeyAlias.getKeyArn())
+                .withEncryptionKeyIdentifier(issuerPekAlias.getKeyArn())
                 .withPrimaryAccountNumber(pan)
                 .withPinBlockFormat(ServiceConstants.ISO_0_PIN_BLOCK_FORMAT)
                 .withGenerationAttributes(attributes);
@@ -70,8 +70,8 @@ public class IssuerService {
     public String verifyPinData(@RequestParam String encryptedPin, @RequestParam String pan, @RequestParam String pinVerificationValue){
         JSONObject response = new JSONObject();
         try {
-            VerifyPinDataResult verifyPinDataResult = verifyPinData(encryptedPin, atmPekAlias.getKeyArn(), 
-            pgkAlias.getKeyArn(), pinVerificationValue, ServiceConstants.ISO_0_PIN_BLOCK_FORMAT, pan);
+            VerifyPinDataResult verifyPinDataResult = verifyPinData(encryptedPin, issuerPekAlias.getKeyArn(), 
+            pinValidationKeyAlias.getKeyArn(), pinVerificationValue, ServiceConstants.ISO_0_PIN_BLOCK_FORMAT, pan);
             if(verifyPinDataResult!=null) {
                 response.put("status", "pass");
             }else {
@@ -111,7 +111,7 @@ public class IssuerService {
     /*
      * Sample code to show how new pin genration can be done in the Payment Cryptography Service. This flow is currently not used in the samples.
     */
-    private GeneratePinDataResult generatePinData() {
+    /* private GeneratePinDataResult generatePinData() {
         // finds or generates a Pin Generation Key (used for generating random PINs)
         if (null == pgkAlias.getKeyArn()) {
             System.out.println("No PGK found, creating a new one.");
@@ -164,7 +164,7 @@ public class IssuerService {
 
         System.out.println(String.format("Translated PIN block: %s", pinBlockUnderBDK));
         return pinDataGenerationResult;
-    }
+    } */
 
     public String getPinVerificationValue() {
         return pinVerificationValue;
