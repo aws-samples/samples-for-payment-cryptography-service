@@ -1,13 +1,15 @@
 # Import Keys
 
-They Python samples are use to import clear text keys in order to run the sample apps. The key import app already has clear text keys defined and can be run as is. The same keys and aliases defined in Python app are used in the JAVA samples app. Look under ServiceConstants.java and TerminalConstants.java.
-You can change the clear text Hex keys in order to import your own key.  If you do change the PEK or MAC keys in import app you will need to set the same values in TerminalConstants.java under "PEK" and "MAC_KEY_PLAIN_TEXT" variables. 
+Importing keys is a prerequisite to run the JAVA samples. 
 
-If you change BDK key, you will need to generate corresponding DUKPT variants along with KSN using the BDK key and set those variants in the `java_sdk_example/src/main/java/aws/sample/paymentcryptography/p2pe/key-ksn-data.json` with it's corresponding KSN. Refer to https://github.com/SoftwareVerde/java-dukpt for information on DUKPT keys and variants. 
+They Python samples are used to import clear text keys. The key import app already has sample clear text keys defined and can be run as is. The same keys and aliases defined in Python app here are used in the JAVA samples app. Look under ServiceConstants.java and TerminalConstants.java.
+You can change the clear text Hex keys in order to import your own key.  If you do change the PEK or MAC keys in import app you will need to set the same values in TerminalConstants.java under "PEK" and "MAC_KEY_PLAIN_TEXT" variables.
+
+If you change BDK key, you will need to generate corresponding DUKPT variants along with KSN using the BDK key and set those variants in the `java_sdk_example/src/main/java/aws/sample/paymentcryptography/p2pe/key-ksn-data.json` with corresponding KSN. Refer to https://github.com/SoftwareVerde/java-dukpt for information on DUKPT keys and variants. 
 
 ## Instructions
 Either one of two ways below can be used to import the keys. You will need AWS credentials to run the import app.
-With either approaches, you shoudl get an output like below -
+With either approaches, you should get an output like below -
 ```
 *********Importing a KEK for importing subsequent keys*********
 
