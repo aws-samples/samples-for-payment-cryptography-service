@@ -2,8 +2,8 @@
 
 Importing keys is a prerequisite to run the JAVA samples. 
 
-They Python samples are used to import clear text keys. The key import app already has sample clear text keys defined and can be run as is. The same keys and aliases defined in Python app here are used in the JAVA samples app. Look under ServiceConstants.java and TerminalConstants.java.
-You can change the clear text Hex keys in order to import your own key.  If you do change the PEK or MAC keys in import app you will need to set the same values in TerminalConstants.java under "PEK" and "MAC_KEY_PLAIN_TEXT" variables.
+They Python samples are used to import clear text keys. The key import app already has sample clear text keys defined and can be run as is. The same keys and aliases defined in Python app here are used in the JAVA samples app. Look under `java_sdk_example/src/main/java/aws/sample/paymentcryptography/ServiceConstants.java` and `java_sdk_example/src/main/java/aws/sample/paymentcryptography/ServiceConstants.java`.
+You can change the clear text Hex keys in order to import your own key.  If you do change the PEK or MAC keys in import app you will need to set the same values in `java_sdk_example/src/main/java/aws/sample/paymentcryptography/TerminalConstants.java` under "PEK" and "MAC_KEY_PLAIN_TEXT" variables.
 
 If you change BDK key, you will need to generate corresponding DUKPT variants along with KSN using the BDK key and set those variants in the `java_sdk_example/src/main/java/aws/sample/paymentcryptography/p2pe/key-ksn-data.json` with corresponding KSN. Refer to https://github.com/SoftwareVerde/java-dukpt for information on DUKPT keys and variants. 
 
