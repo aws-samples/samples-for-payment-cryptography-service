@@ -1,7 +1,5 @@
 package aws.sample.paymentcryptography.pin;
 
-import java.util.logging.Logger;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -95,11 +93,11 @@ public class PaymentProcessorPinTranslateService {
     private static String getAcquirerWorkingKeyArn() {
         Alias acquirerWorkingKeyAlias = ControlPlaneUtils.getOrCreateAlias(ServiceConstants.PIN_TRANSLATION_KEY_ALIAS);
         if (StringUtils.isNullOrEmpty(acquirerWorkingKeyAlias.getKeyArn())) {
-            Logger.getGlobal().info("No AWS PEK found, creating a new one.");
+            System.out.println("No AWS PEK found, creating a new one.");
             Key acquirerWorkingKey = ControlPlaneUtils.createPEK(ServiceConstants.PEK_ALGORITHM);
             acquirerWorkingKeyAlias = ControlPlaneUtils.upsertAlias(acquirerWorkingKeyAlias.getAliasName(),
                     acquirerWorkingKey.getKeyArn());
-            Logger.getGlobal().info(String.format("PEK created: %s", acquirerWorkingKeyAlias.getKeyArn()));
+            System.out.println(String.format("PEK created: %s", acquirerWorkingKeyAlias.getKeyArn()));
             return acquirerWorkingKeyAlias.getKeyArn();
         } else {
         }
