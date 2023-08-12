@@ -99,7 +99,6 @@ public class PaymentProcessorPinTranslateService {
                     acquirerWorkingKey.getKeyArn());
             System.out.println(String.format("PEK created: %s", acquirerWorkingKeyAlias.getKeyArn()));
             return acquirerWorkingKeyAlias.getKeyArn();
-        } else {
         }
         return acquirerWorkingKeyAlias.getKeyArn();
     }
