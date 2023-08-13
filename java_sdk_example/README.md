@@ -37,7 +37,7 @@ aws.sample.paymentcryptography.terminal.PaymentTerminal
 ```
 
 This class is setup for P2PE flow and uses pre created DUKPT to encrypt data from PaymentTerminal to send to Payment Processor API endpoint.
-The test data is defined on `key-ksn-data.json` file. For every increment of KSN counter (last 2 digits of KSN), a corresponding DUKPT has been pre-created.
+The test data is defined on [key-ksn-data.json](src/main/java/aws/sample/paymentcryptography/p2pe/key-ksn-data.json) file. For every increment of KSN counter (last 2 digits of KSN), a corresponding DUKPT has been pre-created.
 
 To run - 
 
