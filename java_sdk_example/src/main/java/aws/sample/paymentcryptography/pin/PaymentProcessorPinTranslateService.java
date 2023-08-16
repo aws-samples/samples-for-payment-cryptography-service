@@ -15,12 +15,11 @@ import com.amazonaws.util.StringUtils;
 import aws.sample.paymentcryptography.ControlPlaneUtils;
 import aws.sample.paymentcryptography.DataPlaneUtils;
 import aws.sample.paymentcryptography.ServiceConstants;
-import aws.sample.paymentcryptography.TerminalConstants;
 
 @RestController
 public class PaymentProcessorPinTranslateService {
 
-    @GetMapping(ServiceConstants.PIN_PROCESSOR_SERVICE_PIN_SET_API)
+   /*  @GetMapping(ServiceConstants.PIN_PROCESSOR_SERVICE_PIN_SET_API)
     @ResponseBody
     public String setPinData(@RequestParam String encryptedPinBLock, @RequestParam String pan) {
 
@@ -44,19 +43,19 @@ public class PaymentProcessorPinTranslateService {
                 .append("?encryptedPinBLock=")
                 .append(translatePinDataResult.getPinBlock()) // setting BDK -> PEK translated PIN data
                 .append("&pan=")
-                .append(TerminalConstants.PAN).toString();
+                .append(pan).toString();
 
         ResponseEntity<String> setPinResponse = restTemplate.getForEntity(finaSetPinlUrl, String.class);
         System.out.println("PaymentProcessorPinTranslateService: Issuer service response for PEK Pin set is "
                 + setPinResponse.getBody());
         return setPinResponse.getBody();
-    }
+    } */
 
     @GetMapping(ServiceConstants.PIN_PROCESSOR_SERVICE_PIN_VERIFY_API)
     @ResponseBody
-    public String verifyPinData(@RequestParam String encryptedPin, @RequestParam String pan,
-            @RequestParam String pinVerificationValue) {
+    public String verifyPinData(@RequestParam String encryptedPin, @RequestParam String pan, @RequestParam String ksn) {
 
+        System.out.println("Translated PIN block - " + encryptedPin);
         String acquirerWorkingKeyArn = getAcquirerWorkingKeyArn();
         TranslatePinDataResult translatePinDataResult = DataPlaneUtils.translateVisaPinBlockBdkToPek(
                 ServiceConstants.BDK_ALIAS,
@@ -65,7 +64,7 @@ public class PaymentProcessorPinTranslateService {
                 acquirerWorkingKeyArn,
                 ServiceConstants.ISO_0_PIN_BLOCK_FORMAT,
                 ServiceConstants.BDK_ALGORITHM,
-                ServiceConstants.KSN,
+                ksn,
                 pan);
 
         RestTemplate restTemplate = new RestTemplate();
@@ -75,9 +74,8 @@ public class PaymentProcessorPinTranslateService {
                 .append("?encryptedPin=")
                 .append(translatePinDataResult.getPinBlock())
                 .append("&pan=")
-                .append(TerminalConstants.PAN)
-                .append("&pinVerificationValue=")
-                .append(pinVerificationValue).toString();
+                .append(pan)
+                .toString();
 
         ResponseEntity<String> verifyPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl, String.class);
         System.out.println("Issuer service response for PEK Pin verify is " + verifyPinResponse.getBody());

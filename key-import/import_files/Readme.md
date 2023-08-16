@@ -74,6 +74,8 @@ MAC Key ARN: arn:aws:payment-cryptography:us-east-1:XXXXXXXXXXXX:key/ryuqocdizyh
 If you have Docker installed, you can run the commands below. This can be used if you do not have Python installed or do not want to import the Python libraries needed for this app in your local system.
 
 ```
+cd samples-for-payment-cryptography-service/key-import/Dockerfile
+
 docker build -t key-import-app .
 
 docker run  -e AWS_ACCESS_KEY_ID=<Access Key> -e AWS_SECRET_ACCESS_KEY=<SECRET KEY> -e AWS_DEFAULT_REGION=us-east-1 -it --rm key-import-app
@@ -82,7 +84,10 @@ Once you run the commands above, it will import the keys and create aliases for 
 
 #### Using local Python to run the import app
 ```
+cd samples-for-payment-cryptography-service/key-import/Dockerfile
+
 python3 -m pip install psec boto3 pycryptodome
+
 python3 apc_demo_keysetup.py
 
 ```

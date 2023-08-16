@@ -1,6 +1,7 @@
 package aws.sample.paymentcryptography.pin;
 
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -36,8 +37,13 @@ public class IssuerService {
 
     private static AWSPaymentCryptographyData client = DataPlaneUtils.getDataPlaneClient();
 
-    private String pinVerificationValue = null;
-    
+    /* File based repository where the pin verification values (PVV) are store against the PAN.
+     * The PVV is needed for PIN verification with the AWS Cryptography Service. In real scenario,
+     * the PVV would be stored in a database.
+    */
+    @Autowired
+    private Repository repository;
+
     @GetMapping(ServiceConstants.ISSUER_SERVICE_PIN_SET_API)
     @ResponseBody
     public String setPinData(@RequestParam String encryptedPinBLock, @RequestParam String pan) {
@@ -57,8 +63,8 @@ public class IssuerService {
                 .withGenerationAttributes(attributes);
 
         GeneratePinDataResult result = client.generatePinData(request);
-        response.put("pvv", result.getPinData().getVerificationValue());
-        setPinVerificationValue(result.getPinData().getVerificationValue());
+        response.put("status", "ok");
+        getRepository().addEntry(pan, result.getPinData().getVerificationValue());
         } catch(Exception exception) {
             response.put("error", exception.getMessage());
         }
@@ -67,13 +73,13 @@ public class IssuerService {
 
     @GetMapping(ServiceConstants.ISSUER_SERVICE_PIN_VERIFY_API)
     @ResponseBody
-    public String verifyPinData(@RequestParam String encryptedPin, @RequestParam String pan, @RequestParam String pinVerificationValue){
+    public String verifyPinData(@RequestParam String encryptedPin, @RequestParam String pan){
         JSONObject response = new JSONObject();
         try {
             VerifyPinDataResult verifyPinDataResult = verifyPinData(encryptedPin, issuerPekAlias.getKeyArn(), 
-            pinValidationKeyAlias.getKeyArn(), pinVerificationValue, ServiceConstants.ISO_0_PIN_BLOCK_FORMAT, pan);
+            pinValidationKeyAlias.getKeyArn(), getRepository().getEntry(pan), ServiceConstants.ISO_0_PIN_BLOCK_FORMAT, pan);
             if(verifyPinDataResult!=null) {
-                response.put("status", "pass");
+                response.put("status", "valid");
             }else {
                 response.put("status", "fail");    
             }
@@ -83,7 +89,6 @@ public class IssuerService {
             response.put("status", "fail");
         }
         return response.toString();
-        
     }
 
     private VerifyPinDataResult verifyPinData(String encryptedPinBlock, String encryptionKeyIdentifier,
@@ -166,13 +171,11 @@ public class IssuerService {
         return pinDataGenerationResult;
     } */
 
-    public String getPinVerificationValue() {
-        return pinVerificationValue;
+    public Repository getRepository() {
+        return repository;
     }
 
-    public void setPinVerificationValue(String pinVerificationValue) {
-        this.pinVerificationValue = pinVerificationValue;
+    public void setRepository(Repository repository) {
+        this.repository = repository;
     }
-
-
 }

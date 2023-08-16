@@ -5,10 +5,6 @@ package aws.sample.paymentcryptography;
  */
 public interface CommonConstants {
     
-    public final String PAN = "9123412341234";
-    
-    public final String KSN = "FFFF9876543210E00001"; 
-
     public final String MODE = "CBC";
 
     public final String HOST = "http://localhost:8080";

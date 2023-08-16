@@ -8,8 +8,6 @@ import org.bouncycastle.crypto.engines.DESEngine;
 import org.bouncycastle.crypto.macs.ISO9797Alg3Mac;
 import org.bouncycastle.crypto.params.KeyParameter;
 
-import aws.sample.paymentcryptography.TerminalConstants;
-
 public class HMACTerminalTester {
 
     public static void main(String[] args) throws DecoderException {
