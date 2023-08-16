@@ -1,6 +1,6 @@
 ## AWS Payment Cryptography Samples
 
-This repos contains samples for AWS Payment Cryptography for - key import, P2PE and Pin (set and verify) flows. 
+This repos contains samples for AWS Payment Cryptography for - key import, P2PE and Pin (set and verify) flows.
 
 ### Key Import
 The samples are setup to run based on keys in the [key import app](key-import/import_files/apc_demo_keysetup.py). As a first step, you will need to run the key import app. Refer to [key import instructions](key-import/import_files/Readme.md)
@@ -16,19 +16,15 @@ Following diagram illustrates the flow -
 This is simulated by [Pin Terminal Client](java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/PaymentTerminal.java). There are 2 flows setup on the client - 
 
 #### Set Pin
-This flow is done both via both DUKPT and PEK keys to show that the Pin terminal (such as Issuer ATM) can either directly connect to the [Issuer](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) (PEK flow) or it can connect to a [PIN translating service](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) (3rd party ATM or Payment Processing Service) to set the PIN via [Issuer](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java).
+In this flow, the [ATM](java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/ATM.java) uses Pin Encryption Key set the PIN with the [Issuer](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) 
 
-Following diagrams illustrate the flow - 
+Following diagram illustrates the flow - 
 
 ##### Set PIN (PEK)
 ![Set PIN Flow - PEK](flows/PaymentCryptographyServiceFlows-Pin%20Terminal%20Set%20Pin%20Flow%20(PEK).jpg)
 
-
-##### Set PIN (DUKPT)
-![Set PIN Flow - DUKPT](flows/PaymentCryptographyServiceFlows-Pin%20Terminal%20Set%20Pin%20Flow%20(DUKPT).jpg)
-
 #### Verify Pin
-Similar to Set Pin flow, this flow is also done both via both DUKPT and PEK keys to show that the Pin terminal (such as Issuer ATM) can either directly connect to the [Issuer](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) (PEK flow) or it can connect to a [PIN translating service](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) (3rd party ATM or Payment Processing Service) to verify the PIN via [Issuer](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java).
+In this flow, the [PinTerminal](java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal.java) verifies the PIN via [Pin Translator](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) which uses [Issuer](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java).  
 
 Following diagrams illustrate the flow - 
 ![Verify PIN Flow - DUKPT](flows/PaymentCryptographyServiceFlows-Pin%20Terminal%20Pin%20Verification%20Flow%20(DUKPT).jpg)
@@ -40,4 +36,3 @@ See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more inform
 ## License
 
 This library is licensed under the MIT-0 License. See the [LICENSE](LICENSE) file.
-
