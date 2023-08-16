@@ -1,6 +1,6 @@
 ## AWS Payment Cryptography Samples
 
-This repos contains samples for AWS Payment Cryptography for - key import, P2PE and Pin (set and verify) flows.
+This repos contains samples for AWS Payment Cryptography for - key import, P2PE and Pin (set and verify) flows. 
 
 ### Key Import
 The samples are setup to run based on keys in the [key import app](key-import/import_files/apc_demo_keysetup.py). As a first step, you will need to run the key import app. Refer to [key import instructions](key-import/import_files/Readme.md)
