@@ -30,7 +30,15 @@ export AWS_SESSION_TOKEN=wxyz....
 
 ### Run the examples
 
-There are samples for 2 flows below. The flows are setup on simulated terminals such as store terminal that processes payment or ATM that can be used for pin setup or PIN terminal that does PIN verification.
+There are samples for 2 flows below. The flows are setup on simulated terminals such as store terminal that processes payment or ATM that can be used for pin setup or PIN terminal that does PIN verification. Prior to running the samples, you will need to start the server like below. 
+The server has services that the terminals connect to support the flows.
+
+#### Starting the Server
+```
+cd samples-for-payment-cryptography-service/java_sdk_example
+./run_example.sh aws.sample.paymentcryptography.Application`
+
+```
 
 #### PaymentTerminal
 
@@ -41,7 +49,6 @@ To run -
 
 ```
 cd samples-for-payment-cryptography-service/java_sdk_example
-./run_example.sh aws.sample.paymentcryptography.Application`
 ./run_example.sh aws.sample.paymentcryptography.terminal.PaymentTerminal
 ```
 
@@ -52,10 +59,8 @@ data to create an encoded PIN block and encrypts that block using pre setup PEK.
 
 To run - 
 
-*Note*: You do not need to run the Application if it's already running.
 ```
 cd samples-for-payment-cryptography-service/java_sdk_example
-./run_example.sh aws.sample.paymentcryptography.Application`
 ./run_example.sh aws.sample.paymentcryptography.terminal.ATM
 
 ```
@@ -67,10 +72,8 @@ This class is setup for 2 flows 1/new pin setup, 2/ pin verification. The encryp
 
 To run - 
 
-*Note*: You do not need to run the Application if it's already running.
 ```
 cd samples-for-payment-cryptography-service/java_sdk_example
-./run_example.sh aws.sample.paymentcryptography.Application`
 ./run_example.sh aws.sample.paymentcryptography.terminal.PinTerminal
 ```
 

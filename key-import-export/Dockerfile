@@ -5,7 +5,7 @@ RUN mkdir /app && \
      python3 get-pip.py && \
      python3 -m pip install psec boto3 pycryptodome
 
-COPY import_files/ /app
+COPY import_app/ /app
 
 WORKDIR /app
 
