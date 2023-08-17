@@ -19,16 +19,16 @@ public class ATM extends AbstractTerminal {
     private static final String PINS_DATA_FILE = "/test-data/sample-pin-pan.json";
 
     public static void main(String[] args) throws Exception {
-        testPEKPinEncryptionAndValidation();
+        testPinSet();
     }
 
-    public static void testPEKPinEncryptionAndValidation() throws Exception {
+    public static void testPinSet() throws Exception {
         JSONObject data = loadPinAndPanData();
         JSONArray dataList = data.getJSONArray("pins");
 
         dataList.forEach(panPinOBject -> {
             try {
-                System.out.println("---------testPEKPinEncryptionAndValidation ---------");
+                System.out.println("---------testPinSet ---------");
                 String pan = ((JSONObject) panPinOBject).getString("pan");
                 String pin = ((JSONObject) panPinOBject).getString("pin");
                 System.out.println("PAN -> " + pan + ", PIN -> " + pin);
@@ -36,7 +36,7 @@ public class ATM extends AbstractTerminal {
                 System.out.println("Encoded Pin block is " + encodedPin);
                 String pekEncryptedBlock = encryptPINWithPEK(TerminalConstants.PEK, encodedPin);
                 System.out.println(("PEK encrypted block - " + pekEncryptedBlock));
-
+                Thread.sleep(2000);
                 RestTemplate restTemplate = new RestTemplate();
 
                 String setPinUrl = ServiceConstants.HOST
@@ -51,24 +51,7 @@ public class ATM extends AbstractTerminal {
                 ResponseEntity<String> setPinResponse = restTemplate.getForEntity(finaSetPinlUrl, String.class);
                 System.out.println("Response from issuer service for (PEK encrypted) pin set operation is "
                         + setPinResponse.getBody());
-                JSONObject setPinResponseObject = new JSONObject(setPinResponse.getBody());
-
-                if (setPinResponseObject.has("pvv")) {
-                    String verifyPinUrl = ServiceConstants.HOST
-                            + ServiceConstants.ISSUER_SERVICE_PIN_VERIFY_API;
-
-                    String finalVerifyPinlUrl = new StringBuilder(verifyPinUrl)
-                            .append("?encryptedPin=")
-                            .append(pekEncryptedBlock)
-                            .append("&pan=")
-                            .append(pan)
-                            .toString();
-
-                    ResponseEntity<String> verifyPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl,
-                            String.class);
-                    System.out.println("Response from issuer service for (PEK encrypted) pin verify operation is "
-                            + verifyPinResponse.getBody());
-                }
+                Thread.sleep(3500);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -85,7 +68,7 @@ public class ATM extends AbstractTerminal {
         return encryptedValue;
     }
 
-     private static JSONObject loadPinAndPanData() throws IOException {
+    private static JSONObject loadPinAndPanData() throws IOException {
         return loadData(System.getProperty("user.dir") + PINS_DATA_FILE);
     }
 

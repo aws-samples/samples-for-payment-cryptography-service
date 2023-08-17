@@ -51,18 +51,18 @@ public class HMACService {
         return hmacKeyAlias.getAliasName();
     }
 
-    public String generateMac() {
+    public String generateMac(String text) {
         String hmacKeyArn = createHMACKey();
-        GenerateMacResult macGenerateResult = generateMac(hmacKeyArn);
+        GenerateMacResult macGenerateResult = generateMac(hmacKeyArn,text);
         return macGenerateResult.getMac();
     }
 
-    public GenerateMacResult generateMac(String hmacKeyArn) {
+    public GenerateMacResult generateMac(String hmacKeyArn, String text) {
         MacAttributes macAttributes = new MacAttributes()
                 .withAlgorithm(MacAlgorithm.ISO9797_ALGORITHM3);
         GenerateMacRequest generateMacRequest = new GenerateMacRequest()
                 .withKeyIdentifier(hmacKeyArn)
-                .withMessageData(Hex.encodeHexString(ServiceConstants.HMAC_DATA_PLAIN_TEXT.getBytes()))
+                .withMessageData(Hex.encodeHexString(text.getBytes()))
                 .withGenerationAttributes(macAttributes);
         GenerateMacResult macGenerateResult = DataPlaneUtils.getDataPlaneClient().generateMac(generateMacRequest);
         return macGenerateResult;
@@ -75,7 +75,7 @@ public class HMACService {
                 .withKeyIdentifier(hmacKeyArn)
                 .withVerificationAttributes(macAttributes)
                 .withMac(mac)
-                .withMessageData(ServiceConstants.HMAC_DATA_PLAIN_TEXT);
+                .withMessageData(mac);
         VerifyMacResult macVerificationResult = DataPlaneUtils.getDataPlaneClient().verifyMac(verifyMacRequest);
         return macVerificationResult;
     }

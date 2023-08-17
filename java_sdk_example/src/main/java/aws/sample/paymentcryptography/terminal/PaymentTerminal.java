@@ -1,6 +1,5 @@
 package aws.sample.paymentcryptography.terminal;
 
-import java.io.IOException;
 import java.math.BigInteger;
 
 import javax.crypto.Cipher;
@@ -50,6 +49,7 @@ public class PaymentTerminal extends AbstractTerminal {
                         track2Data,
                         ((JSONObject) dataObject).get("ksn").toString());
                 System.out.println("track2data is " + track2Data + ", DUKPT encrypted data is " + encryptedData);
+                Thread.sleep(1000);
                 StringBuilder builder = new StringBuilder()
                         .append("?encryptedData=")
                         .append(encryptedData)
@@ -58,20 +58,22 @@ public class PaymentTerminal extends AbstractTerminal {
                         .append(((JSONObject) dataObject).get("ksn").toString());
                 String finalUrl = new StringBuilder(paymentAuthorizationUrl).append(builder).toString();
                 ResponseEntity<String> response = restTemplate.getForEntity(finalUrl, String.class);
-                System.out.println("response is " + response.getBody());
-
+                System.out.println("Decrypted response from Cryptography Service - " + response.getBody());
+                Thread.sleep(1200);
                 JSONObject responseObject = new JSONObject(response.getBody());
-                System.out.println("HMAC Validated = " + validateHMAC(responseObject.getString("mac").toLowerCase()));
+                //System.out.println("response is " + responseObject.getString("response") + " mac is " + responseObject.getString("mac"));
+                System.out.println("HMAC Validated - " + validateHMAC(responseObject.getString("response"),responseObject.getString("mac").toLowerCase()));
+                Thread.sleep(3500);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         });
     }
 
-    private static boolean validateHMAC(String dataFromPaymentService) throws Exception {
-        String hmacOnTerminal = HMACTerminalTester.getMac(Hex.encodeHexString(ServiceConstants.HMAC_DATA_PLAIN_TEXT.getBytes()));
-        System.out.println("MAC from payment service - " + dataFromPaymentService + ", MAC from terminal - " + hmacOnTerminal);
-        return hmacOnTerminal.trim().toLowerCase().startsWith(dataFromPaymentService);
+    private static boolean validateHMAC(String response, String macToVerify) throws Exception {
+        String hmacOnTerminal = TerminalHMAC.getMac(Hex.encodeHexString(response.getBytes()));
+        System.out.println("MAC from payment service - " + macToVerify + ", MAC from terminal - " + hmacOnTerminal);
+        return hmacOnTerminal.trim().toLowerCase().startsWith(macToVerify);
     }
 
     public static String encryptData(String key, String track2Data, String ksn) throws Exception {

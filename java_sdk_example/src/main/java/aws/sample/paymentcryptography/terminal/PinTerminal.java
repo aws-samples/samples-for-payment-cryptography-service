@@ -19,6 +19,7 @@ public class PinTerminal extends AbstractTerminal {
     private static final String KEYS_KSN_DATA_FILE = "/test-data/sample-pek-ksn-data.json";
     private static final String PINS_DATA_FILE = "/test-data/sample-pin-pan.json";
 
+    
     public static void main(String[] args) throws Exception {
         testDukptPinValidation();
     }
@@ -48,7 +49,7 @@ public class PinTerminal extends AbstractTerminal {
                         "PAN -> " + pan + ", PIN -> " + pin + ", key -> " + dukptVariantKey + ", ksn -> " + ksn);
                 System.out.println("EncodedPin block is " + encodedPin);
                 System.out.println(("DUKPT encrypted block - " + dukptEncryptedBlock));
-
+                Thread.sleep(2000);
                 RestTemplate restTemplate = new RestTemplate();
 
                 String verifyPinUrl = ServiceConstants.HOST
@@ -65,9 +66,9 @@ public class PinTerminal extends AbstractTerminal {
 
                 ResponseEntity<String> verifyPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl,
                         String.class);
-                System.out.println("Response from PinTranslate service for (DUKPT encrypted) pin set operation is "
+                System.out.println("Response from PinTranslate service for (DUKPT encrypted) pin verify operation is "
                         + verifyPinResponse.getBody());
-
+                Thread.sleep(3500);
             } catch (Exception e) {
                 e.printStackTrace();
             }

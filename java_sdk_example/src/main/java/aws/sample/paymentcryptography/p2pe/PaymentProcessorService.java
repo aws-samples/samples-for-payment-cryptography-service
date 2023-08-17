@@ -47,11 +47,19 @@ public class PaymentProcessorService {
         decryptDataRequest.setDecryptionAttributes(decryptionAttributes);
 
         DecryptDataResult decryptDataResult = dataPlaneClient.decryptData(decryptDataRequest);
-        String macData = getHmacService().generateMac();
-        JSONObject respJsonObject = new JSONObject()
+        String decryptedPlainText = new String(Hex.decodeHex(decryptDataResult.getPlainText()));
+        
+        JSONObject responseJsonJsonObject = new JSONObject()
+        .put("response", decryptedPlainText)
+        .put("authCode", "A123BD")
+        .put("response_code", "01");
+
+        String macData = getHmacService().generateMac(responseJsonJsonObject.toString());
+
+        JSONObject returnJsonObject = new JSONObject()
                 .put("mac", macData)
-                .put("decryptedData", new String(Hex.decodeHex(decryptDataResult.getPlainText())));
-        return respJsonObject.toString();
+                .put("response", responseJsonJsonObject.toString());
+        return returnJsonObject.toString();
     }
 
     public HMACService getHmacService() {
