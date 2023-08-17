@@ -4,6 +4,8 @@ import java.io.UnsupportedEncodingException;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.lang3.RandomUtils;
+import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +33,7 @@ public class PaymentProcessorService {
     @GetMapping(ServiceConstants.PAYMENT_PROCESSOR_SERVICE_AUTHORIZE_PAYMENT_API)
     @ResponseBody
     public String authorizePayment(@RequestParam String encryptedData, @RequestParam String ksn)
-            throws DecoderException, UnsupportedEncodingException, JSONException {
+            throws DecoderException, UnsupportedEncodingException, JSONException, InvalidCipherTextException {
         AWSPaymentCryptographyData dataPlaneClient = DataPlaneUtils.getDataPlaneClient();
 
         DukptEncryptionAttributes dukptEncryptionAttributes = new DukptEncryptionAttributes()
@@ -48,17 +50,17 @@ public class PaymentProcessorService {
 
         DecryptDataResult decryptDataResult = dataPlaneClient.decryptData(decryptDataRequest);
         String decryptedPlainText = new String(Hex.decodeHex(decryptDataResult.getPlainText()));
-        
-        JSONObject responseJsonJsonObject = new JSONObject()
-        .put("response", decryptedPlainText)
-        .put("authCode", "A123BD")
-        .put("response_code", "01");
 
-        String macData = getHmacService().generateMac(responseJsonJsonObject.toString());
+        JSONObject responseJsonObject = new JSONObject()
+                .put("response", decryptedPlainText)
+                .put("authCode", getApprovalCode())
+                .put("response_code", getResponseCode());
+
+        String macData = getHmacService().generateMac(responseJsonObject.toString());
 
         JSONObject returnJsonObject = new JSONObject()
                 .put("mac", macData)
-                .put("response", responseJsonJsonObject.toString());
+                .put("response", responseJsonObject.toString());
         return returnJsonObject.toString();
     }
 
@@ -68,5 +70,27 @@ public class PaymentProcessorService {
 
     public void setHmacService(HMACService hmacService) {
         this.hmacService = hmacService;
+    }
+
+    /* 
+     * Returns a random 3-byte hex string for the approval code.
+     */
+    private String getApprovalCode() {
+        byte[] approvalCode = RandomUtils.nextBytes(3);
+
+        String hexApprovalCode = "";
+
+        // Iterating through each byte in the array
+        for (byte i : approvalCode) {
+            hexApprovalCode += String.format("%02X", i);
+        }
+        return hexApprovalCode;
+    }
+
+    /* 
+     * Returns a random 2-byte hex string for the response code.
+     */
+    private String getResponseCode() {
+        return RandomUtils.nextInt(0, 9) + "" + RandomUtils.nextInt(0, 9);
     }
 }

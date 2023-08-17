@@ -8,9 +8,9 @@ You can change the clear text Hex keys in order to import your own key.  If you 
 If you change BDK key, you will need to generate corresponding DUKPT variants along with KSN using the BDK key and set those variants in the `java_sdk_example/src/main/java/aws/sample/paymentcryptography/p2pe/key-ksn-data.json` with corresponding KSN. Refer to https://github.com/SoftwareVerde/java-dukpt for information on DUKPT keys and variants. 
 
 ## Instructions
-Either one of two ways below can be used to import the keys. You will need AWS credentials to run the import app.
+Either one of the approaches below can be used to import the keys. You will need AWS credentials to run the import app.
 
-#### Using Docker
+#### Using [Docker](https://docs.docker.com/get-docker/)
 If you have Docker installed, you can run the commands below. This can be used if you do not have Python installed or do not want to import the Python libraries needed for this app in your local system.
 
 ```
@@ -21,6 +21,20 @@ docker build -t key-import-app .
 docker run  -e AWS_ACCESS_KEY_ID=<Access Key> -e AWS_SECRET_ACCESS_KEY=<SECRET KEY> -e AWS_DEFAULT_REGION=us-east-1 -it --rm key-import-app
 ```
 Once you run the commands above, it will import the keys and create aliases for those keys in AWS Payment Cryptography. You can now run the JAVA samples which use these keys.
+
+#### Using [Finch](https://github.com/runfinch/finch)
+If you have Docker installed, you can run the commands below. This can be used if you do not have Python installed or do not want to import the Python libraries needed for this app in your local system.
+
+```
+cd samples-for-payment-cryptography-service/key-import/Dockerfile
+
+finch build -t key-import-app .
+
+finch run  -e AWS_ACCESS_KEY_ID=<Access Key> -e AWS_SECRET_ACCESS_KEY=<SECRET KEY> -e AWS_DEFAULT_REGION=us-east-1 -it --rm key-import-app
+```
+
+Once you run the commands above, it will import the keys and create aliases for those keys in AWS Payment Cryptography. You can now run the JAVA samples which use these keys.
+
 
 #### Using local Python to run the import app
 ```
