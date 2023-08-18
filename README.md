@@ -3,10 +3,10 @@
 This repos contains samples for AWS Payment Cryptography for - key import, P2PE and Pin (set and verify) flows.
 
 ### Key Import (Pre Requisite)
-The samples are setup to run based on keys in the [key import app](key-import/import_app/apc_demo_keysetup.py). As a pre-requisite, you will need to run the key import app. Refer to [key import instructions](key-import/import_app/Readme.md)
+The samples are setup to run based on keys in the [key import app](key-import-export/import_app/apc_demo_keysetup.py). As a pre-requisite, you will need to run the key import app. Refer to [key import instructions](key-import-export/import_app/Readme.md)
 
 ### Point-to-point encryption (P2PE)
-This is simulated by [Payment Terminal Client](java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/PaymentTerminal.java) which connects to [Payment Processor Service](java_sdk_example/src/main/java/aws/sample/paymentcryptography/p2pe/PaymentProcessorService.java). Refer to the [test data](java_sdk_example/src/main/java/aws/sample/paymentcryptography/p2pe/key-ksn-data.json) used by the terminal that contains DUKPT variant, track2 data and KSN. 
+This is simulated by [Payment Terminal Client](java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/PaymentTerminal.java) which connects to [Payment Processor Service](java_sdk_example/src/main/java/aws/sample/paymentcryptography/p2pe/PaymentProcessorService.java). Refer to the [test data](java_sdk_example/test-data/sample-key-ksn-data.json) used by the terminal that contains DUKPT variant, track2 data and KSN. 
 
 Following diagram illustrates the flow - 
 
