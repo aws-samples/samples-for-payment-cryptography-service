@@ -60,14 +60,14 @@ if __name__ == "__main__":
     print("*********Importing a KEK for importing subsequent keys*********")
     print("")
 
-    tr34_response = tr34.importTr34("ONLINE",KEK,"E","K0","B","")
+    tr34_response = tr34.importTr34("ONLINE",KEK,"E","K0","B","","")
     print("KEK/KPBK/ZMK ARN:",tr34_response[0])
 
 
     print("")
     print("*********Importing a BDK for DUKPT*********")
     print("")
-    response = tr31.importTR31(KEK,BDK,"E","B0","X","T","ONLINE",tr34_response[0],bdkAlias)
+    response = tr31.importTR31(KEK,BDK,"E","B0","X","T","ONLINE",tr34_response[0],None,bdkAlias)
     print("BDK ARN:",response[0])
     print("Alias",response[1])
 
@@ -75,14 +75,14 @@ if __name__ == "__main__":
     print("")
     print("*********Importing a PEK for communicating with ATM*********")
     print("")
-    response = tr31.importTR31(KEK,PEK,"E","P0","B","T","ONLINE",tr34_response[0],pinTranslateServicePekAlias)
+    response = tr31.importTR31(KEK,PEK,"E","P0","B","T","ONLINE",tr34_response[0],None,pinTranslateServicePekAlias)
     print("PEK(ATM PEK) ARN:",response[0])
     print("Alias:",response[1])
 
     print("")
     print("*********Importing a PEK for Pin Translate Service to Issuer communication. This service sits between between issuer and ATM) *********")
     print("")
-    response = tr31.importTR31(KEK,PEK,"E","P0","B","T","ONLINE",tr34_response[0],issuerPekAlias)
+    response = tr31.importTR31(KEK,PEK,"E","P0","B","T","ONLINE",tr34_response[0],None,issuerPekAlias)
     print("PEK(ATM PEK) ARN:",response[0])
     print("Alias:",response[1])
 

@@ -16,10 +16,19 @@ def constructTr31Header(algo,exportMode,keyType,modeOfUse):
 
     header = versionID + length + keyType + algo + modeOfUse + "00" + exportMode + "0000"
 
+    header = psec.tr31.Header(
+        version_id=versionID,     # Version B as recommended for TDES
+        key_usage=keyType,     # PIN Encryption
+        algorithm=algo,      # TDES
+        mode_of_use=modeOfUse,    # Encryption only
+        version_num="00",   # No version
+        exportability=exportMode
+    )
+
     return header
 
 
-def importTR31(kbpk_clearkey,wk_clearkey,exportmode,keytype,modeofuse,algorithm,runmode,kbpkkey_apcIdentifier,aliasName=None):
+def importTR31(kbpk_clearkey,wk_clearkey,exportmode,keytype,modeofuse,algorithm,runmode,kbpkkey_apcIdentifier,region,aliasName=None):
 
     kbpkkey = binascii.unhexlify(kbpk_clearkey.replace(" ",""))
 
@@ -32,7 +41,10 @@ def importTR31(kbpk_clearkey,wk_clearkey,exportmode,keytype,modeofuse,algorithm,
     if runmode == 'OFFLINE':
         print('to complete run import key making sure to update key identifier and wrapped payload')
     else:
-        apc_client = boto3.client('payment-cryptography')
+        if region==None or region == "":
+            apc_client = boto3.client('payment-cryptography')
+        else:
+            apc_client = boto3.client('payment-cryptography',region_name=region)
 
         #clean up alias and associated keys
         if aliasName is not None:
@@ -98,9 +110,12 @@ if __name__ == "__main__":
     print ("Key Mode of use:",args.modeofuse)
     print ("Key Algorithm:",args.algorithm)
 
+    region = args.kbpkkey_apcIdentifier.split(":")[3]
+    print ("Region implied from keyARN",region)
+
 
     result = importTR31(kbpk_clearkey=args.kbpk_clearkey,wk_clearkey=args.clearkey,exportmode=args.exportmode, \
-                        algorithm=args.algorithm,keytype=args.keytype,modeofuse=args.modeofuse, runmode=args.runmode,kbpkkey_apcIdentifier=args.kbpkkey_apcIdentifier)
+                        algorithm=args.algorithm,keytype=args.keytype,modeofuse=args.modeofuse, runmode=args.runmode,kbpkkey_apcIdentifier=args.kbpkkey_apcIdentifier,region=region)
 
 
 

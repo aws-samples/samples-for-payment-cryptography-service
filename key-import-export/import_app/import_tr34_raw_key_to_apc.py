@@ -34,7 +34,6 @@ from cryptography.x509.name import _ASN1Type
 #boto3.set_stream_logger('', logging.DEBUG)
 #boto3.set_stream_logger('boto3.resources', logging.INFO)
 
-apc_client = boto3.client('payment-cryptography')
 
 
 OID_MGF1 = bytes.fromhex('2A864886F70D010108')
@@ -147,8 +146,15 @@ def encode_asn(asn_data):
     certificates this is meant for development purposes only. This assumes permissions to run relevant commands on the service.
     If run in offline mode (runMode = OFFLINE), then this script can be run without direct access to the service as well.
     """
-def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,krdCert="",bdkAliasName=None):
+def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",bdkAliasName=None):
     global KDH_CA_KEY_ALIAS
+
+
+    if region==None or region == "":
+        apc_client = boto3.client('payment-cryptography')
+    else:
+        apc_client = boto3.client('payment-cryptography',region_name=region)
+
 
     if bdkAliasName is not None:
         KDH_CA_KEY_ALIAS = bdkAliasName
@@ -530,6 +536,7 @@ if __name__ == "__main__":
     parser.add_argument("--modeofuse", "-m", help="Mode of use according to TR-31 norms.  For instance B (encrypt/decrypt),X (derive key)", default="B",choices=['B', 'X', 'N','E','D','C','G','V'])
     parser.add_argument("--runmode", help="Run mode. APC will directly import will offline will only produce tr-34 payload", default="APC",choices=['APC', 'OFFLINE'])
     parser.add_argument("--krdcert", "-cert", help="KRD cert base64 encoded Only use for offline mode. This would be provided by KRD", default="")
+    parser.add_argument("--region", "-r", help="AWS Region to run in", default="us-east-1",choices=['us-east-1', 'us-west-2'])
 
     args = parser.parse_args()
 
@@ -544,12 +551,15 @@ if __name__ == "__main__":
     print ("Key Mode of use:",args.modeofuse)
     print ("Key Algorithm:","TDES")
 
+
     if (args.runmode == 'OFFLINE'):
         if args.krdcert == "":
             raise Exception('KRD Certificate (from getParametersForImport) should be provided in base64 format if using offline mode')
+    else:
+        print ("AWS Region:%s" % (args.region))
 
-    importTr34(args.runmode,args.clearkey,args.exportmode,args.keytype,args.modeofuse,args.krdcert)
+        importTr34(args.runmode,args.clearkey,args.exportmode,args.keytype,args.modeofuse,args.region,args.krdcert)
 
-    print('')
-    print('')
-    print('If this key was a key encryption key (K0), use TR-31 to import subsequent keys.')
+        print('')
+        print('')
+        print('If this key was a key encryption key (K0), use TR-31 to import subsequent keys.')
