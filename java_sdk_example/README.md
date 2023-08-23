@@ -33,6 +33,9 @@ export AWS_SESSION_TOKEN=wxyz....
 There are samples for 2 flows below. The flows are setup on simulated terminals such as store terminal that processes payment or ATM that can be used for pin setup or PIN terminal that does PIN verification. Prior to running the samples, you will need to start the server like below. 
 The server has services that the terminals connect to support the flows.
 
+#### Pre Requisite
+The samples are setup to run based on keys in the [key import app](../key-import-export/import_app/apc_demo_keysetup.py). As a pre-requisite, you will need to run the key import app. Refer to [key import instructions](../key-import-export/import_app/Readme.md)
+
 #### Starting the Server
 ```
 cd samples-for-payment-cryptography-service/java_sdk_example
