@@ -6,6 +6,7 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.RandomUtils;
 import org.bouncycastle.crypto.InvalidCipherTextException;
+import org.bouncycastle.crypto.paddings.PKCS7Padding;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,10 +50,13 @@ public class PaymentProcessorService {
         decryptDataRequest.setDecryptionAttributes(decryptionAttributes);
 
         DecryptDataResult decryptDataResult = dataPlaneClient.decryptData(decryptDataRequest);
-        String decryptedPlainText = new String(Hex.decodeHex(decryptDataResult.getPlainText()));
 
+        PKCS7Padding padder = new PKCS7Padding();
+        int padCount = padder.padCount(Hex.decodeHex(decryptDataResult.getPlainText()));
+        String decryptedText = decryptDataResult.getPlainText().substring(0,decryptDataResult.getPlainText().length()-padCount*2);
+        String textWithPaddingRemoved = new String(Hex.decodeHex(decryptedText));
         JSONObject responseJsonObject = new JSONObject()
-                .put("response", decryptedPlainText)
+                .put("response", textWithPaddingRemoved)
                 .put("authCode", getApprovalCode())
                 .put("response_code", getResponseCode());
 

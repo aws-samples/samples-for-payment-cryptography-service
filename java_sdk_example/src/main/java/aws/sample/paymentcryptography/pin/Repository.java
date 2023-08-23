@@ -14,15 +14,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class Repository {
 
-    public static void main(String[] args) throws Exception {
-        Repository repository = new Repository();
-        repository.addEntry("0000000000000000", "123456");
-        repository.addEntry("0000000000000010", "123456");
-        System.out.println(repository.getEntry("0000000000000000"));
-
-        repository.getWriter().close();
-    }
-
     private static final String PAN_TO_PVV_FILE = System.getProperty("user.dir")
             + "/test-data/pan_to_pin_verification.csv";
     private File panToPinVerificationValueMapFile = new File(PAN_TO_PVV_FILE);

@@ -55,8 +55,9 @@ def importTR31(kbpk_clearkey,wk_clearkey,exportmode,keytype,modeofuse,algorithm,
 
             if 'KeyArn' in aliasList['Alias']:
                 apc_client.update_alias(AliasName=aliasList['Alias']['AliasName'])
-                apc_client.delete_key(KeyIdentifier=aliasList['Alias']['KeyArn'], DeleteKeyInDays=3)
-
+                keyDetails = apc_client.get_key(KeyIdentifier=aliasList['Alias']['KeyArn'])
+                if (keyDetails['Key']['KeyState'] == 'CREATE_COMPLETE'):
+                    apc_client.delete_key(KeyIdentifier=aliasList['Alias']['KeyArn'], DeleteKeyInDays=3)
 
         imported_symmetric_key_res = apc_client.import_key(
             Enabled=True,

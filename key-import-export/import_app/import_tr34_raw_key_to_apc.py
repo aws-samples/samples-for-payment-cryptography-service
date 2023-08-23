@@ -216,7 +216,9 @@ def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",b
 
         if 'KeyArn' in kdh_ca_alias_res['Alias']:
             apc_client.update_alias(AliasName=kdh_ca_alias_res['Alias']['AliasName'])
-            apc_client.delete_key(KeyIdentifier=kdh_ca_alias_res['Alias']['KeyArn'], DeleteKeyInDays=3)
+            keyDetails = apc_client.get_key(KeyIdentifier=kdh_ca_alias_res['Alias']['KeyArn'])
+            if (keyDetails['Key']['KeyState'] == 'CREATE_COMPLETE'):
+                apc_client.delete_key(KeyIdentifier=kdh_ca_alias_res['Alias']['KeyArn'], DeleteKeyInDays=3)
 
         kdh_ca_key_arn = apc_client.import_key(Enabled=True, KeyMaterial={
             'RootCertificatePublicKey': {
@@ -246,7 +248,10 @@ def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",b
         if 'KeyArn' in alias_res['Alias']:
             delete_key_arn = alias_res['Alias']['KeyArn']
             alias_res = apc_client.update_alias(AliasName=alias_res['Alias']['AliasName'])
-            apc_client.delete_key(KeyIdentifier=delete_key_arn, DeleteKeyInDays=3)
+            keyDetails = apc_client.get_key(KeyIdentifier=delete_key_arn)
+            if (keyDetails['Key']['KeyState'] == 'CREATE_COMPLETE'):
+                apc_client.delete_key(KeyIdentifier=delete_key_arn, DeleteKeyInDays=3)
+
 
 
 
