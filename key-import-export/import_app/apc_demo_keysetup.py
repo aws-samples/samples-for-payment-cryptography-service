@@ -50,7 +50,7 @@ def GeneratePvk(issuerGenerationAlias):
             keyDetails = apc_client.get_key(KeyIdentifier=aliasList['Alias']['KeyArn'])
             if (keyDetails['Key']['KeyState'] == 'CREATE_COMPLETE'):
                 apc_client.delete_key(KeyIdentifier=aliasList['Alias']['KeyArn'], DeleteKeyInDays=3)
-            apc_client.update_alias(AliasName=aliasList['Alias']['AliasName'],KeyArn=PvkKeyARN)
+        apc_client.update_alias(AliasName=aliasList['Alias']['AliasName'],KeyArn=PvkKeyARN)
 
     except apc_client.exceptions.ResourceNotFoundException:
         aliasList = apc_client.create_alias(AliasName=issuerGenerationAlias,KeyArn=PvkKeyARN)

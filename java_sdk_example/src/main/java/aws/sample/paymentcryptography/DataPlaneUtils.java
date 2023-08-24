@@ -28,7 +28,6 @@ public class DataPlaneUtils {
 
                 dataPlaneClient = AWSPaymentCryptographyDataClientBuilder
                                 .standard()
-                                .withRegion(Regions.US_EAST_1)
                                 .build();
 
                 return dataPlaneClient;

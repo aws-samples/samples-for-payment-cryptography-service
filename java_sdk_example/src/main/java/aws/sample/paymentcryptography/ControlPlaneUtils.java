@@ -23,7 +23,6 @@ public class ControlPlaneUtils {
 
         }
         controlPlaneClient = AWSPaymentCryptographyAsyncClientBuilder.standard()
-                .withRegion(Regions.US_EAST_1)
                 .build();
         return controlPlaneClient;
     }

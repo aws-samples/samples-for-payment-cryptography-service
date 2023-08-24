@@ -32,10 +32,8 @@ public class IssuerService {
     private static Alias pekAlias = ControlPlaneUtils.getOrCreateAlias(pekAliasName);
     private static Alias bdkAlias = ControlPlaneUtils.getOrCreateAlias(bdkAliasName); */
 
-    private static final String issuerPekAliasName = ServiceConstants.ISSUER_PEK_ALIAS;
-    private static final String pinValidationKeyAliasName = ServiceConstants.PIN_VALIDATION_KEY_ALIAS;
-    private static Alias issuerPekAlias = ControlPlaneUtils.getOrCreateAlias(issuerPekAliasName);    
-    private static Alias pinValidationKeyAlias = ControlPlaneUtils.getOrCreateAlias(pinValidationKeyAliasName);
+    private static Alias issuerPekAlias = ControlPlaneUtils.getOrCreateAlias(ServiceConstants.ISSUER_PEK_ALIAS);    
+    private static Alias pinValidationKeyAlias = ControlPlaneUtils.getOrCreateAlias(ServiceConstants.PIN_VALIDATION_KEY_ALIAS);
 
     private static AWSPaymentCryptographyData client = DataPlaneUtils.getDataPlaneClient();
 
@@ -67,12 +65,12 @@ public class IssuerService {
         Logger.getGlobal().info("IssuerService:setPinData Attempting to set PIN thru AWS Cryptography Service via encrypted PIN Block - " + encryptedPinBLock);
         GeneratePinDataResult result = client.generatePinData(request);
         response.put("status", "ok");
+        Logger.getGlobal().info("IssuerService:setPinData Set PIN Data successful for encrypted PIN Block " + encryptedPinBLock);
         getRepository().addEntry(pan, result.getPinData().getVerificationValue());
         } catch(Exception exception) {
             response.put("error", exception.getMessage());
             exception.printStackTrace();
         }
-        Logger.getGlobal().info("IssuerService:setPinData Set PIN Data successful for encrypted PIN Block " + encryptedPinBLock);
         return response.toString();
     }
 
