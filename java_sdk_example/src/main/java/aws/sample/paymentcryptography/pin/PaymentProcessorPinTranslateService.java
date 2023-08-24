@@ -1,5 +1,7 @@
 package aws.sample.paymentcryptography.pin;
 
+import java.util.logging.Logger;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -55,7 +57,7 @@ public class PaymentProcessorPinTranslateService {
     @ResponseBody
     public String verifyPinData(@RequestParam String encryptedPin, @RequestParam String pan, @RequestParam String ksn) {
 
-        System.out.println("Translated PIN block - " + encryptedPin);
+        Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData Attempting to translate BDK encrypted PIN block " + encryptedPin + " to PEK encrypted PIN Block thru AWS Cryptography Service");
         String acquirerWorkingKeyArn = getAcquirerWorkingKeyArn();
         TranslatePinDataResult translatePinDataResult = DataPlaneUtils.translateVisaPinBlockBdkToPek(
                 ServiceConstants.BDK_ALIAS,
@@ -67,6 +69,7 @@ public class PaymentProcessorPinTranslateService {
                 ksn,
                 pan);
 
+        Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData BDK PIN " + encryptedPin + " to PEK encrypted PIN Block " + translatePinDataResult.getPinBlock() + " translation is successful");
         RestTemplate restTemplate = new RestTemplate();
         String verifyPinUrl = ServiceConstants.HOST
                     + ServiceConstants.ISSUER_SERVICE_PIN_VERIFY_API;

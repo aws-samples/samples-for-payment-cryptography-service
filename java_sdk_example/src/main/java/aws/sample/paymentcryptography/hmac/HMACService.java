@@ -1,5 +1,7 @@
 package aws.sample.paymentcryptography.hmac;
 
+import java.util.logging.Logger;
+
 import org.apache.commons.codec.binary.Hex;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +28,7 @@ import aws.sample.paymentcryptography.ServiceConstants;
 @Component
 public class HMACService {
 
-    public String createHMACKey() {
+    public String getHMACKey() {
         Alias hmacKeyAlias = ControlPlaneUtils.getOrCreateAlias(ServiceConstants.HMAC_KEY_ALIAS);
 
         if (!StringUtils.isNullOrEmpty(hmacKeyAlias.getKeyArn())) {
@@ -52,7 +54,7 @@ public class HMACService {
     }
 
     public String generateMac(String text) {
-        String hmacKeyArn = createHMACKey();
+        String hmacKeyArn = getHMACKey();
         GenerateMacResult macGenerateResult = generateMac(hmacKeyArn,text);
         return macGenerateResult.getMac();
     }
@@ -60,11 +62,13 @@ public class HMACService {
     public GenerateMacResult generateMac(String hmacKeyArn, String text) {
         MacAttributes macAttributes = new MacAttributes()
                 .withAlgorithm(MacAlgorithm.ISO9797_ALGORITHM3);
+        Logger.getGlobal().info("HMACService:generateMac Attempting to generate HMAC thru AWS Cryptography Service for text " + text);
         GenerateMacRequest generateMacRequest = new GenerateMacRequest()
                 .withKeyIdentifier(hmacKeyArn)
                 .withMessageData(Hex.encodeHexString(text.getBytes()))
                 .withGenerationAttributes(macAttributes);
         GenerateMacResult macGenerateResult = DataPlaneUtils.getDataPlaneClient().generateMac(generateMacRequest);
+        Logger.getGlobal().info("HMACService:generateMac HMAC generation successfult for " + text + ". HMAC is " + macGenerateResult.getMac());
         return macGenerateResult;
     }
 

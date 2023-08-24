@@ -1,5 +1,7 @@
 package aws.sample.paymentcryptography.pin;
 
+import java.util.logging.Logger;
+
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -62,12 +64,15 @@ public class IssuerService {
                 .withPinBlockFormat(ServiceConstants.ISO_0_PIN_BLOCK_FORMAT)
                 .withGenerationAttributes(attributes);
 
+        Logger.getGlobal().info("IssuerService:setPinData Attempting to set PIN thru AWS Cryptography Service via encrypted PIN Block - " + encryptedPinBLock);
         GeneratePinDataResult result = client.generatePinData(request);
         response.put("status", "ok");
         getRepository().addEntry(pan, result.getPinData().getVerificationValue());
         } catch(Exception exception) {
             response.put("error", exception.getMessage());
+            exception.printStackTrace();
         }
+        Logger.getGlobal().info("IssuerService:setPinData Set PIN Data successful for encrypted PIN Block " + encryptedPinBLock);
         return response.toString();
     }
 
@@ -109,7 +114,9 @@ public class IssuerService {
                 .withPinBlockFormat(pinBlockFormat)
                 .withVerificationAttributes(pinVerificationAttributes);
 
+        Logger.getGlobal().info("IssuerService:verifyPinData Attempting to verify PIN data through AWS Cryptography Service for encrypted PIN block " + encryptedPinBlock);
         VerifyPinDataResult verifyPinDataResult = client.verifyPinData(verifyPinDataRequest);
+        Logger.getGlobal().info("IssuerService:verifyPinData Verification of encrypted PIN block " + encryptedPinBlock + " through AWS Cryptography Service is successful");
         return verifyPinDataResult;
     }
 

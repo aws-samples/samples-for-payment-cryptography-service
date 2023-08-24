@@ -1,6 +1,7 @@
 package aws.sample.paymentcryptography.p2pe;
 
 import java.io.UnsupportedEncodingException;
+import java.util.logging.Logger;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
@@ -49,6 +50,7 @@ public class PaymentProcessorService {
         decryptDataRequest.setKeyIdentifier(ServiceConstants.BDK_ALIAS);
         decryptDataRequest.setDecryptionAttributes(decryptionAttributes);
 
+        Logger.getGlobal().info("PaymentProcessorService:authorizePayment Attempting to decrypt data " + encryptedData + " by AWS Cryptography Service");
         DecryptDataResult decryptDataResult = dataPlaneClient.decryptData(decryptDataRequest);
 
         PKCS7Padding padder = new PKCS7Padding();
@@ -65,6 +67,7 @@ public class PaymentProcessorService {
         JSONObject returnJsonObject = new JSONObject()
                 .put("mac", macData)
                 .put("response", responseJsonObject.toString());
+        Logger.getGlobal().info("PaymentProcessorService:authorizePayment Finished decrypting from AWS Cryptography Service. Returning to caller - " + responseJsonObject.toString());                
         return returnJsonObject.toString();
     }
 

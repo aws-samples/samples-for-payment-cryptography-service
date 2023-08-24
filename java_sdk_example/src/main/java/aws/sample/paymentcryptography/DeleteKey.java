@@ -5,11 +5,11 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.amazonaws.services.paymentcryptography.AWSPaymentCryptographyAsync;
-import com.amazonaws.services.paymentcryptography.model.Alias;
 import com.amazonaws.services.paymentcryptography.model.DeleteKeyRequest;
 import com.amazonaws.services.paymentcryptography.model.DeleteKeyResult;
-import com.amazonaws.services.paymentcryptography.model.ListAliasesRequest;
-import com.amazonaws.services.paymentcryptography.model.ListAliasesResult;
+import com.amazonaws.services.paymentcryptography.model.KeySummary;
+import com.amazonaws.services.paymentcryptography.model.ListKeysRequest;
+import com.amazonaws.services.paymentcryptography.model.ListKeysResult;
 
 public class DeleteKey {
 
@@ -35,28 +35,32 @@ public class DeleteKey {
 
     private static void deleteAllKeys() {
         AWSPaymentCryptographyAsync client = ControlPlaneUtils.getControlPlaneClient();
-        ListAliasesRequest request = new ListAliasesRequest().withMaxResults(10);
-        ListAliasesResult result = client.listAliases(request);
-        List<Alias> aliases = result.getAliases();
-        while (null != aliases) {
-            for (Alias alias : aliases) {
-                deleteKey(alias);
+        ListKeysRequest request = new ListKeysRequest().withMaxResults(20);
+        ListKeysResult result = client.listKeys(request);
+        List<KeySummary> keySummaries = result.getKeys();
+        while (null != keySummaries) {
+            for (KeySummary keySummary : keySummaries) {
+                // Only delete keys that are in CREATE_COMPLETE state and skip the ones that are in pending deletion state etc.
+                if (keySummary.getKeyState().equals("CREATE_COMPLETE")) {
+                    System.out.println("Attempting to delete key - " + keySummary.getKeyArn());
+                    deleteKey(keySummary);
+                }
             }
             if (null != result.getNextToken()) {
-                System.out.println("Requesting another page of aliases...");
-                result = client.listAliases(request.withNextToken(result.getNextToken()));
-                aliases = result.getAliases();
+                System.out.println("Requesting another page of keys...");
+                result = client.listKeys(request.withNextToken(result.getNextToken()));
+                keySummaries = result.getKeys();
             } else {
-                System.out.println("Reached the last page of aliases.");
-                aliases = null;
+                System.out.println("Reached the last page of keys.");
+                keySummaries = null;
             }
         }
     }
 
-    private static boolean deleteKey(Alias alias) throws IllegalArgumentException {
-        if (alias == null)
+    private static boolean deleteKey(KeySummary keySummary) throws IllegalArgumentException {
+        if (keySummary == null)
             throw new IllegalArgumentException("Null alias passed");
-        return deleteKey(alias.getKeyArn());
+        return deleteKey(keySummary.getKeyArn());
     }
 
     private static boolean deleteKey(String keyARN) {

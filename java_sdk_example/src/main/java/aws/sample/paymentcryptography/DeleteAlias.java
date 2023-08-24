@@ -1,15 +1,22 @@
 package aws.sample.paymentcryptography;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.amazonaws.services.paymentcryptography.AWSPaymentCryptography;
 import com.amazonaws.services.paymentcryptography.model.Alias;
 import com.amazonaws.services.paymentcryptography.model.DeleteAliasRequest;
 import com.amazonaws.services.paymentcryptography.model.DeleteAliasResult;
-import com.amazonaws.services.paymentcryptography.model.DeleteKeyRequest;
-import com.amazonaws.services.paymentcryptography.model.DeleteKeyResult;
+import com.amazonaws.services.paymentcryptography.model.GetAliasRequest;
 import com.amazonaws.services.paymentcryptography.model.ListAliasesRequest;
 import com.amazonaws.services.paymentcryptography.model.ListAliasesResult;
+
+/* 
+ * Usage - ./run_example.sh aws.sample.paymentcryptography.DeleteAlias alias/MerchantTerminal_BDK
+ * OR
+ * ./run_example.sh aws.sample.paymentcryptography.DeleteAlias all-aliases
+ */
 
 public class DeleteAlias {
 
@@ -18,34 +25,31 @@ public class DeleteAlias {
 
     public static void main(String[] args) {
         List<String> aliasesToDelete = null;
-        boolean deleteKey = false;
 
         if (args.length > 0) {
             String aliasToDelete = args[0];
-            if(args.length>1 && args[1]=="delete-key"){
-                deleteKey = true;
-            }
-            if (true) {
-                deleteAllAliases(deleteKey);
-            } /* else {
+            if (aliasToDelete.equals(ALL_ALIASES)) {
+                deleteAllAliases();
+            } else {
                 aliasesToDelete = new ArrayList<String>();
                 aliasesToDelete.addAll(Arrays.asList(aliasToDelete.split(",")));
                 for (String aliasName : aliasesToDelete) {
                     Alias alias = client.getAlias(new GetAliasRequest().withAliasName(aliasName)).getAlias();
-                    deleteAlias(alias,deleteKey);
+                    deleteAlias(alias);
                 }
-            } */
+            }
         }
     }
 
-    private static void deleteAllAliases(boolean deleteKey) {
+    private static void deleteAllAliases() {
+        System.out.println("delete all aliases...");
         AWSPaymentCryptography client = ControlPlaneUtils.getControlPlaneClient();
         ListAliasesRequest request = new ListAliasesRequest().withMaxResults(10);
         ListAliasesResult result = client.listAliases(request);
         List<Alias> aliases = result.getAliases();
         while (null != aliases) {
             for (Alias alias : aliases) {
-                deleteAlias(alias,deleteKey);
+                deleteAlias(alias);
             }
             if (null != result.getNextToken()) {
                 System.out.println("Requesting another page of aliases...");
@@ -58,13 +62,10 @@ public class DeleteAlias {
         }
     }
 
-    private static void deleteAlias(Alias alias, boolean deleteKey) throws IllegalArgumentException {
+    private static void deleteAlias(Alias alias) throws IllegalArgumentException {
         if (alias == null)
             throw new IllegalArgumentException("Null alias passed");
         deleteAlias(alias.getAliasName());
-        if(deleteKey) {
-            deleteKey(alias.getKeyArn());    
-        }
     }
 
     private static boolean deleteAlias(String aliasName) {
@@ -79,7 +80,11 @@ public class DeleteAlias {
         return deleted;
     }
 
-    private static boolean deleteKey(String keyARN) {
+    /* 
+     * Use this method if you also want to delete key of the alias - while deleting the alias
+     */
+    /* private static boolean deleteKey(String keyARN) {
+        System.out.println("deleting key " + keyARN);
         DeleteKeyRequest deleteKeyRequest = new DeleteKeyRequest().withKeyIdentifier(keyARN);
         DeleteKeyResult deleteKeyResult = ControlPlaneUtils.getControlPlaneClient().deleteKey(deleteKeyRequest);
         if (deleteKeyResult.getSdkHttpMetadata().getHttpStatusCode() == 200) {
@@ -88,5 +93,5 @@ public class DeleteAlias {
             System.out.println(String.format("Key %s not deleted", keyARN));
         }
         return deleteKeyResult.getSdkHttpMetadata().getHttpStatusCode() == 200;
-    }
+    } */
 }
