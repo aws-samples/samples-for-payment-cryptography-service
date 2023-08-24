@@ -13,9 +13,15 @@ import com.amazonaws.services.paymentcryptography.model.ListAliasesRequest;
 import com.amazonaws.services.paymentcryptography.model.ListAliasesResult;
 
 /* 
- * Usage - ./run_example.sh aws.sample.paymentcryptography.DeleteAlias alias/MerchantTerminal_BDK
- * OR
+ * Usage - 
+ * 
+ * To delete all aliases
  * ./run_example.sh aws.sample.paymentcryptography.DeleteAlias all-aliases
+ * 
+ * OR 
+ * To delete individual alias
+ * ./run_example.sh aws.sample.paymentcryptography.DeleteAlias alias/MerchantTerminal_BDK
+ * 
  */
 
 public class DeleteAlias {

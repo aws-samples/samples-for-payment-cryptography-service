@@ -11,6 +11,15 @@ import com.amazonaws.services.paymentcryptography.model.KeySummary;
 import com.amazonaws.services.paymentcryptography.model.ListKeysRequest;
 import com.amazonaws.services.paymentcryptography.model.ListKeysResult;
 
+/* 
+ * Usage - 
+ * 
+ * To Delete All Keys - 
+ * ./run_example.sh aws.sample.paymentcryptography.DeleteKey all-keys
+ * 
+ * OR to delete individual key
+ * ./run_example.sh aws.sample.paymentcryptography.DeleteKey arn:aws:payment-cryptography:us-east-1:XXXXXXXXXX:key/jvljh5wzjhvgadyy
+ */
 public class DeleteKey {
 
     private static final AWSPaymentCryptographyAsync client = ControlPlaneUtils.getControlPlaneClient();
