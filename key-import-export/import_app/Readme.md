@@ -23,7 +23,7 @@ docker run  -e AWS_ACCESS_KEY_ID=<Access Key> -e AWS_SECRET_ACCESS_KEY=<SECRET K
 Once you run the commands above, it will import the keys and create aliases for those keys in AWS Payment Cryptography. You can now run the JAVA samples which use these keys.
 
 #### Using [Finch](https://github.com/runfinch/finch)
-If you have Docker installed, you can run the commands below. This can be used if you do not have Python installed or do not want to import the Python libraries needed for this app in your local system.
+If you have Finch installed, you can run the commands below. This can be used if you do not have Python installed or do not want to import the Python libraries needed for this app in your local system.
 
 ```
 cd samples-for-payment-cryptography-service/key-import/Dockerfile
