@@ -1,14 +1,10 @@
 package aws.sample.paymentcryptography.p2pe;
 
-import java.io.UnsupportedEncodingException;
 import java.util.logging.Logger;
 
-import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.RandomUtils;
-import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.crypto.paddings.PKCS7Padding;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,41 +30,54 @@ public class PaymentProcessorService {
 
     @GetMapping(ServiceConstants.PAYMENT_PROCESSOR_SERVICE_AUTHORIZE_PAYMENT_API)
     @ResponseBody
-    public String authorizePayment(@RequestParam String encryptedData, @RequestParam String ksn)
-            throws DecoderException, UnsupportedEncodingException, JSONException, InvalidCipherTextException {
-        AWSPaymentCryptographyData dataPlaneClient = DataPlaneUtils.getDataPlaneClient();
+    public String authorizePayment(@RequestParam String encryptedData, @RequestParam String ksn) {
+        try {
+            AWSPaymentCryptographyData dataPlaneClient = DataPlaneUtils.getDataPlaneClient();
 
-        DukptEncryptionAttributes dukptEncryptionAttributes = new DukptEncryptionAttributes()
-                .withKeySerialNumber(ksn)
-                .withMode(ServiceConstants.MODE);
+            DukptEncryptionAttributes dukptEncryptionAttributes = new DukptEncryptionAttributes()
+                    .withKeySerialNumber(ksn)
+                    .withMode(ServiceConstants.MODE);
 
-        EncryptionDecryptionAttributes decryptionAttributes = new EncryptionDecryptionAttributes();
-        decryptionAttributes.setDukpt(dukptEncryptionAttributes);
+            EncryptionDecryptionAttributes decryptionAttributes = new EncryptionDecryptionAttributes();
+            decryptionAttributes.setDukpt(dukptEncryptionAttributes);
 
-        DecryptDataRequest decryptDataRequest = new DecryptDataRequest();
-        decryptDataRequest.setCipherText(encryptedData);
-        decryptDataRequest.setKeyIdentifier(ServiceConstants.BDK_ALIAS);
-        decryptDataRequest.setDecryptionAttributes(decryptionAttributes);
+            DecryptDataRequest decryptDataRequest = new DecryptDataRequest();
+            decryptDataRequest.setCipherText(encryptedData);
+            decryptDataRequest.setKeyIdentifier(ServiceConstants.BDK_ALIAS);
+            decryptDataRequest.setDecryptionAttributes(decryptionAttributes);
 
-        Logger.getGlobal().info("PaymentProcessorService:authorizePayment Attempting to decrypt data " + encryptedData + " by AWS Cryptography Service");
-        DecryptDataResult decryptDataResult = dataPlaneClient.decryptData(decryptDataRequest);
+            Logger.getGlobal()
+                    .info("PaymentProcessorService:authorizePayment Attempting to decrypt data " + encryptedData
+                            + " by AWS Cryptography Service");
+            DecryptDataResult decryptDataResult = dataPlaneClient.decryptData(decryptDataRequest);
 
-        PKCS7Padding padder = new PKCS7Padding();
-        int padCount = padder.padCount(Hex.decodeHex(decryptDataResult.getPlainText()));
-        String decryptedText = decryptDataResult.getPlainText().substring(0,decryptDataResult.getPlainText().length()-padCount*2);
-        String textWithPaddingRemoved = new String(Hex.decodeHex(decryptedText));
-        JSONObject responseJsonObject = new JSONObject()
-                .put("response", textWithPaddingRemoved)
-                .put("authCode", getApprovalCode())
-                .put("response_code", getResponseCode());
+            PKCS7Padding padder = new PKCS7Padding();
+            int padCount = padder.padCount(Hex.decodeHex(decryptDataResult.getPlainText()));
+            String decryptedText = decryptDataResult.getPlainText().substring(0,
+                    decryptDataResult.getPlainText().length() - padCount * 2);
+            String textWithPaddingRemoved = new String(Hex.decodeHex(decryptedText));
+            JSONObject responseJsonObject = new JSONObject()
+                    .put("response", textWithPaddingRemoved)
+                    .put("authCode", getApprovalCode())
+                    .put("response_code", getResponseCode());
 
-        String macData = getHmacService().generateMac(responseJsonObject.toString());
+            String macData = getHmacService().generateMac(responseJsonObject.toString());
 
-        JSONObject returnJsonObject = new JSONObject()
-                .put("mac", macData)
-                .put("response", responseJsonObject.toString());
-        Logger.getGlobal().info("PaymentProcessorService:authorizePayment Finished decrypting from AWS Cryptography Service. Returning to caller - " + responseJsonObject.toString());                
-        return returnJsonObject.toString();
+            JSONObject returnJsonObject = new JSONObject()
+                    .put("mac", macData)
+                    .put("response", responseJsonObject.toString());
+            Logger.getGlobal().info(
+                    "PaymentProcessorService:authorizePayment Finished decrypting from AWS Cryptography Service. Returning to caller - "
+                            + responseJsonObject.toString());
+            return returnJsonObject.toString();
+        } catch (Exception exception) {
+            Logger.getGlobal().info(
+                    "PaymentProcessorService:authorizePayment Error occurred when decrypting from AWS Cryptography Service.");
+            JSONObject returnJsonObject = new JSONObject()
+                    .put("error", exception.getMessage());
+            exception.printStackTrace();
+            return returnJsonObject.toString();
+        }
     }
 
     public HMACService getHmacService() {

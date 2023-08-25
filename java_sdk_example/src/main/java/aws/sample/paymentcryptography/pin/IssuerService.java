@@ -51,23 +51,26 @@ public class IssuerService {
 
         try {
             VisaPinVerificationValue pinVerificationValue = new VisaPinVerificationValue()
-                .withEncryptedPinBlock(encryptedPinBLock)
-                .withPinVerificationKeyIndex(ServiceConstants.PIN_VERIFICATION_KEY_INDEX);
-        PinGenerationAttributes attributes = new PinGenerationAttributes()
-                .withVisaPinVerificationValue(pinVerificationValue);
-        GeneratePinDataRequest request = new GeneratePinDataRequest()
-                .withGenerationKeyIdentifier(pinValidationKeyAlias.getKeyArn())
-                .withEncryptionKeyIdentifier(issuerPekAlias.getKeyArn())
-                .withPrimaryAccountNumber(pan)
-                .withPinBlockFormat(ServiceConstants.ISO_0_PIN_BLOCK_FORMAT)
-                .withGenerationAttributes(attributes);
+                    .withEncryptedPinBlock(encryptedPinBLock)
+                    .withPinVerificationKeyIndex(ServiceConstants.PIN_VERIFICATION_KEY_INDEX);
+            PinGenerationAttributes attributes = new PinGenerationAttributes()
+                    .withVisaPinVerificationValue(pinVerificationValue);
+            GeneratePinDataRequest request = new GeneratePinDataRequest()
+                    .withGenerationKeyIdentifier(pinValidationKeyAlias.getKeyArn())
+                    .withEncryptionKeyIdentifier(issuerPekAlias.getKeyArn())
+                    .withPrimaryAccountNumber(pan)
+                    .withPinBlockFormat(ServiceConstants.ISO_0_PIN_BLOCK_FORMAT)
+                    .withGenerationAttributes(attributes);
 
-        Logger.getGlobal().info("IssuerService:setPinData Attempting to set PIN thru AWS Cryptography Service via encrypted PIN Block - " + encryptedPinBLock);
-        GeneratePinDataResult result = client.generatePinData(request);
-        response.put("status", "ok");
-        Logger.getGlobal().info("IssuerService:setPinData Set PIN Data successful for encrypted PIN Block " + encryptedPinBLock);
-        getRepository().addEntry(pan, result.getPinData().getVerificationValue());
-        } catch(Exception exception) {
+            Logger.getGlobal().info(
+                    "IssuerService:setPinData Attempting to set PIN thru AWS Cryptography Service via encrypted PIN Block - "
+                            + encryptedPinBLock);
+            GeneratePinDataResult result = client.generatePinData(request);
+            response.put("status", "ok");
+            Logger.getGlobal().info(
+                    "IssuerService:setPinData Set PIN Data successful for encrypted PIN Block " + encryptedPinBLock);
+            getRepository().addEntry(pan, result.getPinData().getVerificationValue());
+        } catch (Exception exception) {
             response.put("error", exception.getMessage());
             exception.printStackTrace();
         }
@@ -76,18 +79,19 @@ public class IssuerService {
 
     @GetMapping(ServiceConstants.ISSUER_SERVICE_PIN_VERIFY_API)
     @ResponseBody
-    public String verifyPinData(@RequestParam String encryptedPin, @RequestParam String pan){
+    public String verifyPinData(@RequestParam String encryptedPin, @RequestParam String pan) {
         JSONObject response = new JSONObject();
         try {
-            VerifyPinDataResult verifyPinDataResult = verifyPinData(encryptedPin, issuerPekAlias.getKeyArn(), 
-            pinValidationKeyAlias.getKeyArn(), getRepository().getEntry(pan), ServiceConstants.ISO_0_PIN_BLOCK_FORMAT, pan);
-            if(verifyPinDataResult!=null) {
+            VerifyPinDataResult verifyPinDataResult = verifyPinData(encryptedPin, issuerPekAlias.getKeyArn(),
+                    pinValidationKeyAlias.getKeyArn(), getRepository().getEntry(pan),
+                    ServiceConstants.ISO_0_PIN_BLOCK_FORMAT, pan);
+            if (verifyPinDataResult != null) {
                 response.put("status", "valid");
-            }else {
-                response.put("status", "fail");    
+            } else {
+                response.put("status", "fail");
             }
-        return response.toString();
-        } catch(Exception exception) {
+            return response.toString();
+        } catch (Exception exception) {
             exception.printStackTrace();
             response.put("status", "fail");
         }
@@ -100,7 +104,7 @@ public class IssuerService {
 
         VisaPinVerification visaPinVerification = new VisaPinVerification();
         visaPinVerification.withPinVerificationKeyIndex(ServiceConstants.PIN_VERIFICATION_KEY_INDEX)
-                .withVerificationValue(pinVerificationValue); 
+                .withVerificationValue(pinVerificationValue);
         PinVerificationAttributes pinVerificationAttributes = new PinVerificationAttributes();
         pinVerificationAttributes.withVisaPin(visaPinVerification);
 
@@ -112,9 +116,12 @@ public class IssuerService {
                 .withPinBlockFormat(pinBlockFormat)
                 .withVerificationAttributes(pinVerificationAttributes);
 
-        Logger.getGlobal().info("IssuerService:verifyPinData Attempting to verify PIN data through AWS Cryptography Service for encrypted PIN block " + encryptedPinBlock);
+        Logger.getGlobal().info(
+                "IssuerService:verifyPinData Attempting to verify PIN data through AWS Cryptography Service for encrypted PIN block "
+                        + encryptedPinBlock);
         VerifyPinDataResult verifyPinDataResult = client.verifyPinData(verifyPinDataRequest);
-        Logger.getGlobal().info("IssuerService:verifyPinData Verification of encrypted PIN block " + encryptedPinBlock + " through AWS Cryptography Service is successful");
+        Logger.getGlobal().info("IssuerService:verifyPinData Verification of encrypted PIN block " + encryptedPinBlock
+                + " through AWS Cryptography Service is successful");
         return verifyPinDataResult;
     }
 
