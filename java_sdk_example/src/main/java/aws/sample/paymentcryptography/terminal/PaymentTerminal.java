@@ -12,6 +12,8 @@ import org.json.JSONObject;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
+import com.amazonaws.util.StringUtils;
+
 import aws.sample.paymentcryptography.ServiceConstants;
 
 /* 
@@ -71,6 +73,9 @@ public class PaymentTerminal extends AbstractTerminal {
     }
 
     private static boolean validateHMAC(String response, String macToVerify) throws Exception {
+        if (StringUtils.isNullOrEmpty(macToVerify)) {
+            return false;
+        }
         String hmacOnTerminal = TerminalHMAC.getMac(Hex.encodeHexString(response.getBytes()));
         System.out.println("MAC from payment service - " + macToVerify + ", MAC from terminal - " + hmacOnTerminal);
         return hmacOnTerminal.trim().toLowerCase().startsWith(macToVerify);

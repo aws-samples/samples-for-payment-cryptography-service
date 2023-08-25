@@ -74,7 +74,8 @@ public class PaymentProcessorService {
             Logger.getGlobal().info(
                     "PaymentProcessorService:authorizePayment Error occurred when decrypting from AWS Cryptography Service.");
             JSONObject returnJsonObject = new JSONObject()
-                    .put("error", exception.getMessage());
+                    .put("response", exception.getMessage())
+                    .put("mac", "");
             exception.printStackTrace();
             return returnJsonObject.toString();
         }
