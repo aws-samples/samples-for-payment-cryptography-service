@@ -2,6 +2,8 @@
 
 These JAVA samples are to show payment flows supported by [`AWS Payment Cryptography`](https://aws.amazon.com/payment-cryptography/).
 
+Please ensure you have Java 17 or higher.
+
 ## Instructions
 
 ### Install Maven
