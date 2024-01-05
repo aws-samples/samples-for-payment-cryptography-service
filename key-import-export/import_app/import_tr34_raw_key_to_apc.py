@@ -146,8 +146,9 @@ def encode_asn(asn_data):
     certificates this is meant for development purposes only. This assumes permissions to run relevant commands on the service.
     If run in offline mode (runMode = OFFLINE), then this script can be run without direct access to the service as well.
     """
-def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",bdkAliasName=None):
+def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",AliasName=None):
     global KDH_CA_KEY_ALIAS
+    global IMPORT_KEY_ALIAS
 
 
     if region==None or region == "":
@@ -156,8 +157,8 @@ def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",b
         apc_client = boto3.client('payment-cryptography',region_name=region)
 
 
-    if bdkAliasName is not None:
-        KDH_CA_KEY_ALIAS = bdkAliasName
+    if AliasName is not None and AliasName != "":
+        IMPORT_KEY_ALIAS = AliasName
 
     ###########################################################
     # Generate KDH Certificates
@@ -537,11 +538,12 @@ if __name__ == "__main__":
                                      epilog='This is intended as sample code and comes with no warranty and is not intended for us with production keys.')
     parser.add_argument("--clearkey", help="Clear Text Key to import", default="8A8349794C9EE9A4C2927098F249FED6")
     parser.add_argument("--exportmode", "-e", help="Export Mode - E, S or N", default="E",choices=['E', 'S', 'N'])
-    parser.add_argument("--keytype", "-t", help="Key Type according to TR-31 norms. For instance K0, B0, etc", default="K0",choices=['K0', 'B0', 'D0','P0','M3'])
+    parser.add_argument("--keytype", "-t", help="Key Type according to TR-31 norms. For instance K0, B0, etc", default="K0",choices=['K0', 'B0', 'D0','P0','M3','V2'])
     parser.add_argument("--modeofuse", "-m", help="Mode of use according to TR-31 norms.  For instance B (encrypt/decrypt),X (derive key)", default="B",choices=['B', 'X', 'N','E','D','C','G','V'])
     parser.add_argument("--runmode", help="Run mode. APC will directly import will offline will only produce tr-34 payload", default="APC",choices=['APC', 'OFFLINE'])
     parser.add_argument("--krdcert", "-cert", help="KRD cert base64 encoded Only use for offline mode. This would be provided by KRD", default="")
     parser.add_argument("--region", "-r", help="AWS Region to run in", default="us-east-1",choices=['us-east-1', 'us-west-2'])
+    parser.add_argument("--alias", "-a", help="APC Alias to assign")
 
     args = parser.parse_args()
 
@@ -563,8 +565,10 @@ if __name__ == "__main__":
     else:
         print ("AWS Region:%s" % (args.region))
 
-        importTr34(args.runmode,args.clearkey,args.exportmode,args.keytype,args.modeofuse,args.region,args.krdcert)
+        keyARN, alias = importTr34(args.runmode,args.clearkey,args.exportmode,args.keytype,args.modeofuse,args.region,args.krdcert,args.alias)
 
+        print ("Alias:",alias)
+        
         print('')
         print('')
         print('If this key was a key encryption key (K0), use TR-31 to import subsequent keys.')
