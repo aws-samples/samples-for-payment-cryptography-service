@@ -30,6 +30,7 @@ from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 import requests
 import json
+import argparse
 import base64
 import binascii
 import boto3
@@ -56,9 +57,7 @@ credentials = session.get_credentials()
 region = config.get('region', regionName)
 
 def create_test_symmetric_key():
-
     apc_client = boto3.client('payment-cryptography',region_name=region)
-
     print('Creating new random key')
     create_key_res = apc_client.create_key(Enabled=True, Exportable=True, KeyAttributes={
         'KeyAlgorithm': 'TDES_3KEY',
@@ -74,14 +73,11 @@ def create_test_symmetric_key():
     key_to_export_wrapped = create_key_res['Key']['KeyArn']
     kcv = create_key_res['Key']['KeyCheckValue']
     keyAlgorithm = create_key_res['Key']['KeyAttributes']["KeyAlgorithm"]
-
     print(f'Created Key:{key_to_export_wrapped}. KCV:{kcv}')
     return key_to_export_wrapped,kcv,keyAlgorithm
 
 def trust_krd_certs(krd_ca_certificate,krd_certificate):
-
     apc_client = boto3.client('payment-cryptography',region_name=region)
-
     krd_wrapped_ca_cert = apc_client.import_key(Enabled=True, KeyMaterial={
         'RootCertificatePublicKey': {
             'KeyAttributes': {
@@ -96,7 +92,6 @@ def trust_krd_certs(krd_ca_certificate,krd_certificate):
         }
     }, KeyCheckValueAlgorithm='ANSI_X9_24', Tags=[])['Key']['KeyArn']
     return krd_wrapped_ca_cert,None
-
 
 def generate_krd_certs():
 
@@ -147,20 +142,8 @@ def generate_krd_certs():
         .sign(private_key=krd_ca_private_key, algorithm=hashes.SHA256())
     return krd_private_key,krd_ca_certificate,krd_certificate
 
-
-""" regionName = 'us-east-1'
-
-session = botocore.session.Session()
-
-config = session.get_scoped_config()
-credentials = session.get_credentials()
-
-region = config.get('region', regionName)
- """
 def ExportKey(KeyToExportArn,RootKeyArn,PublicKeyCertificate):
-
     apc_client = boto3.client('payment-cryptography',region_name=region)
-
     export_res = apc_client.export_key(ExportKeyIdentifier=KeyToExportArn, KeyMaterial={
         'KeyCryptogram': {
             'CertificateAuthorityPublicKeyIdentifier': RootKeyArn,
@@ -168,7 +151,6 @@ def ExportKey(KeyToExportArn,RootKeyArn,PublicKeyCertificate):
             'WrappingKeyCertificate': base64.b64encode(PublicKeyCertificate.public_bytes(encoding=serialization.Encoding.PEM)).decode('UTF-8')
         }
     })
-
     return export_res['WrappedKey']["KeyMaterial"]
 
 def GenerateAesKcv(key):
@@ -181,6 +163,10 @@ def GenerateTdesKcv(key):
     kcv = DES3.new(key, DES3.MODE_ECB).encrypt(bytes.fromhex('0000000000000000'))[:3].hex().upper()
     return kcv
 
+def GetKey(keyArn):
+    apc_client = boto3.client('payment-cryptography',region_name=region)
+    return apc_client.get_key(keyArn)
+
 def UnWrapKey(private_key,WrappedKeyHexBinary):
     decrypted = private_key.decrypt(binascii.a2b_hex(WrappedKeyHexBinary),
                 padding.OAEP(
@@ -189,57 +175,67 @@ def UnWrapKey(private_key,WrappedKeyHexBinary):
                 label=None))
     return decrypted
 
+##############################################################################
+
 if __name__ == '__main__':
 
-    SymmetricKeyArn,kcv,keyAlgorithm = create_test_symmetric_key()
-    # you could also specify key on command line parameter
-    print("Step #1 - Create Symmetric Key on APC:",SymmetricKeyArn,"KCV:",kcv)
-    #GetParametersForImportResponse = GetParametersForImport()
+    parser = argparse.ArgumentParser(prog='RSA Wrapped Key Export Sample Code',
+                                     description='Sample code to export a RSA wrapped key from AWS Payment Cryptography Service.',
+                                     epilog='This is intended as sample code and comes with no warranty and is not intended for us with production keys.')
+    parser.add_argument("--keyArn", help="ARN of symmetric key to export",)
+    parser.add_argument("--rootKeyArn", help="ARN of root key that wraps/encrypts the symmetric key which is to be export",)
+    args = parser.parse_args()
 
-    print("Step #2 - Gemnerate Root and leaf CA")
+    if args.keyArn == None:
+        print("No key passed. Generating new one.")
+        SymmetricKeyArn,kcv,keyAlgorithm = create_test_symmetric_key()
+    else:
+        print("Passed key arn: ", args.keyArn)
+        create_key_res = GetKey(args.keyArn)
+        SymmetricKeyArn = create_key_res['Key']['KeyArn']
+        kcv = create_key_res['Key']['KeyCheckValue']
+        keyAlgorithm = create_key_res['Key']['KeyAttributes']["KeyAlgorithm"]
+    print("Step #1 - Symmetric Key on APC to export:",SymmetricKeyArn,"KCV:",kcv)
+
+    #SymmetricKeyArn,kcv,keyAlgorithm = create_test_symmetric_key()
+    # you could also specify key on command line parameter
+    #print("Step #1 - Create Symmetric Key on APC:",SymmetricKeyArn,"KCV:",kcv)
 
     krd_private_key,krd_ca_certificate,krd_certificate = generate_krd_certs()
-    
-    krd_bytes = krd_certificate.public_bytes(serialization.Encoding.DER)
-
-    print("Step #3 - import root into APC")
+    print("Step #2 - Generate Root and leaf CA")
+    #krd_bytes = krd_certificate.public_bytes(serialization.Encoding.DER)
 
     RootKeyARN,LeafKeyArn = trust_krd_certs(krd_ca_certificate,krd_certificate)
-    print("Step #4 - Import Root Key:",RootKeyARN)
+    print("Step #3 - Import Root Key:",RootKeyARN)
 
     WrappedKey = ExportKey(SymmetricKeyArn,RootKeyARN,krd_certificate)
-    print("Step #5 - Exported Key Cryptogram:",WrappedKey)
+    print("Step #4 - Exported Key Cryptogram:",WrappedKey)
 
-    #Step #6 - decrypt data and print key material take krd_private_key and call RSA.decrypt on WrappedKey and then print as hex
+    #Step #6 - decrypt key using private key and then print as hex
     decryptedKey = UnWrapKey(krd_private_key,WrappedKey)
-    print("Step #6 - Decrypted Key:",decryptedKey)
+    print("Step #5 - Decrypted Key:",decryptedKey)
 
-    #Step #7 - generate KCV and match it against exported KCV (you'll need to pull from getKey)
+    #Step #6 - generate KCV and match it against exported KCV
     if keyAlgorithm == 'TDES_3KEY':
         decryptedKeyKcv = GenerateTdesKcv(decryptedKey)
-        print("TDES_3KEY KCV:" + decryptedKeyKcv)    
+        print("Step #6 TDES_3KEY KCV:" + decryptedKeyKcv)    
         print("KCV from created symmetric key matches with KCV from decrypted key: ", kcv.lower() == decryptedKeyKcv.lower())
     elif keyAlgorithm == 'AES_128':
         cobj = CMAC.new(decryptedKey, ciphermod=AES)
         cobj.update(binascii.unhexlify('00000000000000000000000000000000'))
         decryptedKeyKcv = cobj.hexdigest()[0:6].upper()
-        print ('Step #7 - AES Key KCV: ' + cobj.hexdigest()[0:6].upper())
+        print ('Step #6 - AES Key KCV: ' + cobj.hexdigest()[0:6].upper())
         print("KCV from created symmetric key matches with KCV from decrypted key: ", kcv.lower() == decryptedKeyKcv.lower())
     else:
         print("Invalid Key Algorithm for this sample code")
         sys.exit(1)
 
-    #Step #8 - remove any keys created so that - delete root ca that was imported and also delete key that was created 
-    #(only if key was created and not passed on command line)
-    print("Step #8 - Final Step Deleting RootKey and SymmetricKey")
+    #Step #7 - remove any keys created in this script
+    #print("Step #7 - Final Step Deleting RootKey and SymmetricKey - if symmetric key was generated in this script")
     apc_client = boto3.client('payment-cryptography',region_name=region)
-    apc_client.delete_key(KeyIdentifier=RootKeyARN, DeleteKeyInDays=3)
-    apc_client.delete_key(KeyIdentifier=SymmetricKeyArn, DeleteKeyInDays=3)
-
-
-
-
-
-
-
-
+    if args.keyArn == None:
+        deleteSymmetricKeyRes = apc_client.delete_key(KeyIdentifier=SymmetricKeyArn, DeleteKeyInDays=3)
+        print("Deleted key " + deleteSymmetricKeyRes['Key']['KeyArn'] + " and delete timestamp: " + deleteSymmetricKeyRes['Key']['DeleteTimestamp'])
+    deleteRootKeyRes = apc_client.delete_key(KeyIdentifier=RootKeyARN, DeleteKeyInDays=3)
+    print("Deleted key " + deleteRootKeyRes['Key']['KeyArn'] + " and delete timestamp: " + deleteRootKeyRes['Key']['DeleteTimestamp'])
+    
