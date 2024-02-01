@@ -208,7 +208,7 @@ if __name__ == '__main__':
 
     #Step #6 - decrypt key using private key and then print as hex
     decryptedKey = UnWrapKey(krd_private_key,WrappedKey)
-    print("Step #5 - Decrypted Key:",decryptedKey)
+    print("Step #5 - Decrypted Key:",binascii.hexlify(decryptedKey).decode("utf-8").upper())
 
     #Step #6 - generate KCV and match it against exported KCV
     if keyAlgorithm == 'TDES_3KEY':
