@@ -18,15 +18,9 @@ The following api calls may be subject to https://aws.amazon.com/service-terms/ 
 
 Usage - python3 import_raw_key_into_apc_with_rsa_wrap.py
 '''
-
 import boto3
-import secrets
-from datetime import datetime
 import botocore.session
-from botocore.auth import SigV4Auth
-from botocore.awsrequest import AWSRequest
-import requests
-import json
+import secrets
 import argparse
 import sys
 from cryptography.hazmat.primitives import hashes
@@ -48,8 +42,6 @@ config = session.get_scoped_config()
 credentials = session.get_credentials()
 
 region = config.get('region', regionName)
-signer = SigV4Auth(credentials, 'payment-cryptography', region)
-
 
 def DeleteKey(keyArn):
     apc_client = boto3.client('payment-cryptography',region_name=region)
@@ -213,12 +205,3 @@ if __name__ == '__main__':
             sys.exit(1)
         ImportKeyArn = ImportKey(args.wrappedKey,args.importToken)
         print("Step #1 - Imported Key Cryptogram:",ImportKeyArn) 
-
-
-
-
-
-
-
-
-

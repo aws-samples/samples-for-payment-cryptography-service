@@ -16,20 +16,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 The following api calls may be subject to https://aws.amazon.com/service-terms/ section 2 - Beta & Previews
 
-Usage - python3 POC_ExportKey_RSAWrapUsingAPI.py
+Usage - export_raw_key_from_apc_with_rsa_wrap.py
 '''
 
-import requests
-import logging
-import http
 from datetime import datetime
 from datetime import datetime
 
 import botocore.session
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
-import requests
-import json
 import argparse
 import base64
 import binascii
@@ -165,7 +160,7 @@ def GenerateTdesKcv(key):
 
 def GetKey(keyArn):
     apc_client = boto3.client('payment-cryptography',region_name=region)
-    return apc_client.get_key(keyArn)
+    return apc_client.get_key(KeyIdentifier=keyArn)
 
 def UnWrapKey(private_key,WrappedKeyHexBinary):
     decrypted = private_key.decrypt(binascii.a2b_hex(WrappedKeyHexBinary),
@@ -235,7 +230,8 @@ if __name__ == '__main__':
     apc_client = boto3.client('payment-cryptography',region_name=region)
     if args.keyArn == None:
         deleteSymmetricKeyRes = apc_client.delete_key(KeyIdentifier=SymmetricKeyArn, DeleteKeyInDays=3)
-        print("Deleted key " + deleteSymmetricKeyRes['Key']['KeyArn'] + " and delete timestamp: " + deleteSymmetricKeyRes['Key']['DeleteTimestamp'])
+        print("Deleted key " + deleteSymmetricKeyRes['Key']['KeyArn'])
     deleteRootKeyRes = apc_client.delete_key(KeyIdentifier=RootKeyARN, DeleteKeyInDays=3)
-    print("Deleted key " + deleteRootKeyRes['Key']['KeyArn'] + " and delete timestamp: " + deleteRootKeyRes['Key']['DeleteTimestamp'])
+    print("Deleted root key " + deleteRootKeyRes['Key']['KeyArn'])
+    # print(json.dumps(deleteRootKeyRes, indent=4, sort_keys=True, default=str)
     
