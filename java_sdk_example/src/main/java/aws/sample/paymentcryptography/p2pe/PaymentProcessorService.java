@@ -43,7 +43,7 @@ public class PaymentProcessorService {
 
             DecryptDataRequest decryptDataRequest = new DecryptDataRequest();
             decryptDataRequest.setCipherText(encryptedData);
-            decryptDataRequest.setKeyIdentifier(ServiceConstants.BDK_ALIAS);
+            decryptDataRequest.setKeyIdentifier(ServiceConstants.BDK_ALIAS_TDES_2KEY);
             decryptDataRequest.setDecryptionAttributes(decryptionAttributes);
 
             Logger.getGlobal()
