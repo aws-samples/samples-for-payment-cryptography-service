@@ -88,7 +88,7 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
                 System.out.println("ISO_4_FORMAT Encrypted Intermeidiate pinblock B = " + encodedPinPanBlock);
                 String encryptedPinPanBlock = aesEncryptPINWithDukpt(dukptVariantKey, encodedPinPanBlock.toString());
                 System.out.println("ISO_4_FORMAT Final encrypted pin pan block = " + encryptedPinPanBlock);
-
+                Thread.sleep(2000);
                 RestTemplate restTemplate = new RestTemplate();
                 String verifyPinUrl = ServiceConstants.HOST
                         + ServiceConstants.PIN_PROCESSOR_SERVICE_ISO_4_FORMAT_PIN_VERIFY_API;
@@ -106,7 +106,7 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
                 ResponseEntity<String> setPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl, String.class);
                 System.out.println("Response from issuer service for (ISO_4_FORMAT encrypted) pin set operation is "
                         + setPinResponse.getBody());
-
+                        Thread.sleep(3500);
                 // final byte[] pinblock = xorBytes(pinToByteArray, panToByteArray);
                 
             } catch (Exception exception) {
