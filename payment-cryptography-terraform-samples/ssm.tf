@@ -54,11 +54,13 @@ resource "aws_vpc_endpoint" "ssmmessages_endpoint" {
 resource "aws_security_group" "ssm_endpoint_sg" {
   name_prefix = "${var.application}-ssm-endpoint-sg-"
   vpc_id      = var.vpc_id
+  description = "Security group for SSM endpoint"
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = var.vpc_cidr_block
+    description = "Allow inbound from VPC"
   }
   tags = {
     Name = "${var.application}-ssm-endpoint-sg"

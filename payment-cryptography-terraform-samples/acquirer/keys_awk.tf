@@ -6,9 +6,9 @@ resource "aws_paymentcryptography_key" "awk-key" {
     key_usage     = "TR31_P0_PIN_ENCRYPTION_KEY"
     key_modes_of_use {
       encrypt = true
-      decrypt   = true
-      wrap = true
-      unwrap = true
+      decrypt = true
+      wrap    = true
+      unwrap  = true
 
     }
   }

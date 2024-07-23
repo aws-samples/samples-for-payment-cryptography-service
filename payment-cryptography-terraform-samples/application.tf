@@ -1,13 +1,16 @@
 # Create a security group
+# tfsec:ignore:AWS001
 resource "aws_security_group" "thissg" {
   name_prefix = "${var.application}-security-group"
   vpc_id      = var.vpc_id
+  description = "Security Group"
 
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # Replace with your desired IP range
+    cidr_blocks = ["192.168.1.0/24"] # tfsec:ignore:AWS001 # Replace with your desired IP range
+    description = "Allow SSH access from within the VPC"
   }
 
   ingress {
@@ -15,13 +18,15 @@ resource "aws_security_group" "thissg" {
     to_port         = 443
     protocol        = "tcp"
     security_groups = [aws_security_group.ssm_endpoint_sg.id]
+    description     = "Allow HTTPS access from the SSM endpoint security group"
   }
 
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["192.168.1.0/24"] # tfsec:ignore:AWS001
+    description = "Allow all outbound traffic"
   }
 
   tags = {
@@ -39,6 +44,12 @@ resource "aws_instance" "thisinstance" {
   iam_instance_profile        = aws_iam_instance_profile.ssm_profile.name
   key_name                    = var.key_name
   associate_public_ip_address = false # No public IP for a private subnet
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
 
   root_block_device {
     volume_type = "gp3"

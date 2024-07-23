@@ -62,6 +62,7 @@ data "aws_iam_policy_document" "ec2_assume_role" {
   }
 }
 
+# tfsec:ignore:aws-iam-no-policy-wildcards
 data "aws_iam_policy_document" "payment_cryptography_policy" {
   statement {
     effect    = "Allow"

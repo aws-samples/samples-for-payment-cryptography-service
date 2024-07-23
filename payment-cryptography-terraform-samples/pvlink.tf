@@ -2,12 +2,14 @@
 resource "aws_security_group" "this" {
   name_prefix = "payment-crypto-endpoint-"
   vpc_id      = var.vpc_id
+  description = "Payment Cryptography Endpoint Security Group"
 
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = var.vpc_cidr_block
+    description = "Allow HTTPS traffic from VPC CIDR Block"
 
   }
 
@@ -16,13 +18,15 @@ resource "aws_security_group" "this" {
     to_port         = 443
     protocol        = "tcp"
     security_groups = ["${aws_security_group.thissg.id}"] # SG For instance
+    description     = "Allow HTTPS traffic from EC2 instance Security Group"
   }
 
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["192.168.1.0/24"]
+    description = "Allow all outbound traffic"
 
   }
 
