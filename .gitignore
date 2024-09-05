@@ -1,4 +1,19 @@
+.vscode/
+bouncy_castle_samples/
+java_sdk_example/.mvn/
+java_sdk_example/mvnw
+java_sdk_example/src/main/java/aws/sample/paymentcryptography/ApplicationHandler.java.bak
+java_sdk_example/src/main/java/aws/sample/paymentcryptography/CVVDemo.bak
+java_sdk_example/src/main/java/aws/sample/paymentcryptography/Demo.java
+java_sdk_example/src/main/java/aws/sample/paymentcryptography/Test.java
+java_sdk_example/src/main/java/aws/sample/paymentcryptography/hmac/HMACCopy.java
+java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/ATM_AES.java
+java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/TerminalDemo.java
+java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/test.py
+java_sdk_example/test-data/pan_to_pin_verification.csv
 java_sdk_example/target
+key-import-export/mc/
+python/
 
 # Local .terraform directories
 **/.terraform/*
@@ -38,4 +53,3 @@ terraform.rc
 ###
 .terraform.lock.hcl
 terraform.tf
-

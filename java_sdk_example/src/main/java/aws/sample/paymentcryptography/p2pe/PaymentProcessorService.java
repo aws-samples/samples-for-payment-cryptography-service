@@ -12,15 +12,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.amazonaws.services.paymentcryptographydata.AWSPaymentCryptographyData;
-import com.amazonaws.services.paymentcryptographydata.model.DecryptDataRequest;
-import com.amazonaws.services.paymentcryptographydata.model.DecryptDataResult;
-import com.amazonaws.services.paymentcryptographydata.model.DukptEncryptionAttributes;
-import com.amazonaws.services.paymentcryptographydata.model.EncryptionDecryptionAttributes;
-
 import aws.sample.paymentcryptography.DataPlaneUtils;
 import aws.sample.paymentcryptography.ServiceConstants;
 import aws.sample.paymentcryptography.hmac.HMACService;
+import software.amazon.awssdk.services.paymentcryptographydata.PaymentCryptographyDataClient;
+import software.amazon.awssdk.services.paymentcryptographydata.model.DecryptDataRequest;
+import software.amazon.awssdk.services.paymentcryptographydata.model.DecryptDataResponse;
+import software.amazon.awssdk.services.paymentcryptographydata.model.DukptEncryptionAttributes;
+import software.amazon.awssdk.services.paymentcryptographydata.model.EncryptionDecryptionAttributes;
 
 @RestController
 public class PaymentProcessorService {
@@ -32,29 +31,35 @@ public class PaymentProcessorService {
     @ResponseBody
     public String authorizePayment(@RequestParam String encryptedData, @RequestParam String ksn) {
         try {
-            AWSPaymentCryptographyData dataPlaneClient = DataPlaneUtils.getDataPlaneClient();
+            PaymentCryptographyDataClient dataPlaneClient = DataPlaneUtils.getDataPlaneClient();
 
-            DukptEncryptionAttributes dukptEncryptionAttributes = new DukptEncryptionAttributes()
-                    .withKeySerialNumber(ksn)
-                    .withMode(ServiceConstants.MODE);
+            DukptEncryptionAttributes dukptEncryptionAttributes = DukptEncryptionAttributes
+                    .builder()
+                    .keySerialNumber(ksn)
+                    .mode(ServiceConstants.MODE)
+                    .build();
 
-            EncryptionDecryptionAttributes decryptionAttributes = new EncryptionDecryptionAttributes();
-            decryptionAttributes.setDukpt(dukptEncryptionAttributes);
+            EncryptionDecryptionAttributes decryptionAttributes = EncryptionDecryptionAttributes
+                    .builder()
+                    .dukpt(dukptEncryptionAttributes)
+                    .build();
 
-            DecryptDataRequest decryptDataRequest = new DecryptDataRequest();
-            decryptDataRequest.setCipherText(encryptedData);
-            decryptDataRequest.setKeyIdentifier(ServiceConstants.BDK_ALIAS);
-            decryptDataRequest.setDecryptionAttributes(decryptionAttributes);
+            DecryptDataRequest decryptDataRequest = DecryptDataRequest
+                    .builder()
+                    .cipherText(encryptedData)
+                    .keyIdentifier(ServiceConstants.BDK_ALIAS)
+                    .decryptionAttributes(decryptionAttributes)
+                    .build();
 
             Logger.getGlobal()
                     .info("PaymentProcessorService:authorizePayment Attempting to decrypt data " + encryptedData
                             + " by AWS Cryptography Service");
-            DecryptDataResult decryptDataResult = dataPlaneClient.decryptData(decryptDataRequest);
+            DecryptDataResponse decryptDataResponse = dataPlaneClient.decryptData(decryptDataRequest);
 
             PKCS7Padding padder = new PKCS7Padding();
-            int padCount = padder.padCount(Hex.decodeHex(decryptDataResult.getPlainText()));
-            String decryptedText = decryptDataResult.getPlainText().substring(0,
-                    decryptDataResult.getPlainText().length() - padCount * 2);
+            int padCount = padder.padCount(Hex.decodeHex(decryptDataResponse.plainText()));
+            String decryptedText = decryptDataResponse.plainText().substring(0,
+                    decryptDataResponse.plainText().length() - padCount * 2);
             String textWithPaddingRemoved = new String(Hex.decodeHex(decryptedText));
             JSONObject responseJsonObject = new JSONObject()
                     .put("response", textWithPaddingRemoved)

@@ -1,5 +1,6 @@
 package aws.sample.paymentcryptography.pin;
 
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
 import org.springframework.http.ResponseEntity;
@@ -9,57 +10,25 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
-import com.amazonaws.services.paymentcryptography.model.Alias;
-import com.amazonaws.services.paymentcryptography.model.Key;
-import com.amazonaws.services.paymentcryptographydata.model.TranslatePinDataResult;
-import com.amazonaws.util.StringUtils;
-
 import aws.sample.paymentcryptography.ControlPlaneUtils;
 import aws.sample.paymentcryptography.DataPlaneUtils;
 import aws.sample.paymentcryptography.ServiceConstants;
+import software.amazon.awssdk.services.paymentcryptography.model.Alias;
+import software.amazon.awssdk.services.paymentcryptography.model.Key;
+import software.amazon.awssdk.services.paymentcryptographydata.model.TranslatePinDataResponse;
+import software.amazon.awssdk.utils.StringUtils;
 
 @RestController
 public class PaymentProcessorPinTranslateService {
 
-   /*  @GetMapping(ServiceConstants.PIN_PROCESSOR_SERVICE_PIN_SET_API)
-    @ResponseBody
-    public String setPinData(@RequestParam String encryptedPinBLock, @RequestParam String pan) {
-
-        String acquirerWorkingKeyArn = getAcquirerWorkingKeyArn();
-        TranslatePinDataResult translatePinDataResult = DataPlaneUtils.translateVisaPinBlockBdkToPek(
-                ServiceConstants.BDK_ALIAS,
-                ServiceConstants.ISO_0_PIN_BLOCK_FORMAT,
-                encryptedPinBLock,
-                acquirerWorkingKeyArn,
-                ServiceConstants.ISO_0_PIN_BLOCK_FORMAT,
-                ServiceConstants.BDK_ALGORITHM,
-                ServiceConstants.KSN,
-                pan);
-
-        RestTemplate restTemplate = new RestTemplate();
-
-        String setPinUrl = ServiceConstants.HOST
-                + ServiceConstants.ISSUER_SERVICE_PIN_SET_API;
-
-        String finaSetPinlUrl = new StringBuilder(setPinUrl)
-                .append("?encryptedPinBLock=")
-                .append(translatePinDataResult.getPinBlock()) // setting BDK -> PEK translated PIN data
-                .append("&pan=")
-                .append(pan).toString();
-
-        ResponseEntity<String> setPinResponse = restTemplate.getForEntity(finaSetPinlUrl, String.class);
-        System.out.println("PaymentProcessorPinTranslateService: Issuer service response for PEK Pin set is "
-                + setPinResponse.getBody());
-        return setPinResponse.getBody();
-    } */
-
     @GetMapping(ServiceConstants.PIN_PROCESSOR_SERVICE_PIN_VERIFY_API)
     @ResponseBody
-    public String verifyPinData(@RequestParam String encryptedPin, @RequestParam String pan, @RequestParam String ksn) {
+    public String verifyPinData(@RequestParam String encryptedPin, @RequestParam String pan, @RequestParam String ksn) throws InterruptedException, ExecutionException {
 
-        Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData Attempting to translate BDK encrypted PIN block " + encryptedPin + " to PEK encrypted PIN Block thru AWS Cryptography Service");
+        Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData Attempting to translate BDK encrypted PIN block "
+                                 + encryptedPin + " to PEK encrypted PIN Block thru AWS Cryptography Service");
         String acquirerWorkingKeyArn = getAcquirerWorkingKeyArn();
-        TranslatePinDataResult translatePinDataResult = DataPlaneUtils.translateVisaPinBlockBdkToPek(
+        TranslatePinDataResponse translatePinDataResponse = DataPlaneUtils.translateVisaPinBlockBdkToPek(
                 ServiceConstants.BDK_ALIAS,
                 ServiceConstants.ISO_0_PIN_BLOCK_FORMAT,
                 encryptedPin,
@@ -69,13 +38,14 @@ public class PaymentProcessorPinTranslateService {
                 ksn,
                 pan);
 
-        Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData BDK PIN " + encryptedPin + " to PEK encrypted PIN Block " + translatePinDataResult.getPinBlock() + " translation is successful");
+        Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData BDK PIN " + encryptedPin 
+                                + " to PEK encrypted PIN Block " + translatePinDataResponse.pinBlock() + " translation is successful");
         RestTemplate restTemplate = new RestTemplate();
         String verifyPinUrl = ServiceConstants.HOST
                     + ServiceConstants.ISSUER_SERVICE_PIN_VERIFY_API;
         String finalVerifyPinlUrl = new StringBuilder(verifyPinUrl)
                 .append("?encryptedPin=")
-                .append(translatePinDataResult.getPinBlock())
+                .append(translatePinDataResponse.pinBlock())
                 .append("&pan=")
                 .append(pan)
                 .toString();
@@ -91,17 +61,17 @@ public class PaymentProcessorPinTranslateService {
      * In real scenario, the payment gateway and acquirer would have the same PEK
      * through a key exchange process.
      */
-    private static String getAcquirerWorkingKeyArn() {
+    private static String getAcquirerWorkingKeyArn() throws InterruptedException, ExecutionException {
         Alias acquirerWorkingKeyAlias = ControlPlaneUtils.getOrCreateAlias(ServiceConstants.PIN_TRANSLATION_KEY_ALIAS);
-        if (StringUtils.isNullOrEmpty(acquirerWorkingKeyAlias.getKeyArn())) {
+        if (StringUtils.isBlank(acquirerWorkingKeyAlias.keyArn())) {
             System.out.println("No AWS PEK found, creating a new one.");
             Key acquirerWorkingKey = ControlPlaneUtils.createPEK(ServiceConstants.PEK_ALGORITHM);
-            acquirerWorkingKeyAlias = ControlPlaneUtils.upsertAlias(acquirerWorkingKeyAlias.getAliasName(),
-                    acquirerWorkingKey.getKeyArn());
-            System.out.println(String.format("PEK created: %s", acquirerWorkingKeyAlias.getKeyArn()));
-            return acquirerWorkingKeyAlias.getKeyArn();
+            acquirerWorkingKeyAlias = ControlPlaneUtils.upsertAlias(acquirerWorkingKeyAlias.aliasName(),
+                    acquirerWorkingKey.keyArn());
+            System.out.println(String.format("PEK created: %s", acquirerWorkingKeyAlias.keyArn()));
+            return acquirerWorkingKeyAlias.keyArn();
         }
-        return acquirerWorkingKeyAlias.getKeyArn();
+        return acquirerWorkingKeyAlias.keyArn();
     }
 
 }
