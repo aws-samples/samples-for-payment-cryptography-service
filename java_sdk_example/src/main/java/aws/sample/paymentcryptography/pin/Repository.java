@@ -38,7 +38,7 @@ public class Repository {
             Map<String, String> map = new HashMap<String, String>();
             BufferedReader bufferedReader = null;
             try {
-                bufferedReader = new BufferedReader(new FileReader(panToPinVerificationValueMapFile));
+                bufferedReader = new BufferedReader(new FileReader(getPanToPinVerificationValueMapFile()));
                 String line = null;
                 // read file line by line
                 while ((line = bufferedReader.readLine()) != null && line.trim() !="") {
@@ -65,10 +65,6 @@ public class Repository {
 
     private File getPanToPinVerificationValueMapFile() {
         return panToPinVerificationValueMapFile;
-    }
-
-    private void setPanToPinVerificationValueMapFile(File panToPinVerificationValueMapFile) {
-        this.panToPinVerificationValueMapFile = panToPinVerificationValueMapFile;
     }
 
     private void setWriter(BufferedWriter writer) {

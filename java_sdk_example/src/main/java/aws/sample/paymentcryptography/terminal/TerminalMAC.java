@@ -7,7 +7,7 @@ import org.bouncycastle.crypto.engines.DESEngine;
 import org.bouncycastle.crypto.macs.ISO9797Alg3Mac;
 import org.bouncycastle.crypto.params.KeyParameter;
 
-public class TerminalHMAC {
+public class TerminalMAC {
 
     /* public static void main(String[] args) throws DecoderException {
 
@@ -16,7 +16,7 @@ public class TerminalHMAC {
         final byte[] dataToMac = Hex.encodeHexString("test".getBytes()).getBytes();
         final byte[] genMac = generateIso9797Alg3Mac(keyParameter, cipher, dataToMac);
 
-        System.out.println("hmac is " + Hex.encodeHexString(genMac));
+        System.out.println("mac is " + Hex.encodeHexString(genMac));
     } */
 
     private static byte[] generateIso9797Alg3Mac(KeyParameter key, BlockCipher cipher, byte[] data) {

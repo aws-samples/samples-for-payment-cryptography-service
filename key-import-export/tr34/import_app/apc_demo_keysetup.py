@@ -17,7 +17,9 @@ KEK = '79ADAEF3212AADCE312ACE422ACCFEFB'
 
 """ Base Derivation Key which will be used to generate DUKPT """
 BDK = '8A8349794C9EE9A4C2927098F249FED6'
-bdkAlias = 'alias/MerchantTerminal_BDK'
+
+tdesBDKAlias = 'alias/MerchantTerminal_TDES_BDK'
+aesBDKAlias = 'alias/MerchantTerminal_BDK_AES_128'
 
 """ Pin Encryption Key. For the samples, the same key will be shared between ATM, Pin tranlation service and Issuer. 
 This is to show that ATM can directly talk to issuer service to set and verify pin. 
@@ -28,7 +30,7 @@ issuerPekAlias = 'alias/issuerPek'
 
 issuerGenerationAlias = 'alias/issuerPinValidationKey'
 
-""" MAC key for HMAC verification """
+""" ISO_9797_3_MAC_KEY for MAC verification """
 MAC = '75BDAEF54587CAE6563A5CE57B4B9F9F'
 """ MAC = '8A8349794C9EE9A4C2927098F249FED6' """
 macAlias = 'alias/tr31_macValidationKey'
@@ -67,10 +69,17 @@ if __name__ == "__main__":
 
 
     print("")
-    print("*********Importing a BDK for DUKPT*********")
+    print("*********Importing TDES BDK for DUKPT*********")
     print("")
-    response = tr31.importTR31(KEK,BDK,"E","B0","X","T","ONLINE",tr34_response[0],None,bdkAlias)
-    print("BDK ARN:",response[0])
+    response = tr31.importTR31(KEK,BDK,"E","B0","X","T","ONLINE",tr34_response[0],None,tdesBDKAlias)
+    print("TDES BDK ARN:",response[0])
+    print("Alias",response[1])
+
+    print("")
+    print("*********Importing AES BDK for DUKPT*********")
+    print("")
+    response = tr31.importTR31(KEK,BDK,"E","B0","X","A","ONLINE",tr34_response[0],None,aesBDKAlias)
+    print("AES BDK ARN:",response[0])
     print("Alias",response[1])
 
 

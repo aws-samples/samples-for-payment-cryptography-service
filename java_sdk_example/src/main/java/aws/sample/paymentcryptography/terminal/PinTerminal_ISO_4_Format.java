@@ -76,7 +76,7 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
 
                 System.out.println("pin block is " + pinBlock.toString());
                 System.out.println("pan block is " + panBlock.toString());
-                System.out.println("Key is  " + dukptVariantKey);
+                System.out.println("DUKPT is " + dukptVariantKey);
                 System.out.println("KSN is  " + ksn);
                 String encryptedPinBlock = aesEncryptPINWithDukpt(dukptVariantKey, pinBlock.toString());
                 System.out.println("ISO_4_FORMAT Encrypted Intermeidiate pinblock A = " + encryptedPinBlock);
@@ -104,7 +104,7 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
                         .toString();
                 System.out.println("pin verification endpoint url -> " + finalVerifyPinlUrl);
                 ResponseEntity<String> setPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl, String.class);
-                System.out.println("Response from issuer service for (ISO_4_FORMAT encrypted) pin set operation is "
+                System.out.println("Pin Verify operation response from issuer service for ISO_4_FORMAT encrypted pin is "
                         + setPinResponse.getBody());
                         Thread.sleep(3500);
                 // final byte[] pinblock = xorBytes(pinToByteArray, panToByteArray);
@@ -167,7 +167,6 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
         for (byte i : randomBytes) {
             hexValue.append(String.format("%02X", i));
         }
-        System.out.println("Hex value - " + hexValue.toString());
         return hexValue.toString();
     }
 
