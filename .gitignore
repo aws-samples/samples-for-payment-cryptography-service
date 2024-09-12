@@ -1,29 +1,7 @@
-java_sdk_example/target
 .vscode/
-bouncy_castle_samples/
 java_sdk_example/.mvn/
-java_sdk_example/mvnw
-java_sdk_example/src/main/java/aws/sample/paymentcryptography/ApplicationHandler.java.bak
-java_sdk_example/src/main/java/aws/sample/paymentcryptography/CVVDemo.bak
-java_sdk_example/src/main/java/aws/sample/paymentcryptography/Demo.java
-java_sdk_example/src/main/java/aws/sample/paymentcryptography/HandlerApiGatewayV1.java.bak
-java_sdk_example/src/main/java/aws/sample/paymentcryptography/HandlerApiGatewayV2.java.bak
-java_sdk_example/src/main/java/aws/sample/paymentcryptography/HandlerSQS.java.bak
-java_sdk_example/src/main/java/aws/sample/paymentcryptography/HelloController.java
-java_sdk_example/src/main/java/aws/sample/paymentcryptography/Test.java
-java_sdk_example/src/main/java/aws/sample/paymentcryptography/hmac/HMACCopy.java
-java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/ATM_AES.java
-java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/TerminalDemo.java
-java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/TexExractSample.java
-java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/test.py
 java_sdk_example/test-data/pan_to_pin_verification.csv
-java_sdk_example/test-data/sample-key-ksn-data copy.json
-java_sdk_example/test-data/sample-pek-ksn-data copy 2.json
-java_sdk_example/test-data/sample-pin-pan copy.json
-key-import-export/export-app/
-key-import-export/mc/
-paymentcryptography/
-python/
+java_sdk_example/target
 
 # Local .terraform directories
 **/.terraform/*
@@ -63,4 +41,3 @@ terraform.rc
 ###
 .terraform.lock.hcl
 terraform.tf
-
