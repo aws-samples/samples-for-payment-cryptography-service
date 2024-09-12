@@ -19,7 +19,7 @@ import software.amazon.awssdk.utils.StringUtils;
  * Sample class to simulate merchant's payment terminal. This data defined in the DATA_FILE contains DUKTPT keys that are 
  * pre generated from BDK and KSN.
  * This class sends the payment authorization request (similar to what termial does) to the payment service and processes
- * the HMAC response.
+ * the MAC response.
  */
 public class PaymentTerminal extends AbstractTerminal {
     private static final String KEYS_KSN_DATA_FILE = "/test-data/sample-key-ksn-data.json";
@@ -63,7 +63,7 @@ public class PaymentTerminal extends AbstractTerminal {
                 Thread.sleep(1200);
                 JSONObject responseObject = new JSONObject(response.getBody());
                 //System.out.println("response is " + responseObject.getString("response") + " mac is " + responseObject.getString("mac"));
-                System.out.println("HMAC Validated - " + validateHMAC(responseObject.getString("response"),responseObject.getString("mac").toLowerCase()));
+                System.out.println("MAC Validated - " + validateMAC(responseObject.getString("response"),responseObject.getString("mac").toLowerCase()));
                 Thread.sleep(3500);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -71,13 +71,13 @@ public class PaymentTerminal extends AbstractTerminal {
         });
     }
 
-    private static boolean validateHMAC(String response, String macToVerify) throws Exception {
+    private static boolean validateMAC(String response, String macToVerify) throws Exception {
         if (StringUtils.isBlank(macToVerify)) {
             return false;
         }
-        String hmacOnTerminal = TerminalHMAC.getMac(Hex.encodeHexString(response.getBytes()));
-        System.out.println("MAC from payment service - " + macToVerify + ", MAC from terminal - " + hmacOnTerminal);
-        return hmacOnTerminal.trim().toLowerCase().startsWith(macToVerify);
+        String macOnTerminal = TerminalMAC.getMac(Hex.encodeHexString(response.getBytes()));
+        System.out.println("MAC from payment service - " + macToVerify + ", MAC from terminal - " + macOnTerminal);
+        return macOnTerminal.trim().toLowerCase().startsWith(macToVerify);
     }
 
     public static String encryptData(String key, String track2Data, String ksn) throws Exception {

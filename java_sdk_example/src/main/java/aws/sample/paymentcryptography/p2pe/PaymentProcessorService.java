@@ -2,8 +2,10 @@ package aws.sample.paymentcryptography.p2pe;
 
 import java.util.logging.Logger;
 
+import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.RandomUtils;
+import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.crypto.paddings.PKCS7Padding;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import aws.sample.paymentcryptography.DataPlaneUtils;
 import aws.sample.paymentcryptography.ServiceConstants;
-import aws.sample.paymentcryptography.hmac.HMACService;
+import aws.sample.paymentcryptography.mac.MACService;
 import software.amazon.awssdk.services.paymentcryptographydata.PaymentCryptographyDataClient;
 import software.amazon.awssdk.services.paymentcryptographydata.model.DecryptDataRequest;
 import software.amazon.awssdk.services.paymentcryptographydata.model.DecryptDataResponse;
@@ -25,7 +27,7 @@ import software.amazon.awssdk.services.paymentcryptographydata.model.EncryptionD
 public class PaymentProcessorService {
 
     @Autowired
-    private HMACService hmacService;
+    private MACService macService;
 
     @GetMapping(ServiceConstants.PAYMENT_PROCESSOR_SERVICE_AUTHORIZE_PAYMENT_API)
     @ResponseBody
@@ -56,8 +58,7 @@ public class PaymentProcessorService {
                             + " by AWS Cryptography Service");
             DecryptDataResponse decryptDataResponse = dataPlaneClient.decryptData(decryptDataRequest);
 
-            PKCS7Padding padder = new PKCS7Padding();
-            int padCount = padder.padCount(Hex.decodeHex(decryptDataResponse.plainText()));
+            int padCount = getPADCount(decryptDataResponse.plainText());
             String decryptedText = decryptDataResponse.plainText().substring(0,
                     decryptDataResponse.plainText().length() - padCount * 2);
             String textWithPaddingRemoved = new String(Hex.decodeHex(decryptedText));
@@ -66,7 +67,7 @@ public class PaymentProcessorService {
                     .put("authCode", getApprovalCode())
                     .put("response_code", getResponseCode());
 
-            String macData = getHmacService().generateMac(responseJsonObject.toString());
+            String macData = getMACService().generateMac(responseJsonObject.toString());
 
             JSONObject returnJsonObject = new JSONObject()
                     .put("mac", macData)
@@ -86,12 +87,18 @@ public class PaymentProcessorService {
         }
     }
 
-    public HMACService getHmacService() {
-        return hmacService;
+    public MACService getMACService() {
+        return macService;
     }
 
-    public void setHmacService(HMACService hmacService) {
-        this.hmacService = hmacService;
+    public void setmacService(MACService macService) {
+        this.macService = macService;
+    }
+
+    private int getPADCount(String data) throws InvalidCipherTextException, DecoderException {
+        PKCS7Padding padder = new PKCS7Padding();
+        int padCount = padder.padCount(Hex.decodeHex(data));
+        return padCount;
     }
 
     /* 

@@ -1,14 +1,10 @@
-package aws.sample.paymentcryptography.hmac;
+package aws.sample.paymentcryptography.mac;
 
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
-import org.apache.commons.codec.binary.Hex;
-import org.springframework.stereotype.Component;
-
 import aws.sample.paymentcryptography.ControlPlaneUtils;
 import aws.sample.paymentcryptography.DataPlaneUtils;
-import aws.sample.paymentcryptography.ServiceConstants;
 import software.amazon.awssdk.services.paymentcryptography.model.Alias;
 import software.amazon.awssdk.services.paymentcryptography.model.CreateKeyRequest;
 import software.amazon.awssdk.services.paymentcryptography.model.Key;
@@ -25,14 +21,31 @@ import software.amazon.awssdk.services.paymentcryptographydata.model.VerifyMacRe
 import software.amazon.awssdk.services.paymentcryptographydata.model.VerifyMacResponse;
 import software.amazon.awssdk.utils.StringUtils;
 
-@Component
-public class HMACService {
+public class MACCopy {
 
-    public String getHMACKey() throws InterruptedException, ExecutionException {
-        Alias hmacKeyAlias = ControlPlaneUtils.getOrCreateAlias(ServiceConstants.HMAC_KEY_ALIAS);
+    private static final String MESSAGE = "4123412341234123";
+    private static final String MAC_KEY_ALIAS = "alias/tr34-mac-key-import";
 
-        if (!StringUtils.isBlank(hmacKeyAlias.keyArn())) {
-            return hmacKeyAlias.keyArn();
+    public static void main(String[] args) throws InterruptedException, ExecutionException {
+
+        String macKeyArn = createMACKey();
+
+        GenerateMacResponse macGenerateResponse = generateMac(macKeyArn);
+        Logger.getGlobal().info("MAC Key Check Value - " + macGenerateResponse.keyCheckValue() + "\t MAC - "
+                + macGenerateResponse.mac());
+
+        VerifyMacResponse macVerificatioResponse = getMacVerification(macKeyArn, macGenerateResponse.mac());
+        Logger.getGlobal().info("MAC Verification Key Check Value - " + macVerificatioResponse.keyCheckValue());
+
+        Logger.getGlobal().info(
+                "Mac Verified = " + (macGenerateResponse.keyCheckValue().equals(macVerificatioResponse.keyCheckValue())));
+    }
+
+    public static String createMACKey() throws InterruptedException, ExecutionException {
+        Alias macKeyAlias = ControlPlaneUtils.getOrCreateAlias(MAC_KEY_ALIAS);
+
+        if (!StringUtils.isBlank(macKeyAlias.keyArn())) {
+            return macKeyAlias.keyArn();
         }
 
         KeyModesOfUse modes = KeyModesOfUse
@@ -40,6 +53,7 @@ public class HMACService {
                 .generate(true)
                 .verify(true)
                 .build();
+
         KeyAttributes attributes = KeyAttributes
                 .builder()
                 .keyAlgorithm(KeyAlgorithm.TDES_2_KEY)
@@ -47,55 +61,54 @@ public class HMACService {
                 .keyUsage(KeyUsage.TR31_M3_ISO_9797_3_MAC_KEY)
                 .keyModesOfUse(modes)
                 .build();
-                
-        CreateKeyRequest request = CreateKeyRequest.builder()
-        .keyAttributes(attributes)
-        .enabled(true)
-        .exportable(true)
-        .build();
+
+        CreateKeyRequest request = CreateKeyRequest
+                .builder()
+                .keyAttributes(attributes)
+                .enabled(true)
+                .exportable(false)
+                .build();
 
         Key key = ControlPlaneUtils.getControlPlaneClient().createKey(request).key();
-        ControlPlaneUtils.upsertAlias(hmacKeyAlias.aliasName(), key.keyArn());
-        return hmacKeyAlias.aliasName();
+        ControlPlaneUtils.upsertAlias(macKeyAlias.aliasName(), key.keyArn());
+        return macKeyAlias.aliasName();
     }
 
-    public String generateMac(String text) throws InterruptedException, ExecutionException {
-        String hmacKeyArn = getHMACKey();
-        GenerateMacResponse macGenerateResponse = generateMac(hmacKeyArn,text);
+    public static String generateMac() throws InterruptedException, ExecutionException {
+        String macKeyArn = createMACKey();
+        GenerateMacResponse macGenerateResponse = generateMac(macKeyArn);
         return macGenerateResponse.mac();
     }
 
-    public GenerateMacResponse generateMac(String hmacKeyArn, String text) {
+    public static GenerateMacResponse generateMac(String macKeyArn) {
         MacAttributes macAttributes = MacAttributes
                 .builder()
                 .algorithm(MacAlgorithm.ISO9797_ALGORITHM3)
                 .build();
 
-        Logger.getGlobal().info("HMACService:generateMac Attempting to generate HMAC thru AWS Cryptography Service for text " + text);
         GenerateMacRequest generateMacRequest = GenerateMacRequest
                 .builder()
-                .keyIdentifier(hmacKeyArn)
-                .messageData(Hex.encodeHexString(text.getBytes()))
+                .keyIdentifier(macKeyArn)
+                .messageData(MESSAGE)
                 .generationAttributes(macAttributes)
                 .build();
 
         GenerateMacResponse macGenerateResponse = DataPlaneUtils.getDataPlaneClient().generateMac(generateMacRequest);
-        Logger.getGlobal().info("HMACService:generateMac HMAC generation successfult for " + text + ". HMAC is " + macGenerateResponse.mac());
         return macGenerateResponse;
     }
 
-    public VerifyMacResponse getMacVerification(String hmacKeyArn, String mac) {
+    public static VerifyMacResponse getMacVerification(String macKeyArn, String mac) {
         MacAttributes macAttributes = MacAttributes
                 .builder()
                 .algorithm(MacAlgorithm.ISO9797_ALGORITHM3)
                 .build();
-
+                
         VerifyMacRequest verifyMacRequest = VerifyMacRequest
                 .builder()
-                .keyIdentifier(hmacKeyArn)
+                .keyIdentifier(macKeyArn)
                 .verificationAttributes(macAttributes)
                 .mac(mac)
-                .messageData(mac)
+                .messageData(MESSAGE)
                 .build();
         VerifyMacResponse macVerificationResponse = DataPlaneUtils.getDataPlaneClient().verifyMac(verifyMacRequest);
         return macVerificationResponse;
