@@ -28,7 +28,7 @@ issuerPekAlias = 'alias/issuerPek'
 
 issuerGenerationAlias = 'alias/issuerPinValidationKey'
 
-""" MAC key for HMAC verification """
+""" ISO_9797_3_MAC_KEY for MAC verification """
 MAC = '75BDAEF54587CAE6563A5CE57B4B9F9F'
 """ MAC = '8A8349794C9EE9A4C2927098F249FED6' """
 macAlias = 'alias/tr31_macValidationKey'

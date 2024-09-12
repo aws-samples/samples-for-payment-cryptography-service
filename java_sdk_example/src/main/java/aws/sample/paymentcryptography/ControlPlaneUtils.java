@@ -1,131 +1,145 @@
 package aws.sample.paymentcryptography;
 
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.paymentcryptography.AWSPaymentCryptographyAsync;
-import com.amazonaws.services.paymentcryptography.AWSPaymentCryptographyAsyncClientBuilder;
-import com.amazonaws.services.paymentcryptography.model.Alias;
-import com.amazonaws.services.paymentcryptography.model.CreateAliasRequest;
-import com.amazonaws.services.paymentcryptography.model.CreateKeyRequest;
-import com.amazonaws.services.paymentcryptography.model.GetAliasRequest;
-import com.amazonaws.services.paymentcryptography.model.GetKeyRequest;
-import com.amazonaws.services.paymentcryptography.model.Key;
-import com.amazonaws.services.paymentcryptography.model.KeyAttributes;
-import com.amazonaws.services.paymentcryptography.model.KeyModesOfUse;
-import com.amazonaws.services.paymentcryptography.model.UpdateAliasRequest;
+import java.util.concurrent.ExecutionException;
 
+import software.amazon.awssdk.services.paymentcryptography.PaymentCryptographyClient;
+import software.amazon.awssdk.services.paymentcryptography.model.Alias;
+import software.amazon.awssdk.services.paymentcryptography.model.CreateAliasRequest;
+import software.amazon.awssdk.services.paymentcryptography.model.CreateKeyRequest;
+import software.amazon.awssdk.services.paymentcryptography.model.GetAliasRequest;
+import software.amazon.awssdk.services.paymentcryptography.model.GetAliasResponse;
+import software.amazon.awssdk.services.paymentcryptography.model.GetKeyRequest;
+import software.amazon.awssdk.services.paymentcryptography.model.Key;
+import software.amazon.awssdk.services.paymentcryptography.model.KeyAttributes;
+import software.amazon.awssdk.services.paymentcryptography.model.KeyModesOfUse;
+import software.amazon.awssdk.services.paymentcryptography.model.UpdateAliasRequest;
+import software.amazon.awssdk.services.paymentcryptography.model.UpdateAliasResponse;
 public class ControlPlaneUtils {
 
-    private static AWSPaymentCryptographyAsync controlPlaneClient = null;
+    private static PaymentCryptographyClient controlPlaneClient = null;
 
-    public static AWSPaymentCryptographyAsync getControlPlaneClient() {
+    public static PaymentCryptographyClient  getControlPlaneClient() {
         if (controlPlaneClient != null) {
             return controlPlaneClient;
 
         }
-        controlPlaneClient = AWSPaymentCryptographyAsyncClientBuilder.standard()
-                .build();
+        controlPlaneClient =  PaymentCryptographyClient.create();
         return controlPlaneClient;
     }
 
-    public static Alias getOrCreateAlias(String aliasName) {
+    public static Alias getOrCreateAlias(String aliasName) throws InterruptedException, ExecutionException {
         return getOrCreateAlias(aliasName, null);
     }
 
-    public static Alias getOrCreateAlias(String aliasName, String keyArn) {
-        AWSPaymentCryptographyAsync client = getControlPlaneClient();
+    public static Alias getOrCreateAlias(String aliasName, String keyArn) throws InterruptedException, ExecutionException {
+        PaymentCryptographyClient client = getControlPlaneClient();
         try {
-            return client.getAlias(new GetAliasRequest().withAliasName(aliasName)).getAlias();
+            GetAliasResponse response = client.getAlias(GetAliasRequest.builder().aliasName(aliasName).build());
+            return response.alias();
         } catch (RuntimeException ex) {
-            return client.createAlias(new CreateAliasRequest().withAliasName(aliasName).withKeyArn(keyArn)).getAlias();
+            CreateAliasRequest request = CreateAliasRequest.builder().aliasName(aliasName).keyArn(keyArn).build();
+            return client.createAlias(request).alias();
         }
     }
 
-    public static Alias upsertAlias(String aliasName, String keyArn) {
-        AWSPaymentCryptographyAsync client = getControlPlaneClient();
+    public static Alias upsertAlias(String aliasName, String keyArn) throws InterruptedException, ExecutionException {
+        PaymentCryptographyClient client = getControlPlaneClient();
         Alias alias = getOrCreateAlias(aliasName, keyArn);
-        if (((null == keyArn) != (null == alias.getKeyArn())) // One is null and the other isn't
-                || (null != keyArn && !keyArn.equals(alias.getKeyArn())) // They're both non-null and not the same
+        if (((null == keyArn) != (null == alias.keyArn())) // One is null and the other isn't
+                || (null != keyArn && !keyArn.equals(alias.keyArn())) // They're both non-null and not the same
         ) {
-            return client.updateAlias(new UpdateAliasRequest().withAliasName(aliasName).withKeyArn(keyArn)).getAlias();
+            UpdateAliasResponse response = client.updateAlias(UpdateAliasRequest.builder().aliasName(aliasName).keyArn(keyArn).build());
+            return response.alias();
         }
-        return alias;
+        return null;
     }
 
-    public static Key getKey(String keyArn) {
-        AWSPaymentCryptographyAsync client = getControlPlaneClient();
-        return client.getKey(new GetKeyRequest().withKeyIdentifier(keyArn)).getKey();
+    public static Key getKey(String keyArn) throws InterruptedException, ExecutionException {
+        PaymentCryptographyClient client = getControlPlaneClient();
+        return client.getKey(GetKeyRequest.builder().keyIdentifier(keyArn).build()).key();
     }
 
-    public static Key createBDK(String keyAlgorithm) {
-        KeyModesOfUse modes = new KeyModesOfUse()
-                .withDeriveKey(true);
-        KeyAttributes attributes = new KeyAttributes()
-                .withKeyAlgorithm(keyAlgorithm)
-                .withKeyClass("SYMMETRIC_KEY")
-                .withKeyUsage("TR31_B0_BASE_DERIVATION_KEY")
-                .withKeyModesOfUse(modes);
-        CreateKeyRequest request = new CreateKeyRequest()
-                .withKeyAttributes(attributes)
-                .withEnabled(true)
-                .withExportable(true);
-        AWSPaymentCryptographyAsync client = getControlPlaneClient();
-        Key key = client.createKey(request).getKey();
+    public static Key createBDK(String keyAlgorithm) throws InterruptedException, ExecutionException {
+        KeyModesOfUse modes = KeyModesOfUse.builder()
+                .deriveKey(true).build();
+        KeyAttributes attributes = KeyAttributes.builder()
+                .keyAlgorithm(keyAlgorithm)
+                .keyClass("SYMMETRIC_KEY")
+                .keyUsage("TR31_B0_BASE_DERIVATION_KEY")
+                .keyModesOfUse(modes)
+                .build();
+        CreateKeyRequest request = CreateKeyRequest.builder()
+                .keyAttributes(attributes)
+                .enabled(true)
+                .exportable(true)
+                .build();
+        PaymentCryptographyClient client = getControlPlaneClient();
+        Key key = client.createKey(request).key();
         return key;
     }
 
-    public static Key createPEK(String keyAlgorithm) {
-        KeyModesOfUse modes = new KeyModesOfUse()
-                .withWrap(true)
-                .withEncrypt(true)
-                .withUnwrap(true)
-                .withDecrypt(true);
-        KeyAttributes attributes = new KeyAttributes()
-                .withKeyAlgorithm(keyAlgorithm)
-                .withKeyClass("SYMMETRIC_KEY")
-                .withKeyUsage("TR31_P0_PIN_ENCRYPTION_KEY")
-                .withKeyModesOfUse(modes);
-        CreateKeyRequest request = new CreateKeyRequest()
-                .withKeyAttributes(attributes)
-                .withEnabled(true)
-                .withExportable(true);
-        AWSPaymentCryptographyAsync client = getControlPlaneClient();
-        Key key = client.createKey(request).getKey();
+    public static Key createPEK(String keyAlgorithm) throws InterruptedException, ExecutionException {
+        KeyModesOfUse modes = KeyModesOfUse.builder()
+                .wrap(true)
+                .encrypt(true)
+                .unwrap(true)
+                .decrypt(true)
+                .build();
+        KeyAttributes attributes = KeyAttributes.builder()
+                .keyAlgorithm(keyAlgorithm)
+                .keyClass("SYMMETRIC_KEY")
+                .keyUsage("TR31_P0_PIN_ENCRYPTION_KEY")
+                .keyModesOfUse(modes)
+                .build();
+        CreateKeyRequest request = CreateKeyRequest.builder()
+                .keyAttributes(attributes)
+                .enabled(true)
+                .exportable(true)
+                .build();
+        PaymentCryptographyClient client = getControlPlaneClient();
+        Key key = client.createKey(request).key();
         return key;
     }
 
-    public static Key createVisaPGK(String keyAlgorithm) {
-        KeyModesOfUse modes = new KeyModesOfUse()
-                .withGenerate(true)
-                .withVerify(true);
-        KeyAttributes attributes = new KeyAttributes()
-                .withKeyAlgorithm(keyAlgorithm)
-                .withKeyClass("SYMMETRIC_KEY")
-                .withKeyUsage("TR31_V2_VISA_PIN_VERIFICATION_KEY")
-                .withKeyModesOfUse(modes);
-        CreateKeyRequest request = new CreateKeyRequest()
-                .withKeyAttributes(attributes)
-                .withEnabled(true)
-                .withExportable(true);
-        AWSPaymentCryptographyAsync client = getControlPlaneClient();
-        Key key = client.createKey(request).getKey();
+    public static Key createVisaPGK(String keyAlgorithm) throws InterruptedException, ExecutionException {
+        KeyModesOfUse modes = KeyModesOfUse.builder()
+                .generate(true)
+                .verify(true)
+                .build();
+        KeyAttributes attributes = KeyAttributes.builder()
+                .keyAlgorithm(keyAlgorithm)
+                .keyClass("SYMMETRIC_KEY")
+                .keyUsage("TR31_V2_VISA_PIN_VERIFICATION_KEY")
+                .keyModesOfUse(modes)
+                .build();
+                CreateKeyRequest request = CreateKeyRequest.builder()
+                .keyAttributes(attributes)
+                .enabled(true)
+                .exportable(true)
+                .build();
+        PaymentCryptographyClient client = getControlPlaneClient();
+        Key key = client.createKey(request).key();
         return key;
     }
 
-    public static Key createCVVKey(String keyAlgorithm) {
-        KeyModesOfUse modes = new KeyModesOfUse()
-                .withGenerate(true)
-                .withVerify(true);
-        KeyAttributes attributes = new KeyAttributes()
-                .withKeyAlgorithm(keyAlgorithm)
-                .withKeyClass("SYMMETRIC_KEY")
-                .withKeyUsage("TR31_C0_CARD_VERIFICATION_KEY")
-                .withKeyModesOfUse(modes);
-        CreateKeyRequest request = new CreateKeyRequest()
-                .withKeyAttributes(attributes)
-                .withEnabled(true)
-                .withExportable(true);
-        AWSPaymentCryptographyAsync client = getControlPlaneClient();
-        Key key = client.createKey(request).getKey();
+    public static Key createCVVKey(String keyAlgorithm) throws InterruptedException, ExecutionException {
+        KeyModesOfUse modes = KeyModesOfUse.builder()
+                .generate(true)
+                .verify(true)
+                .build();
+        KeyAttributes attributes = KeyAttributes.builder()
+                .keyAlgorithm(keyAlgorithm)
+                .keyClass("SYMMETRIC_KEY")
+                .keyUsage("TR31_C0_CARD_VERIFICATION_KEY")
+                .keyModesOfUse(modes)
+                .build();
+        CreateKeyRequest request = CreateKeyRequest.builder()
+                .keyAttributes(attributes)
+                .enabled(true)
+                .exportable(true)
+                .build();
+        PaymentCryptographyClient  client = getControlPlaneClient();
+        Key key = client.createKey(request).key();
         return key;
     }
 }

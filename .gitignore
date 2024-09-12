@@ -1,3 +1,6 @@
+.vscode/
+java_sdk_example/.mvn/
+java_sdk_example/test-data/pan_to_pin_verification.csv
 java_sdk_example/target
 
 # Local .terraform directories
@@ -38,4 +41,3 @@ terraform.rc
 ###
 .terraform.lock.hcl
 terraform.tf
-

@@ -26,7 +26,7 @@ Once you run the commands above, it will import the keys and create aliases for 
 If you have Finch installed, you can run the commands below. This can be used if you do not have Python installed or do not want to import the Python libraries needed for this app in your local system.
 
 ```
-cd samples-for-payment-cryptography-service/key-import/Dockerfile
+cd samples-for-payment-cryptography-service/key-import-export//Dockerfile
 
 finch build -t key-import-app .
 
