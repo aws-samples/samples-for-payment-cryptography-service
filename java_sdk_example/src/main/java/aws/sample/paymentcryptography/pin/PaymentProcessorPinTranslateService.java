@@ -21,25 +21,55 @@ import software.amazon.awssdk.utils.StringUtils;
 @RestController
 public class PaymentProcessorPinTranslateService {
 
-    @GetMapping(ServiceConstants.PIN_PROCESSOR_SERVICE_PIN_VERIFY_API)
+    @GetMapping(ServiceConstants.PIN_PROCESSOR_SERVICE_ISO_0_FORMAT_PIN_VERIFY_API)
     @ResponseBody
-    public String verifyPinData(@RequestParam String encryptedPin, @RequestParam String pan, @RequestParam String ksn) throws InterruptedException, ExecutionException {
+    public String verifyPinData_ISO_0_Format(@RequestParam String encryptedPin, @RequestParam String pan, @RequestParam String ksn) throws InterruptedException, ExecutionException {
 
-        Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData Attempting to translate BDK encrypted PIN block "
-                                 + encryptedPin + " to PEK encrypted PIN Block thru AWS Cryptography Service");
+        Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData_ISO_0_Format Attempting to translate TDES BDK encrypted PIN block " + encryptedPin + " to PEK encrypted PIN Block thru AWS Cryptography Service");
         String acquirerWorkingKeyArn = getAcquirerWorkingKeyArn();
         TranslatePinDataResponse translatePinDataResponse = DataPlaneUtils.translateVisaPinBlockBdkToPek(
-                ServiceConstants.BDK_ALIAS,
+                ServiceConstants.BDK_ALIAS_TDES_2KEY,
                 ServiceConstants.ISO_0_PIN_BLOCK_FORMAT,
                 encryptedPin,
                 acquirerWorkingKeyArn,
                 ServiceConstants.ISO_0_PIN_BLOCK_FORMAT,
-                ServiceConstants.BDK_ALGORITHM,
+                ServiceConstants.BDK_ALGORITHM_TDES_2KEY,
                 ksn,
                 pan);
 
-        Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData BDK PIN " + encryptedPin 
-                                + " to PEK encrypted PIN Block " + translatePinDataResponse.pinBlock() + " translation is successful");
+        Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData_ISO_0_Format BDK PIN " + encryptedPin + " to PEK encrypted PIN Block " + translatePinDataResponse.pinBlock() + " translation is successful");
+        RestTemplate restTemplate = new RestTemplate();
+        String verifyPinUrl = ServiceConstants.HOST
+                    + ServiceConstants.ISSUER_SERVICE_PIN_VERIFY_API;
+        String finalVerifyPinlUrl = new StringBuilder(verifyPinUrl)
+                .append("?encryptedPin=")
+                .append(translatePinDataResponse.pinBlock())
+                .append("&pan=")
+                .append(pan)
+                .toString();
+
+        ResponseEntity<String> verifyPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl, String.class);
+        System.out.println("Issuer service response for PEK Pin verify is " + verifyPinResponse.getBody());
+        return verifyPinResponse.getBody();
+    }
+
+    @GetMapping(ServiceConstants.PIN_PROCESSOR_SERVICE_ISO_4_FORMAT_PIN_VERIFY_API)
+    @ResponseBody
+    public String verifyPinData_ISO_4_Format(@RequestParam String encryptedPin, @RequestParam String pan, @RequestParam String ksn) throws InterruptedException, ExecutionException {
+
+        Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData_ISO_4_Format Attempting to translate BDK encrypted PIN block " + encryptedPin + " to PEK encrypted PIN Block thru AWS Cryptography Service");
+        String acquirerWorkingKeyArn = getAcquirerWorkingKeyArn();
+        TranslatePinDataResponse translatePinDataResponse = DataPlaneUtils.translateVisaPinBlockBdkToPek(
+                ServiceConstants.BDK_ALIAS_AES_128,
+                ServiceConstants.ISO_4_PIN_BLOCK_FORMAT,
+                encryptedPin,
+                acquirerWorkingKeyArn,
+                ServiceConstants.ISO_0_PIN_BLOCK_FORMAT,
+                ServiceConstants.BDK_ALGORITHM_AES_128,
+                ksn,
+                pan);
+
+        Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData_ISO_4_Format BDK PIN " + encryptedPin + " to PEK encrypted PIN Block " + translatePinDataResponse.pinBlock() + " translation is successful");
         RestTemplate restTemplate = new RestTemplate();
         String verifyPinUrl = ServiceConstants.HOST
                     + ServiceConstants.ISSUER_SERVICE_PIN_VERIFY_API;

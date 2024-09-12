@@ -14,17 +14,16 @@ import org.springframework.web.client.RestTemplate;
 
 import aws.sample.paymentcryptography.ServiceConstants;
 
-public class PinTerminal extends AbstractTerminal {
+public class PinTerminal_ISO_0_Format extends AbstractTerminal {
 
-    private static final String KEYS_KSN_DATA_FILE = "/test-data/sample-pek-ksn-data.json";
+    private static final String KEYS_KSN_DATA_FILE = "/test-data/sample-pek-ksn-data-iso-0-format.json";
     private static final String PINS_DATA_FILE = "/test-data/sample-pin-pan.json";
-
     
     public static void main(String[] args) throws Exception {
-        testDukptPinValidation();
+        testISOFormat0Block();
     }
 
-    public static void testDukptPinValidation() throws Exception {
+    public static void testISOFormat0Block() throws Exception {
         JSONObject pinData = loadPinAndPanData();
         JSONArray pinDataList = pinData.getJSONArray("pins");
 
@@ -53,7 +52,7 @@ public class PinTerminal extends AbstractTerminal {
                 RestTemplate restTemplate = new RestTemplate();
 
                 String verifyPinUrl = ServiceConstants.HOST
-                        + ServiceConstants.PIN_PROCESSOR_SERVICE_PIN_VERIFY_API;
+                        + ServiceConstants.PIN_PROCESSOR_SERVICE_ISO_0_FORMAT_PIN_VERIFY_API;
 
                 String finalVerifyPinlUrl = new StringBuilder(verifyPinUrl)
                         .append("?encryptedPin=")

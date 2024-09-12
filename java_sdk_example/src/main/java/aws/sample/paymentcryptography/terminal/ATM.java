@@ -33,7 +33,7 @@ public class ATM extends AbstractTerminal {
                 String pin = ((JSONObject) panPinOBject).getString("pin");
                 System.out.println("PAN -> " + pan + ", PIN -> " + pin);
                 String encodedPin = encodeForISO0Format(pin, pan);
-                System.out.println("Encoded Pin block is " + encodedPin);
+                System.out.println("ISO_0_Format Encoded Pin block is " + encodedPin);
                 String pekEncryptedBlock = encryptPINWithPEK(TerminalConstants.PEK, encodedPin);
                 System.out.println(("PEK encrypted block - " + pekEncryptedBlock));
                 Thread.sleep(2000);

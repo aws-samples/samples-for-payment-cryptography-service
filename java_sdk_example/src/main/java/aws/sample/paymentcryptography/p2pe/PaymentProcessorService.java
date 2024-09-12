@@ -49,7 +49,7 @@ public class PaymentProcessorService {
             DecryptDataRequest decryptDataRequest = DecryptDataRequest
                     .builder()
                     .cipherText(encryptedData)
-                    .keyIdentifier(ServiceConstants.BDK_ALIAS)
+                    .keyIdentifier(ServiceConstants.BDK_ALIAS_TDES_2KEY)
                     .decryptionAttributes(decryptionAttributes)
                     .build();
 

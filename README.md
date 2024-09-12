@@ -30,7 +30,7 @@ Following diagram illustrates the flow -
 ![Set PIN Flow - PEK](flows/PaymentCryptographyServiceFlows-Pin%20Terminal%20Set%20Pin%20Flow%20(PEK).jpg)
 
 ##### Verify Pin
-In this flow, the [PinTerminal](java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal.java) verifies the PIN via [Pin Translator](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) which connect to [Issuer](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) for verification.
+In this flow, the [PinTerminal_ISO_Format_0](java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_0_Format.java) or [PinTerminal_ISO_Format_4](java_sdk_example/src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_4_Format.java) verifies the PIN via [Pin Translator](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) which connect to [Issuer](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) for verification.
 
 Following diagrams illustrate the flow - 
 ![Verify PIN Flow - DUKPT](flows/PaymentCryptographyServiceFlows-Pin%20Terminal%20Pin%20Verification%20Flow%20(DUKPT).jpg)

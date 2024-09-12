@@ -35,7 +35,7 @@ export AWS_SESSION_TOKEN=wxyz....
 There are samples for 2 flows below. The flows are setup on simulated terminals such as store terminal that processes payment or ATM that can be used for pin setup or PIN terminal that does PIN verification. Prior to running the samples, you will need to start the server like below. 
 The server has services that the terminals connect to support the flows.
 
-*Note:* Intentional delays are added between each transactions (using `Thread.sleep`) in [PaymentTerminal](src/main/java/aws/sample/paymentcryptography/terminal/PaymentTerminal.java), [ATM](src/main/java/aws/sample/paymentcryptography/terminal/ATM.java) and [PinTerminal](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal.java) to make it easier to follow the flows.
+*Note:* Intentional delays are added between each transactions (using `Thread.sleep`) in [PaymentTerminal](src/main/java/aws/sample/paymentcryptography/terminal/PaymentTerminal.java), [ATM](src/main/java/aws/sample/paymentcryptography/terminal/ATM.java),[PinTerminal_ISO_Format_0](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_0_Format.java) and [PinTerminal_ISO_Format_4](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_4_Format.java) to make it easier to follow the flows.
 
 #### Pre Requisite
 The samples are setup to run based on keys in the [key import app](../key-import-export/import_app/apc_demo_keysetup.py). As a pre-requisite, you will need to run the key import app. Refer to [key import instructions](../key-import-export/import_app/Readme.md)
@@ -71,17 +71,33 @@ cd samples-for-payment-cryptography-service/java_sdk_example
 ./run_example.sh aws.sample.paymentcryptography.terminal.ATM
 
 ```
+#### PinTerminals
 
-#### [PinTerminal](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal.java)
+There are 2 variations of Pin terminals.
 
-This is a simulation of the [terminal](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal.java) that accepts PIN and sends it for verification. It uses pre setup PIN data to create an encoded PIN block and encrypts that block using pres setup [PEK data](/java_sdk_example/test-data/sample-pek-ksn-data.json). The encrypted data
-This class is setup for 2 flows 1/new pin setup, 2/ pin verification. The encrypted data is then sent to the [PIN translating service](src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) which then connects to the [Issuer](src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) to verify the PIN.
+- [PinTerminal using ISO 0 Format for Pin Encryption](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_0_Format.java)
+
+  This class simulates terminal encrypting a plain text PIN using [ISO 0 Format](https://en.wikipedia.org/wiki/ISO_9564#Format_0) for PIN encryption. 
+
+- [PinTerminal using ISO 4 Format for Pin Encryption](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_4_Format.java)
+
+  This class simulates terminal encrypting a plain text PIN using [ISO 4 Format](https://listings.pcisecuritystandards.org/documents/Implementing_ISO_Format_4_PIN_Blocks_Information_Supplement.pdf) for PIN encryption.
+  
+     
+Both classes above are a simulation of a terminal that accepts PIN and sends it for verification. It uses pre setup PIN data to create an encoded PIN block and encrypts that block using pres setup [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json) and [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json) . The classes are setup for 2 flows 1/new pin setup, 2/ pin verification. The encrypted data is then sent to the [PIN translating service](src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) which translates the encrypted pin blocks according to the incoming and outgoing ISO formats then connects to the [Issuer](src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) to verify the PIN.
 
 To run - 
 
 ```
 cd samples-for-payment-cryptography-service/java_sdk_example
-./run_example.sh aws.sample.paymentcryptography.terminal.PinTerminal
+./run_example.sh aws.sample.paymentcryptography.terminal.PinTerminal_ISO_0_Format
+```
+
+OR
+
+```
+cd samples-for-payment-cryptography-service/java_sdk_example
+./run_example.sh aws.sample.paymentcryptography.terminal.PinTerminal_ISO_4_Format
 ```
 
 ## Helper classes

@@ -14,7 +14,7 @@ Either one of the approaches below can be used to import the keys. You will need
 If you have Docker installed, you can run the commands below. This can be used if you do not have Python installed or do not want to import the Python libraries needed for this app in your local system.
 
 ```
-cd samples-for-payment-cryptography-service/key-import/Dockerfile
+cd samples-for-payment-cryptography-service/key-import
 
 docker build -t key-import-app .
 
@@ -26,7 +26,7 @@ Once you run the commands above, it will import the keys and create aliases for 
 If you have Finch installed, you can run the commands below. This can be used if you do not have Python installed or do not want to import the Python libraries needed for this app in your local system.
 
 ```
-cd samples-for-payment-cryptography-service/key-import-export//Dockerfile
+cd samples-for-payment-cryptography-service/key-import-export
 
 finch build -t key-import-app .
 
@@ -38,7 +38,7 @@ Once you run the commands above, it will import the keys and create aliases for 
 
 #### Using local Python to run the import app
 ```
-cd samples-for-payment-cryptography-service/key-import/Dockerfile
+cd samples-for-payment-cryptography-service/key-import
 
 python3 -m pip install psec boto3 pycryptodome
 
@@ -58,15 +58,25 @@ Calculated KCV: 3C0A31
 Reported Type: TDES_2KEY
 KEK/KPBK/ZMK ARN: arn:aws:payment-cryptography:us-east-1:XXXXXXXXXXXX:key/3hn2ubebpeugbn22
 
-*********Importing a BDK for DUKPT*********
+*********Importing TDES BDK for DUKPT*********
 
-WRAPPED KEY IN TR-31 B0096B0TX00E000073BA095E1FAE34BE52C4D427A2A8739AA0D757740773445FA39B591EFC6D3E72A3439E1F0FC1630F
+WRAPPED KEY IN TR-31 B0096B0TX00E0000A2C1AF40886230D79EAE236E54F22AA3617D8AF0ED7227872AAE1BA683917C48E530D9DA7F63B970
 Imported Key: 8a8349794c9ee9a4c2927098f249fed6
-Key Arn: arn:aws:payment-cryptography:us-east-1:XXXXXXXXXXXX:key/3ofcsbdosqkthg72
+Key Arn: arn:aws:payment-cryptography:us-west-2:XXXXXXXXXXXX:key/kiwl7juoitdeovx5
 Reported KCV: 9C8552
 Reported Type: TDES_2KEY
-BDK ARN: arn:aws:payment-cryptography:us-east-1:XXXXXXXXXXXX:key/3ofcsbdosqkthg72
-Alias alias/MerchantTerminal_BDK
+TDES BDK ARN: arn:aws:payment-cryptography:us-west-2:XXXXXXXXXXXX:key/kiwl7juoitdeovx5
+Alias alias/MerchantTerminal_TDES_BDK
+
+*********Importing AES BDK for DUKPT*********
+
+WRAPPED KEY IN TR-31 B0112B0AX00E000033DFDAF93EBAE8FE476A2653A88DE4FF835C2114C97FEB2611A0D9A5F59988D3938C7E68597B3A07072C17A08ECF3B4D
+Imported Key: 8a8349794c9ee9a4c2927098f249fed6
+Key Arn: arn:aws:payment-cryptography:us-west-2:XXXXXXXXXXXX:key/u4lbzeh6onqscqjr
+Reported KCV: B32CFD
+Reported Type: AES_128
+AES BDK ARN: arn:aws:payment-cryptography:us-west-2:XXXXXXXXXXXX:key/u4lbzeh6onqscqjr
+Alias alias/MerchantTerminal_BDK_AES_128
 
 *********Importing a PEK for communicating with ATM*********
 
