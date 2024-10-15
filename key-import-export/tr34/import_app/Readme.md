@@ -14,7 +14,7 @@ Either one of the approaches below can be used to import the keys. You will need
 If you have Docker installed, you can run the commands below. This can be used if you do not have Python installed or do not want to import the Python libraries needed for this app in your local system.
 
 ```
-cd samples-for-payment-cryptography-service/key-import
+cd samples-for-payment-cryptography-service/key-import-export
 
 docker build -t key-import-app .
 
@@ -38,7 +38,7 @@ Once you run the commands above, it will import the keys and create aliases for 
 
 #### Using local Python to run the import app
 ```
-cd samples-for-payment-cryptography-service/key-import
+cd samples-for-payment-cryptography-service/key-import-export/tr34/import_app
 
 python3 -m pip install psec boto3 pycryptodome
 
