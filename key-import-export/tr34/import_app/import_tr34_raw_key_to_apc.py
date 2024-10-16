@@ -539,7 +539,7 @@ if __name__ == "__main__":
                                      epilog='This is intended as sample code and comes with no warranty and is not intended for us with production keys.')
     parser.add_argument("--clearkey", help="Clear Text Key to import", default="8A8349794C9EE9A4C2927098F249FED6")
     parser.add_argument("--exportmode", "-e", help="Export Mode - E, S or N", default="E",choices=['E', 'S', 'N'])
-    parser.add_argument("--keytype", "-t", help="Key Type according to TR-31 norms. For instance K0, B0, etc", default="K0",choices=['K0', 'B0', 'D0','P0','E0','E3','E6','E1','C0','E2'])
+    parser.add_argument("--keytype", "-t", help="Key Type according to TR-31 norms. For instance K0, B0, etc", default="K0",choices=['K0', 'K1', 'B0', 'D0','P0','E0','E3','E6','E1','C0','E2'])
     parser.add_argument("--modeofuse", "-m", help="Mode of use according to TR-31 norms.  For instance B (encrypt/decrypt),X (derive key)", default="B",choices=['B', 'X', 'N','E','D','C','G','V'])
     parser.add_argument("--runmode", help="Run mode. APC will directly import will offline will only produce tr-34 payload", default="APC",choices=['APC', 'OFFLINE'])
     parser.add_argument("--krdcert", "-cert", help="KRD cert base64 encoded Only use for offline mode. This would be provided by KRD", default="")
