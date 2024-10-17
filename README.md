@@ -7,7 +7,7 @@ Before starting, ensure that the [service is available in the region](https://aw
 ### Flows
 
 #### Key Import (Pre Requisite)
-Before running the sample application, you will need to import the required keys into AWS Cryptography Service. The samples are setup to run based on keys that will get imported thru the [key import app](key-import-export/import_app/apc_demo_keysetup.py). Refer to [key import instructions](key-import-export/import_app/Readme.md).<br>
+Before running the sample application, you will need to import the required keys into AWS Cryptography Service. The samples are setup to run based on keys that will get imported thru the [key import app](key-import-export/tr34/import_app/apc_demo_keysetup.py). Refer to [key import instructions](key-import-export/tr34/import_app/Readme.md).<br>
 
 After importing the keys, refer to [readme](java_sdk_example/README.md) to run the samples.
 
