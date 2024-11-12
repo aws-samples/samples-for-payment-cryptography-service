@@ -41,3 +41,17 @@ terraform.rc
 ###
 .terraform.lock.hcl
 terraform.tf
+
+### MacOS
+.DS_Store
+
+### Python
+*.swp
+package-lock.json
+__pycache__
+.pytest_cache
+.venv
+*.egg-info
+
+### Idea
+.idea
