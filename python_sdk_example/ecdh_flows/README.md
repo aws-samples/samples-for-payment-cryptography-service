@@ -27,7 +27,7 @@ The following costs represent the us-east-1 (North Virginia) AWS Region, prices 
 
 You can stop the costs by calling the tear_down.py script included, which deletes all created assets.
 
-If you execute this demo and immediatly call tear_down.py, it will have an overall cost of 0.24 USD aproximated.
+If you execute this demo and immediately call tear_down.py, it will have an overall cost of 0.24 USD approximated.
 
 ## Setup
 
