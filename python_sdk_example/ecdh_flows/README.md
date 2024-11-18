@@ -20,11 +20,14 @@ These use cases are implemented using ECDH Key Agreement to derive a symmetric k
 ## Cost
 The following costs represent the us-east-1 (North Virginia) AWS Region, prices may vary across regions.
 
-1. AWS Private CA for short-lived certificates has a pricing of US$ 50/month per CA.
-2. Each AWS Payment Cryptography key is charged US$ 1 per key/month, and this demo uses 4 keys
-3. Each AWS Payment Cryptography API is charged at US$ 2 per 10,000 API Calls, this demo does less than 50
+1. AWS Private CA for short-lived certificates has a pricing of US$ 50 (hourly prorated) per month.
+2. AWS Private CA charges 0.058 for each short-lived certificate (This demo issues 4 certificates: 1 for CA setup, 1 for each flow)
+3. Each AWS Payment Cryptography key is charged US$ 1 per key (hourly prorated) per month, and this demo uses 4 keys
+4. Each AWS Payment Cryptography API is charged at US$ 2 per 10,000 API Calls, this demo does less than 50
 
 You can stop the costs by calling the tear_down.py script included, which deletes all created assets.
+
+If you execute this demo and immediatly call tear_down.py, it will have an overall cost of 0.24 USD aproximated.
 
 ## Setup
 
