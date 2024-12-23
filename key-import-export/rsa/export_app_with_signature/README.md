@@ -94,7 +94,7 @@ Follow [the instructions in the AWS documentation](https://docs.aws.amazon.com/l
 
 aws lambda invoke \
     --cli-binary-format raw-in-base64-out \
-    --function-name PspKEKexchangeLambda-example \
+    --function-name INSERT-PSP-KEK-EXCHANGE-LAMBDA-FUNCTION-NAME \
     --cli-binary-format raw-in-base64-out \
     --payload '{ "Test": "Example" }' \
     response.json
@@ -108,6 +108,8 @@ You can then view the response in the response.json file output:
 cat response.json
 
 ```
+
+Alternatively, you can invoke the PSPKEKExchange Lambda function via the AWS Lambda console, by selecting the function, and under the **Test** column, select 'Test'. 
 
 ***Note*** The event payload passed the Lambda function does not matter in this case, as the environment variables are used instead. Therefore when invoking the Lambda, the payload can be ignored/configured as you wish without any impact to the output of the function.
 
