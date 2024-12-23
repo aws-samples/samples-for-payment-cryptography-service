@@ -1,6 +1,8 @@
 # Automating Key Exchange with Trusted Business Partners
 
-This solution sets up the necessary resources to assist you while exchanging keys with trusted business partners. It includes the following components:
+This solution sets up the necessary resources to assist you while exchanging keys with trusted business partners. Specifically, this sample should be used when exchanging keys using RSA key wrapping, for business partners that require cryptographic signatures but don't support TR-34. If your business partner supports more common methods for exchanging keys with included signatures (e.g., TR-34), or uses RSA wrap but does not require a signature: consider [this sample](https://github.com/aws-samples/samples-for-payment-cryptography-service/blob/main/key-import-export/rsa/export_app/export_raw_key_from_apc_with_rsa_wrap.py) instead. 
+
+This solution includes the following components:
 
 - **AWS KMS Key**: An asymmetric KMS key (RSA 2048) is generated to create a cryptographic signature over a wrapped key encrypting key (KEK).
 - **S3 Bucket**: An S3 bucket is created to store the outputs of the two Lambda functions, namely: ARNs of the generated keys, the encrypted KEK, the signature, and the key check value (KCV) of the KEK.
