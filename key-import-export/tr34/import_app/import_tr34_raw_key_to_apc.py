@@ -234,7 +234,12 @@ def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",b
                 'PublicKeyCertificate': base64.b64encode(kdh_ca_certificate.public_bytes(encoding=serialization.Encoding.PEM)).decode('UTF-8')
             }
         }, KeyCheckValueAlgorithm='ANSI_X9_24', Tags=[])['Key']['KeyArn']
-        apc_client.update_alias(AliasName=KDH_CA_KEY_ALIAS, KeyArn=kdh_ca_key_arn)
+        
+        try: 
+            apc_client.get_alias(AliasName=KDH_CA_KEY_ALIAS) 
+            apc_client.update_alias(AliasName=KDH_CA_KEY_ALIAS, KeyArn=kdh_ca_key_arn)
+        except apc_client.exceptions.ResourceNotFoundException: 
+            apc_client.create_alias(AliasName=KDH_CA_KEY_ALIAS, KeyArn=kdh_ca_key_arn)
 
         ###########################################################
         # Delete Key (if required)
@@ -518,7 +523,11 @@ def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",b
             },
             KeyCheckValueAlgorithm='ANSI_X9_24', Tags=[]
         )
-        apc_client.update_alias(AliasName=IMPORT_KEY_ALIAS, KeyArn=imported_symmetric_key_res['Key']['KeyArn'])
+        try: 
+            apc_client.get_alias(AliasName=IMPORT_KEY_ALIAS) 
+            apc_client.update_alias(AliasName=IMPORT_KEY_ALIAS, KeyArn=imported_symmetric_key_res['Key']['KeyArn']) 
+        except apc_client.exceptions.ResourceNotFoundException: 
+            apc_client.create_alias(AliasName=IMPORT_KEY_ALIAS, KeyArn=imported_symmetric_key_res['Key']['KeyArn'])
 
         print('************************ DONE *****************')
         print('Imported Key: ' + symmetric_key_binary.hex())

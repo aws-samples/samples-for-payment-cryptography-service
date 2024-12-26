@@ -20,7 +20,7 @@ public class ListKeysUtil {
 
     public static void main(String[] args) throws InterruptedException, ExecutionException {
         PaymentCryptographyClient client = ControlPlaneUtils.getControlPlaneClient();
-        ListKeysRequest request = ListKeysRequest.builder().maxResults(2).build();
+        ListKeysRequest request = ListKeysRequest.builder().build();
         List<KeySummary> keys = client.listKeys(request).keys();
         if (keys.size() == 0) {
             System.out.println("No keys found");

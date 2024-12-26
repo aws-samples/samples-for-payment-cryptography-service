@@ -18,7 +18,7 @@ public class ListAliasesUtil {
 
     public static void main(String[] args) throws InterruptedException, ExecutionException {
         PaymentCryptographyClient client = ControlPlaneUtils.getControlPlaneClient();
-        ListAliasesRequest request = ListAliasesRequest.builder().maxResults(2).build();
+        ListAliasesRequest request = ListAliasesRequest.builder().build();
         List<Alias> aliases = client.listAliases(request).aliases();
         if (aliases.size() == 0) {
             System.out.println("No aliases found");
