@@ -50,7 +50,7 @@ public class DeleteAliasUtil {
 
     private static void deleteAllAliases() throws InterruptedException, ExecutionException {
         System.out.println("delete all aliases...");
-        ListAliasesRequest request = ListAliasesRequest.builder().maxResults(10).build();
+        ListAliasesRequest request = ListAliasesRequest.builder().maxResults(100).build();
         List<Alias> aliases = client.listAliases(request).aliases();
         if (aliases.isEmpty()) {
             System.out.println("No aliases found");
