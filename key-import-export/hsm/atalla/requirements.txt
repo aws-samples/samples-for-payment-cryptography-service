@@ -1,0 +1,6 @@
+asn1crypto
+asymmetric
+oscrypto
+boto3
+cryptography
+pycryptodome
