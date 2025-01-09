@@ -34,9 +34,53 @@ If you execute this demo and immediately call tear_down.py, it will have an over
 Generate a Python Virtual Environment and install required libraries
 ```
 python3 -m venv .venv
+source .venv/bin/activate
 pip3 install -r requirements.txt
 ```
 You also need local AWS Credentials that have access to AWS Payment Cryptography and AWS Private CA
+
+## Permissions - IAM Policy
+To execute this demo you need the following permissions
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "acm-pca:ListCertificateAuthorities",
+                "acm-pca:CreateCertificateAuthority",
+                "acm-pca:DescribeCertificateAuthority",
+                "acm-pca:TagCertificateAuthority",
+                "acm-pca:GetCertificateAuthorityCsr",
+                "acm-pca:IssueCertificate",
+                "acm-pca:GetCertificate",
+                "acm-pca:ImportCertificateAuthorityCertificate",
+                "acm-pca:GetCertificateAuthorityCertificate",
+                "payment-cryptography:GetAlias",
+                "payment-cryptography:ImportKey",
+                "payment-cryptography:CreateAlias",
+                "payment-cryptography:CreateKey",
+                "kms:GenerateRandom",
+                "payment-cryptography:GetPublicKeyCertificate",
+                "payment-cryptography:GeneratePinData",
+                "payment-cryptography:TranslatePinData",
+                "acm-pca:ListTags",
+                "acm-pca:UpdateCertificateAuthority",
+                "acm-pca:DeleteCertificateAuthority",
+                "payment-cryptography:ListKeys",
+                "payment-cryptography:ListTagsForResource",
+                "payment-cryptography:DeleteKey",
+                "payment-cryptography:ListAliases",
+                "payment-cryptography:TagResource",
+                "payment-cryptography:DeleteAlias"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+
+```
 
 ## Execute
 Simulate the three flows of this Demo. This will create a Private CA and the needed AWS Payment Cryptography cryptographic key the first time is ran.
