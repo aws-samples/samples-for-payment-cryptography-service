@@ -11,6 +11,7 @@ import psec.pinblock
 import binascii
 import base64
 import time
+import secrets
 
 
 class CryptoUtils:
@@ -37,8 +38,11 @@ class CryptoUtils:
 
     @staticmethod
     def generate_shared_info():
-        kms_client = boto3.client('kms')
-        return kms_client.generate_random(NumberOfBytes=32)["Plaintext"]
+        return secrets.token_bytes(32)
+        # you could generate this random with KMS as well
+        # kms_client = boto3.client('kms')
+        # print(kms_client.generate_random(NumberOfBytes=32)["Plaintext"])
+        # return kms_client.generate_random(NumberOfBytes=32)["Plaintext"]
 
     @staticmethod
     def generate_ecc_symmetric_key_client(certificate, krd_private_key, info):

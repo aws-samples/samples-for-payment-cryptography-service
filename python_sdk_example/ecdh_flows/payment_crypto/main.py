@@ -34,4 +34,4 @@ if revealed_pin == set_pin:
 else:
     print("ERROR")
 
-print("Please remember to execute tear_down.py if you want to remove the assets created. AWS Private CA has a cost of US$ 50 per month, and each APC key is worth US$ 1/month")
+print("Please remember to execute tear_down.py if you want to remove the assets created. AWS Private CA has a cost of US$ 50 per month (prorated), and each APC key is worth US$ 1/month (prorated)")

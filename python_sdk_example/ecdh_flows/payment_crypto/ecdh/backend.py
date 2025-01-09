@@ -24,14 +24,24 @@ class Backend:
         self.apc_ecdh_key_arn = apc_ecdh_key_arn
         self.pvv = None
         self.tmp_pek_pinblock = None
+        self.cache_apc_certificate = None
+        self.load_cache_apc_certificates()
+
+
+    def load_cache_apc_certificates(self):
+        """
+        Caches the AWS Payment Cryptography public certificates for up to 30 days.
+        """
+        if self.cache_apc_certificate is None:
+            response = controlplane_client.get_public_key_certificate(KeyIdentifier=self.apc_ecdh_key_arn)
+            self.cache_apc_certificate = (response['KeyCertificateChain'], response['KeyCertificate'])
 
     def get_apc_certificates(self):
         """
         Obtains the Certificate and the Certificate Chain for the ECDH Public Key
         :return:
         """
-        response = controlplane_client.get_public_key_certificate(KeyIdentifier=self.apc_ecdh_key_arn)
-        return response['KeyCertificateChain'], response['KeyCertificate']
+        return self.cache_apc_certificate
 
     def sign_with_private_ca(self, csr):
         """
