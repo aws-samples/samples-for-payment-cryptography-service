@@ -27,7 +27,7 @@ public class DeleteKeyUtil {
 
     public static void main(String[] args) throws InterruptedException, ExecutionException {
         List<String> keysToDelete = null;
-
+        
         if (args.length > 0) {
             String arg = args[0];
             if (arg.equals(ALL_KEYS)) {
@@ -45,7 +45,7 @@ public class DeleteKeyUtil {
     }
 
     private static void deleteAllKeys() throws InterruptedException, ExecutionException {
-        ListKeysRequest request = ListKeysRequest.builder().maxResults(20).build();
+        ListKeysRequest request = ListKeysRequest.builder().maxResults(100).build();
         List<KeySummary> keySummaries = client.listKeys(request).keys();
         if (keySummaries.size() == 0) {
             System.out.println("No keys to delete");
@@ -67,7 +67,7 @@ public class DeleteKeyUtil {
     private static boolean deleteKey(KeySummary keySummary)
             throws IllegalArgumentException, InterruptedException, ExecutionException {
         if (keySummary == null)
-            throw new IllegalArgumentException("Null alias passed");
+            throw new IllegalArgumentException("Null key summary passed");
         return deleteKey(keySummary.keyArn());
     }
 
