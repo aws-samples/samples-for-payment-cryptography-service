@@ -12,6 +12,10 @@ This solution includes the following components:
 - **Custom Resources**: Custom resources are used to trigger the CSRBuilderLambda function during the stack creation process, and create the Lambda layer used for both the deployed Lambda functions
 - **IAM Roles and Policies**: Necessary IAM roles and policies are created to grant the required permissions to the Lambda functions.
 
+## Architecture
+
+![Architecture Diagram](./images/arch-diagram.png)
+
 ## Background
 
 In order for customers to begin encrypting and decrypting payment data between business partners, the initial step is to exchange a Key Encrypting Key (KEK).  This solution uses RSA-OAEP to wrap and securely export the KEK.
