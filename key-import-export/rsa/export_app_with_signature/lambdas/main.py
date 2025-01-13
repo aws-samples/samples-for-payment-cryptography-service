@@ -144,23 +144,27 @@ def lambda_handler(event, context):
             'APC_ROOT_KEY_ARN': APC_ROOT_KEY_ARN,
             'KMS_KEY_ARN': KMS_KEY_ARN,
             'APC_KEY_ARN': APC_KEY_ARN,
-            'enc_aes_key1': enc_aes_key1,  # This is already a string
-            'kcv': kcv,  # Assume this is already in the correct format
+            'enc_aes_key1': enc_aes_key1,
+            'kcv': kcv,
             'signature': hex_signature
         }
-
 
         # Optionally store results in S3
         if S3_BUCKET:
             s3_locations = store_results_in_s3(result, S3_BUCKET, S3_PREFIX)
             result['s3_locations'] = s3_locations
-        
+
+        response_body = {
+            'message': 'All operations completed successfully',
+            'result': result
+        }
+
         return {
             'statusCode': 200,
-            'body': json.dumps({
-                'message': 'All operations completed successfully',
-                'result': result
-            })
+            'body': response_body,
+            'headers': {
+                'Content-Type': 'application/json'
+            }
         }
     except Exception as e:
         # Get the full traceback
@@ -507,15 +511,37 @@ def store_results_in_s3(result, bucket, prefix):
     s3_client = boto3.client('s3')
     s3_locations = {}
 
+    # Combine the three key ARNs into one file
+    key_arns = [
+        f"KMS Key ARN: {result['KMS_KEY_ARN']}",
+        f"APC Root Key ARN: {result['APC_ROOT_KEY_ARN']}",
+        f"APC Key ARN: {result['APC_KEY_ARN']}"
+    ]
+    key_arns_content = "\n".join(key_arns)
+
+    file_key = f"{prefix}KEY_ARNS.txt"
+    try:
+        s3_client.put_object(
+            Bucket=bucket,
+            Key=file_key,
+            Body=key_arns_content.encode('utf-8')
+        )
+        s3_locations['KEY_ARNS'] = f"s3://{bucket}/{file_key}"
+    except ClientError as e:
+        print(f"Error storing KEY_ARNS in S3: {e}")
+        raise
+
+    # Store the remaining files
     for key, value in result.items():
+        if key in ['KMS_KEY_ARN', 'APC_ROOT_KEY_ARN', 'APC_KEY_ARN']:
+            # Skip these keys as they are already combined
+            continue
+
         if value is None:
             print(f"Skipping storing {key} in S3 as the value is None.")
             continue
 
-        if key in ['APC_ROOT_KEY_ARN', 'KMS_KEY_ARN', 'APC_KEY_ARN']:
-            # These are not files, just store them as text
-            content = str(value)
-        elif key in ['enc_aes_key1', 'kcv']:
+        if key in ['enc_aes_key1', 'kcv']:
             # These are already in hex format, store as is
             content = str(value)
         elif key == 'signature':
@@ -538,4 +564,5 @@ def store_results_in_s3(result, bucket, prefix):
         except ClientError as e:
             print(f"Error storing {key} in S3: {e}")
             raise
+
     return s3_locations
