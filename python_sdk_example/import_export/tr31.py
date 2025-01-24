@@ -16,7 +16,7 @@ def construct_tr31_header(algoirhtm, export_mode, key_type, mode_of_use, version
     return header
 
 
-def import_tr31(wrapping_key, plaintext_key, export_mode, key_type, mode_of_use, algorithm, wrapping_key_arn, apc_client):
+def import_tr31(wrapping_key: str, plaintext_key: str, export_mode: str, key_type: str, mode_of_use: str, algorithm: str, wrapping_key_arn: str, apc_client: boto3.client) -> str:
     # we move the keys from hex string to bytes
     wrapping_key_bytes = binascii.unhexlify(wrapping_key.replace(" ", ""))
     plaintext_key_bytes = binascii.unhexlify(plaintext_key.replace(" ", ""))
@@ -41,7 +41,22 @@ def import_tr31(wrapping_key, plaintext_key, export_mode, key_type, mode_of_use,
     return imported_symmetric_key_res['Key']['KeyArn']
 
 
-def export_tr31(wrapping_key_arn, wrapping_key_plaintext, key_to_export_arn, apc_client):
+def export_tr31(wrapping_key_arn: str, wrapping_key_plaintext: str, key_to_export_arn: str, apc_client: boto3.client) -> str:
+    """
+    Exports a key from AWS Payment Cryptography using TR-31 format
+
+    Args:
+        wrapping_key_arn (str): ARN of the wrapping key in AWS Payment Cryptography
+        wrapping_key_plaintext (str): Plaintext hex string of the wrapping key
+        key_to_export_arn (str): ARN of the key to be exported from AWS Payment Cryptography
+        apc_client (boto3.client): Boto3 client for AWS Payment Cryptography service
+
+    Returns:
+        str: Exported key in plaintext hex format
+
+    The function exports a key using TR-31 format, unwraps it using the provided wrapping key,
+    and returns the plaintext key material in hex format.
+    """
     # now backwards, let's export the PEK using TR-31 with a 2KEY_DES KEK
     key_material = {
         "Tr31KeyBlock": {

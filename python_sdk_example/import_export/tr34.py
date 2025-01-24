@@ -16,8 +16,6 @@ from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes, serialization
 
-
-
 OID_DES_EDE3_CBC = bytes.fromhex('2A864886F70D0307')
 OID_AES_AES128_CBC = bytes.fromhex('608648016503040102')
 
@@ -154,7 +152,6 @@ TR_34_KEY_BLOCK = [
     ])]
 
 
-
 def construct_tr34_header(key_usage, mode_of_use, export_mode, key_algorithm='T', key_version_number='00',
                           optional_blocks='00'):
     """
@@ -280,7 +277,7 @@ def import_ca_certificate_into_apc(kdh_ca_certificate, apc_client):
     }, KeyCheckValueAlgorithm='ANSI_X9_24', Tags=[])['Key']['KeyArn']
 
 
-def generate_kdh_certificate(kdh_ca_private_key):
+def generate_certificate(kdh_ca_private_key):
     kdh_private_key = rsa.generate_private_key(
         public_exponent=65537,
         key_size=2048,
@@ -518,9 +515,11 @@ def walk_asn1_structure(asn1_payload, asn1_schema, extracted_data, nesting=[]):
         inner_data = asn1_schema[i][2]
 
         if inner_tag != asn1_payload[i][0]:
-            raise Exception("Tags are different in construct %s element %s, expected is %s actual is %s" % (str(nesting), i, inner_tag, asn1_payload[i][0]))
+            raise Exception("Tags are different in construct %s element %s, expected is %s actual is %s" % (
+            str(nesting), i, inner_tag, asn1_payload[i][0]))
         if inner_constructed != asn1_payload[i][1]:
-            raise Exception("Structure is different in construct %s element %s, expected is %s actual is %s" % (str(nesting), i, inner_constructed, asn1_payload[i][1]))
+            raise Exception("Structure is different in construct %s element %s, expected is %s actual is %s" % (
+            str(nesting), i, inner_constructed, asn1_payload[i][1]))
 
         if type(inner_data) == str:
             extracted_data[inner_data] = asn1_payload[i][2]
@@ -531,9 +530,8 @@ def walk_asn1_structure(asn1_payload, asn1_schema, extracted_data, nesting=[]):
             next_nesting.append(inner_tag)
             walk_asn1_structure(asn1_payload[i][2], inner_data, extracted_data, next_nesting)
         elif inner_data != asn1_payload[i][2]:
-            raise Exception("Payload is different in construct %s element %s, expected is %s actual is %s" % (str(nesting), i, encode_asn(inner_data), encode_asn(asn1_payload[i][2])))
-
-
+            raise Exception("Payload is different in construct %s element %s, expected is %s actual is %s" % (
+            str(nesting), i, encode_asn(inner_data), encode_asn(asn1_payload[i][2])))
 
 
 def decode_tr34_key(key_material, krd_certificate, kdh_certificate, nonce, krd_private_key):
@@ -566,10 +564,12 @@ def decode_tr34_key(key_material, krd_certificate, kdh_certificate, nonce, krd_p
     tr34_key_block_envelope = extracted_data['tr34_key_block_envelope']
 
     tr34_authentication_signed_data = encode_asn([(0x31, True, tr34_authentication_data_asn)])
-    kdh_certificate.public_key().verify(bytes(tr34_authentication_data_signature), tr34_authentication_signed_data, padding.PKCS1v15(), hashes.SHA256())
+    kdh_certificate.public_key().verify(bytes(tr34_authentication_data_signature), tr34_authentication_signed_data,
+                                        padding.PKCS1v15(), hashes.SHA256())
 
     if encode_asn([tr34_kdh_certificate_id_asn]) != encode_asn([kdh_certificate_id_asn]):
-        raise Exception("Mismatched KDH Cred Id.\n\tExpecting: %s\n\tFound: %s" % (encode_asn([tr34_kdh_certificate_id_asn]), encode_asn([kdh_certificate_id_asn])))
+        raise Exception("Mismatched KDH Cred Id.\n\tExpecting: %s\n\tFound: %s" % (
+        encode_asn([tr34_kdh_certificate_id_asn]), encode_asn([kdh_certificate_id_asn])))
 
     extracted_auth_data = {}
     walk_asn1_structure(tr34_authentication_data_asn, TR_34_AUTHENTICATION_DATA_ASN, extracted_auth_data)
@@ -594,10 +594,13 @@ def decode_tr34_key(key_material, krd_certificate, kdh_certificate, nonce, krd_p
     tr34_key_block_iv = extracted_envelope_data['key_block_iv']
 
     if encode_asn([tr34_krd_certificate_id_asn]) != encode_asn([krd_certificate_id_asn]):
-        raise Exception("Mismatched KRD Cred Id.\n\tExpecting: %s\n\tFound: %s" % (encode_asn([tr34_krd_certificate_id_asn]), encode_asn([krd_certificate_id_asn])))
+        raise Exception("Mismatched KRD Cred Id.\n\tExpecting: %s\n\tFound: %s" % (
+        encode_asn([tr34_krd_certificate_id_asn]), encode_asn([krd_certificate_id_asn])))
 
     ephermal_key_cipher = PKCS1_OAEP.new(
-        RSA.importKey(krd_private_key.private_bytes(encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8, encryption_algorithm=serialization.NoEncryption())),
+        RSA.importKey(
+            krd_private_key.private_bytes(encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8,
+                                          encryption_algorithm=serialization.NoEncryption())),
         SHA256,
     );
     ephermal_key = ephermal_key_cipher.decrypt(tr34_encrypted_ephermal_key)
@@ -616,29 +619,71 @@ def decode_tr34_key(key_material, krd_certificate, kdh_certificate, nonce, krd_p
     exported_key = extracted_key_block['symmetric_key_binary']
 
     if encode_asn([tr34_key_block_kdh_cred_id]) != encode_asn([kdh_certificate_id_asn]):
-        raise Exception("Mismatched KRD Cred Id.\n\tExpecting: %s\n\tFound: %s" % (encode_asn([tr34_key_block_kdh_cred_id]).hex(), encode_asn([kdh_certificate_id_asn]).hex()))
+        raise Exception("Mismatched KRD Cred Id.\n\tExpecting: %s\n\tFound: %s" % (
+        encode_asn([tr34_key_block_kdh_cred_id]).hex(), encode_asn([kdh_certificate_id_asn]).hex()))
 
     if exported_tr31_header != tr31_header:
         raise Exception("Mismatched KRD Cred Id.\n\tExpecting: %s\n\tFound: %s" % (exported_tr31_header, tr31_header))
 
     return (exported_key.hex().upper())
 
+
 def calculate_kcv(clear_key_bytes):
     return DES3.new(clear_key_bytes, DES3.MODE_ECB).encrypt(bytes.fromhex('0000000000000000'))[:3].hex().upper()
 
 
-def setup_local_ca(apc_client):
+def setup_local_ca(apc_client: boto3.client):
+    """
+    Sets up a local Certificate Authority (CA) for key import into AWS Payment Cryptography.
+
+    Args:
+        apc_client (boto3.client): AWS Payment Cryptography client
+
+    Returns:
+        tuple: A tuple containing:
+            - certificate_private_key: The private key for the generated certificate
+            - certificate: The generated certificate signed by the CA
+            - ca_key_arn (str): ARN of the imported CA certificate in AWS Payment Cryptography
+
+    The function performs the following steps:
+    1. Generates a local Certificate Authority (private key and certificate)
+    2. Generates a certificate signed by the CA
+    3. Imports the CA certificate into AWS Payment Cryptography
+    """
     # We generate a Local Certificate Authority to allow key import
-    kdh_ca_private_key, kdh_ca_certificate = generate_local_certificate_authority()
+    ca_private_key, ca_certificate = generate_local_certificate_authority()
     # We generate a key, signed by the Certificate Authority, to allow the import
-    kdh_private_key, kdh_certificate = generate_kdh_certificate(kdh_ca_private_key)
+    certificate_private_key, certificate = generate_certificate(ca_private_key)
     # We import the Certificate Authority into AWS Payment Cryptography
-    kdh_ca_key_arn = import_ca_certificate_into_apc(kdh_ca_certificate, apc_client)
-    return kdh_private_key, kdh_certificate, kdh_ca_key_arn
+    ca_key_arn = import_ca_certificate_into_apc(ca_certificate, apc_client)
+    return certificate_private_key, certificate, ca_key_arn
 
 
 def import_tr_34(clear_key: str, export_mode: str, key_type: str, mode_of_use: str, algorithm, kdh_certificate,
                  kdh_private_key, kdh_ca_key_arn, apc_client):
+    """
+    Imports a key into AWS Payment Cryptography using TR-34 key block format.
+
+    Args:
+        clear_key (str): The key to import in hexadecimal format
+        export_mode (str): The export mode for the key block
+        key_type (str): The type of key being imported
+        mode_of_use (str): The mode of use for the key
+        algorithm: The algorithm associated with the key
+        kdh_certificate: The Key Distribution Host certificate
+        kdh_private_key: The private key for the Key Distribution Host
+        kdh_ca_key_arn (str): ARN of the Certificate Authority key
+        apc_client: AWS Payment Cryptography client
+
+    Returns:
+        str: The ARN of the imported key in AWS Payment Cryptography
+
+    The function performs the following steps:
+    1. Converts the clear key from hex to bytes
+    2. Gets import parameters from AWS Payment Cryptography
+    3. Constructs TR-34 header and payload
+    4. Imports the key using TR-34 key block format
+    """
     # We prep the key as bytes
     clear_key_bytes = binascii.unhexlify(clear_key.replace(" ", ""))
 
@@ -683,7 +728,27 @@ def import_tr_34(clear_key: str, export_mode: str, key_type: str, mode_of_use: s
     return imported_symmetric_key_res['Key']['KeyArn']
 
 
-def export_tr_34(key_arn, krd_ca_key_arn, krd_certificate, krd_private_key, apc_client):
+def export_tr_34(key_arn: str, krd_ca_key_arn: str, krd_certificate: x509.Certificate,
+                 krd_private_key: rsa.RSAPrivateKey, apc_client: boto3.client) -> str:
+    """
+    Exports a key from AWS Payment Cryptography using TR-34 key block format.
+
+    Args:
+        key_arn (str): ARN of the key to export
+        krd_ca_key_arn (str): ARN of the Certificate Authority key
+        krd_certificate (x509.Certificate): X.509 certificate for key receiving device
+        krd_private_key (rsa.RSAPrivateKey): Private key for key receiving device
+        apc_client (boto3.client): AWS Payment Cryptography client
+
+    Returns:
+        str: The exported key in hexadecimal format
+
+    The function performs the following steps:
+    1. Generates a random nonce
+    2. Gets export parameters from AWS Payment Cryptography
+    3. Exports the key using TR-34 key block format
+    4. Decodes the exported key material
+    """
     nonce = secrets.token_bytes(8)
 
     export_parameters_res = apc_client.get_parameters_for_export(
@@ -698,7 +763,8 @@ def export_tr_34(key_arn, krd_ca_key_arn, krd_certificate, krd_private_key, apc_
             'ExportToken': export_parameters_res['ExportToken'],
             'KeyBlockFormat': 'X9_TR34_2012',
             'RandomNonce': nonce.hex().upper(),
-            'WrappingKeyCertificate': base64.b64encode(krd_certificate.public_bytes(encoding=serialization.Encoding.PEM)).decode('UTF-8')
+            'WrappingKeyCertificate': base64.b64encode(
+                krd_certificate.public_bytes(encoding=serialization.Encoding.PEM)).decode('UTF-8')
         }
     })
     key_material = export_res['WrappedKey']['KeyMaterial']

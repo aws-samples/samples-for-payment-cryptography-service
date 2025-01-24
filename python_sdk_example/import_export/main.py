@@ -20,11 +20,11 @@ MAC = '75BDAEF54587CAE6563A5CE57B4B9F9F'
 apc_client = boto3.client('payment-cryptography', region_name='us-east-1')
 
 
-def delete_key(key_arn):
+def delete_key(key_arn : str):
     apc_client.delete_key(KeyIdentifier=key_arn, DeleteKeyInDays=3)
 
 
-def check_tdes_kcv(plaintext_key: str | bytes, key_arn):
+def check_tdes_kcv(plaintext_key: str | bytes, key_arn : str):
     if type(plaintext_key) is str:
         plaintext_key_bytes = bytes.fromhex(plaintext_key)
     else:
