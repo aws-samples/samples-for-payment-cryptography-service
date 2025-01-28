@@ -1,7 +1,5 @@
 package aws.sample.paymentcryptography.terminal;
 
-import java.io.IOException;
-
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -16,19 +14,21 @@ import aws.sample.paymentcryptography.ServiceConstants;
 
 public class PinTerminal_ISO_0_Format extends AbstractTerminal {
 
-    private static final String KEYS_KSN_DATA_FILE = "/test-data/sample-pek-ksn-data-iso-0-format.json";
-    private static final String PINS_DATA_FILE = "/test-data/sample-pin-pan.json";
-    
+    protected static String KEYS_KSN_DATA_FILE = "/test-data/sample-pek-ksn-data-iso-0-format.json";
+
     public static void main(String[] args) throws Exception {
         testISOFormat0Block();
     }
 
     public static void testISOFormat0Block() throws Exception {
-        JSONObject pinData = loadPinAndPanData();
+        JSONObject pinData = loadData(System.getProperty("user.dir") + PINS_DATA_FILE);
         JSONArray pinDataList = pinData.getJSONArray("pins");
 
-        JSONObject keyKsnData = loadPEKAndKSNData();
+        JSONObject keyKsnData = loadData(System.getProperty("user.dir") + KEYS_KSN_DATA_FILE);
         JSONArray keyKsnDList = keyKsnData.getJSONArray("data");
+
+        JSONObject panArqcData = loadData(System.getProperty("user.dir") + ARQC_DATA_FILE);
+        JSONArray panArqcDList = panArqcData.getJSONArray("arqcData");
 
         for (int i = 0; i < pinDataList.length(); i++) {
             JSONObject panPinOBject = pinDataList.getJSONObject(i);
@@ -44,11 +44,16 @@ public class PinTerminal_ISO_0_Format extends AbstractTerminal {
                 String ksn = keyKsnDList.getJSONObject(i).getString("ksn");
                 String dukptEncryptedBlock = encryptPINWithDukpt(dukptVariantKey, encodedPin);
 
+                String arqcKey = panArqcDList.getJSONObject(i).getString("udk");
+                String arqcTransactionData = panArqcDList.getJSONObject(i).getString("transactionData");
+                String arqcCryptogram = Utils.generateIso9797Alg3Mac(arqcKey, arqcTransactionData);
+                
                 System.out.println(
                         "PAN -> " + pan + ", PIN -> " + pin + ", key -> " + dukptVariantKey + ", ksn -> " + ksn);
                 System.out.println("EncodedPin block is " + encodedPin);
                 System.out.println(("DUKPT encrypted block - " + dukptEncryptedBlock));
-                Thread.sleep(2000);
+                System.out.println("ARQC payload is " + arqcCryptogram);
+                //Thread.sleep(2000);
                 RestTemplate restTemplate = new RestTemplate();
 
                 String verifyPinUrl = ServiceConstants.HOST
@@ -57,6 +62,10 @@ public class PinTerminal_ISO_0_Format extends AbstractTerminal {
                 String finalVerifyPinlUrl = new StringBuilder(verifyPinUrl)
                         .append("?encryptedPin=")
                         .append(dukptEncryptedBlock)
+                        .append("&transactionData=")
+                        .append(arqcTransactionData)
+                        .append("&arqcCryptogram=")
+                        .append(arqcCryptogram)
                         .append("&pan=")
                         .append(pan)
                         .append("&ksn=")
@@ -67,6 +76,7 @@ public class PinTerminal_ISO_0_Format extends AbstractTerminal {
                         String.class);
                 System.out.println("Response from PinTranslate service for (DUKPT encrypted) pin verify operation is "
                         + verifyPinResponse.getBody());
+                //System.exit(1);
                 Thread.sleep(3500);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -82,20 +92,14 @@ public class PinTerminal_ISO_0_Format extends AbstractTerminal {
         System.arraycopy(maskedKey, 0, key, 0, 16);
         System.arraycopy(maskedKey, 0, key, 16, 8);
 
-        Cipher chiper = Cipher.getInstance(TerminalConstants.TRANSFORMATION);
-        chiper.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, TerminalConstants.ALGORITHM),
+        Cipher cipher = Cipher.getInstance(TerminalConstants.TRANSFORMATION);
+        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, TerminalConstants.ALGORITHM),
                 new IvParameterSpec(new byte[8]));
 
-        byte[] encVal = chiper.doFinal(Hex.decodeHex(encodedPinBlock));
+        byte[] encVal = cipher.doFinal(Hex.decodeHex(encodedPinBlock));
         String encryptedValue = Hex.encodeHexString(encVal);
         return encryptedValue;
     }
 
-    private static JSONObject loadPinAndPanData() throws IOException {
-        return loadData(System.getProperty("user.dir") + PINS_DATA_FILE);
-    }
-
-    private static JSONObject loadPEKAndKSNData() throws IOException {
-        return loadData(System.getProperty("user.dir") + KEYS_KSN_DATA_FILE);
-    }
+    
 }

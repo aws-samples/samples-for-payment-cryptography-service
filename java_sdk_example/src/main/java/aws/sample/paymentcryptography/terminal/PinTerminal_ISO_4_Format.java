@@ -1,7 +1,5 @@
 package aws.sample.paymentcryptography.terminal;
 
-import java.io.IOException;
-
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -51,11 +49,14 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
     */
     public static void testISOFormat4Block() throws Exception {
 
-        JSONObject pinData = loadPinAndPanData();
+        JSONObject pinData = loadData(System.getProperty("user.dir") + PINS_DATA_FILE);
         JSONArray pinDataList = pinData.getJSONArray("pins");
 
-        JSONObject keyKsnData = loadPEKAndKSNData();
+        JSONObject keyKsnData = loadData(System.getProperty("user.dir") + KEYS_KSN_DATA_FILE);
         JSONArray keyKsnDList = keyKsnData.getJSONArray("data");
+
+        JSONObject panArqcData = loadData(System.getProperty("user.dir") + ARQC_DATA_FILE);
+        JSONArray panArqcDList = panArqcData.getJSONArray("arqcData");
         
         for (int i = 0; i < pinDataList.length(); i++) {
             JSONObject panPinOBject = pinDataList.getJSONObject(i);
@@ -88,7 +89,15 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
                 System.out.println("ISO_4_FORMAT Encrypted Intermeidiate pinblock B = " + encodedPinPanBlock);
                 String encryptedPinPanBlock = aesEncryptPINWithDukpt(dukptVariantKey, encodedPinPanBlock.toString());
                 System.out.println("ISO_4_FORMAT Final encrypted pin pan block = " + encryptedPinPanBlock);
-                Thread.sleep(2000);
+                
+                
+                String arqcKey = panArqcDList.getJSONObject(i).getString("udk");
+                String arqcTransactionData = panArqcDList.getJSONObject(i).getString("transactionData");
+                
+                String arqcCryptogram = Utils.generateIso9797Alg3Mac(arqcKey, arqcTransactionData);
+                System.out.println("ARQC payload is " + arqcCryptogram);
+
+                //Thread.sleep(2000);
                 RestTemplate restTemplate = new RestTemplate();
                 String verifyPinUrl = ServiceConstants.HOST
                         + ServiceConstants.PIN_PROCESSOR_SERVICE_ISO_4_FORMAT_PIN_VERIFY_API;
@@ -96,7 +105,10 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
                 String finalVerifyPinlUrl = new StringBuilder(verifyPinUrl)
                         .append("?encryptedPin=")
                         .append(encryptedPinPanBlock)
-                        //.append("55E6425336993ABF7FE30065C3AB09F1")
+                        .append("&transactionData=")
+                        .append(arqcTransactionData)
+                        .append("&arqcCryptogram=")
+                        .append(arqcCryptogram)
                         .append("&pan=")
                         .append(pan)
                         .append("&ksn=")
@@ -168,14 +180,6 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
             hexValue.append(String.format("%02X", i));
         }
         return hexValue.toString();
-    }
-
-    private static JSONObject loadPinAndPanData() throws IOException {
-        return loadData(System.getProperty("user.dir") + PINS_DATA_FILE);
-    }
-
-    private static JSONObject loadPEKAndKSNData() throws IOException {
-        return loadData(System.getProperty("user.dir") + KEYS_KSN_DATA_FILE);
     }
 
 }

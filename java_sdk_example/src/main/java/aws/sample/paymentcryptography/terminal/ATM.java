@@ -40,7 +40,7 @@ public class ATM extends AbstractTerminal {
                 RestTemplate restTemplate = new RestTemplate();
 
                 String setPinUrl = ServiceConstants.HOST
-                        + ServiceConstants.ISSUER_SERVICE_PIN_SET_API;
+                        + ServiceConstants.ISSUER_SERVICE_PIN_SET_API_ASYNC;
 
                 String finaSetPinlUrl = new StringBuilder(setPinUrl)
                         .append("?encryptedPinBLock=")

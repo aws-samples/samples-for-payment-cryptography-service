@@ -23,7 +23,7 @@ public class PaymentProcessorPinTranslateService {
 
     @GetMapping(ServiceConstants.PIN_PROCESSOR_SERVICE_ISO_0_FORMAT_PIN_VERIFY_API)
     @ResponseBody
-    public String verifyPinData_ISO_0_Format(@RequestParam String encryptedPin, @RequestParam String pan, @RequestParam String ksn) throws InterruptedException, ExecutionException {
+    public String verifyPinData_ISO_0_Format(@RequestParam String encryptedPin, @RequestParam String pan, @RequestParam String ksn,  @RequestParam String transactionData, @RequestParam String arqcCryptogram) throws InterruptedException, ExecutionException {
 
         Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData_ISO_0_Format Attempting to translate TDES BDK encrypted PIN block " + encryptedPin + " to PEK encrypted PIN Block thru AWS Cryptography Service");
         String acquirerWorkingKeyArn = getAcquirerWorkingKeyArn();
@@ -40,12 +40,16 @@ public class PaymentProcessorPinTranslateService {
         Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData_ISO_0_Format BDK PIN " + encryptedPin + " to PEK encrypted PIN Block " + translatePinDataResponse.pinBlock() + " translation is successful");
         RestTemplate restTemplate = new RestTemplate();
         String verifyPinUrl = ServiceConstants.HOST
-                    + ServiceConstants.ISSUER_SERVICE_PIN_VERIFY_API;
+                    + ServiceConstants.ISSUER_SERVICE_PIN_VERIFY_API_ASYNC;
         String finalVerifyPinlUrl = new StringBuilder(verifyPinUrl)
                 .append("?encryptedPin=")
                 .append(translatePinDataResponse.pinBlock())
                 .append("&pan=")
                 .append(pan)
+                .append("&transactionData=")
+                .append(transactionData)
+                .append("&arqcCryptogram=")
+                .append(arqcCryptogram)
                 .toString();
 
         ResponseEntity<String> verifyPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl, String.class);
@@ -55,7 +59,7 @@ public class PaymentProcessorPinTranslateService {
 
     @GetMapping(ServiceConstants.PIN_PROCESSOR_SERVICE_ISO_4_FORMAT_PIN_VERIFY_API)
     @ResponseBody
-    public String verifyPinData_ISO_4_Format(@RequestParam String encryptedPin, @RequestParam String pan, @RequestParam String ksn) throws InterruptedException, ExecutionException {
+    public String verifyPinData_ISO_4_Format(@RequestParam String encryptedPin, @RequestParam String pan, @RequestParam String ksn,  @RequestParam String transactionData, @RequestParam String arqcCryptogram) throws InterruptedException, ExecutionException {
 
         Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData_ISO_4_Format Attempting to translate BDK encrypted PIN block " + encryptedPin + " to PEK encrypted PIN Block thru AWS Cryptography Service");
         String acquirerWorkingKeyArn = getAcquirerWorkingKeyArn();
@@ -72,13 +76,17 @@ public class PaymentProcessorPinTranslateService {
         Logger.getGlobal().info("PaymentProcessorPinTranslateService:verifyPinData_ISO_4_Format BDK PIN " + encryptedPin + " to PEK encrypted PIN Block " + translatePinDataResponse.pinBlock() + " translation is successful");
         RestTemplate restTemplate = new RestTemplate();
         String verifyPinUrl = ServiceConstants.HOST
-                    + ServiceConstants.ISSUER_SERVICE_PIN_VERIFY_API;
-        String finalVerifyPinlUrl = new StringBuilder(verifyPinUrl)
-                .append("?encryptedPin=")
-                .append(translatePinDataResponse.pinBlock())
-                .append("&pan=")
-                .append(pan)
-                .toString();
+                    + ServiceConstants.ISSUER_SERVICE_PIN_VERIFY_API_ASYNC;
+                    String finalVerifyPinlUrl = new StringBuilder(verifyPinUrl)
+                    .append("?encryptedPin=")
+                    .append(translatePinDataResponse.pinBlock())
+                    .append("&pan=")
+                    .append(pan)
+                    .append("&transactionData=")
+                    .append(transactionData)
+                    .append("&arqcCryptogram=")
+                    .append(arqcCryptogram)
+                    .toString();
 
         ResponseEntity<String> verifyPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl, String.class);
         System.out.println("Issuer service response for PEK Pin verify is " + verifyPinResponse.getBody());

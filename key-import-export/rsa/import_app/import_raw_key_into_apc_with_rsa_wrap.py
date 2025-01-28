@@ -16,7 +16,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 The following api calls may be subject to https://aws.amazon.com/service-terms/ section 2 - Beta & Previews
 
-Usage - python3 import_raw_key_into_apc_with_rsa_wrap.py
+Usage - python import_raw_key_into_apc_with_rsa_wrap.py --action importclearkey --clearkey 6E46FE409DF704BCA75E7FF270B65E73 --clearkey_algorithm A
 '''
 import boto3
 import botocore.session
@@ -107,8 +107,10 @@ def ImportKey(WrappedKey,ImportToken,KeyAlgorithm="AES_128",KeyModesOfUse='{"Dec
                 "WrappingSpec": "RSA_OAEP_SHA_256"
             } 
             },
-            KeyCheckValueAlgorithm='ANSI_X9_24', Tags=[]
+            KeyCheckValueAlgorithm=KCVType, Tags=[]
         )
+    
+    
     
     print('************************ DONE *****************')
     print('Key Arn: ' + imported_symmetric_key_res['Key']['KeyArn'])
@@ -155,10 +157,11 @@ def WrapKey(wrappingCert,keyToWrap):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--action", help="Actions this script can perform",choices={"generateWrappingKey","importKey","demo"},default="demo")
-
-    parser.add_argument("--wrappedKey", "-w", help="Wrapped Key to import in RSA cryptogram format", default="")
+    parser.add_argument("--action", help="Actions this script can perform",choices={"generateWrappingKey","importKey","demo","importclearkey"},default="demo")
     parser.add_argument("--importToken", "-t", help="Pointer to key to unwrap key with",default="")
+    parser.add_argument("--wrappedKey", "-w", help="Wrapped Key to import in RSA cryptogram format")
+    parser.add_argument("--clearkey", "-k", help="Clearkey to import",default="")
+    parser.add_argument("--clearkey_algorithm", "-a", help="Clearkey algorithm - (T)des or (A)es",default="T",choices={"T","A"})
 
     args = parser.parse_args()
 
@@ -199,6 +202,59 @@ if __name__ == '__main__':
             ImportKeyArn,importedKcv = ImportKey(wrappedKey,importToken,KeyAlgorithm=KeyAlgo,KCVType=KcvType,KeyModesOfUse={"DeriveKey": True},KeyUsage="TR31_B0_BASE_DERIVATION_KEY")
             print("Done - Imported Key Cryptogram:",ImportKeyArn,"KCV:",importedKcv) 
             print("KCV Matches?",importedKcv==sourceKcv)
+    elif args.action == "importclearkey":
+        clearkey = binascii.unhexlify(args.clearkey)
+        algo = args.clearkey_algorithm
+
+        if clearkey != "":
+            print("Import a clear key")
+            print("Get parameters for import")
+            importRes = GetParametersForImport()
+            importToken = importRes["ImportToken"]
+            wrappingKeyAlgorithm = importRes["WrappingKeyAlgorithm"]
+            wrappingKeyCertificateChain = importRes["WrappingKeyCertificateChain"]
+            wrappingKeyCertificate = importRes["WrappingKeyCertificate"]
+
+            
+            Keylength = len(clearkey)
+            #read length and map that to KeyAlgo
+
+            if algo == "A":
+                if Keylength == 16:
+                    KeyAlgo = 'AES_128'
+                else:
+                    print("Invalid Key length for AES under RSA")
+                    sys.exit(1)
+            elif algo == "T":
+                if Keylength == 16:
+                    KeyAlgo = 'TDES_2KEY'
+                elif Keylength == 24:
+                    KeyAlgo = 'TDES_3KEY'
+                else:
+                    print("Invalid Key length for TDES")
+
+            if algo == 'A':
+                print("Importing AES-128 symmetric key")
+                sourceKcv = GenerateAesKcv(clearkey)
+                KcvType= "CMAC"
+            elif algo == 'T':
+                print("Importing 2 key TDES symmetric key")
+                KcvType= "ANSI_X9_24"
+                sourceKcv = GenerateTdesKcv(clearkey)
+            else:
+                print("Invalid Key Algorithm for this sample code")
+                sys.exit(1)
+        else:
+            print("Missing key to import")
+            sys.exit(1)
+
+        print("Key Info Algo:",KeyAlgo,". Clear Key:",binascii.hexlify(clearkey).decode()," Calculated KCV: ", sourceKcv)
+        wrappedKey = WrapKey(wrappingKeyCertificate,clearkey)
+        print("Wrapped keyType",KeyAlgo,"Result:",wrappedKey)
+
+        ImportKeyArn,importedKcv = ImportKey(wrappedKey,importToken,KeyAlgorithm=KeyAlgo,KCVType=KcvType,KeyModesOfUse={"DeriveKey": True},KeyUsage="TR31_B0_BASE_DERIVATION_KEY")
+        print("Done - Imported Key Cryptogram:",ImportKeyArn,"KCV:",importedKcv) 
+        print("KCV Matches?",importedKcv==sourceKcv)
     else:
         if args.wrappedKey == "" or args.importToken == "":
             print("Import Token and wrappedKey required for importKey")
