@@ -119,8 +119,7 @@ if __name__ == "__main__":
     print("*********Generating a MAC key for MAC verification********")
     print("")
 
-    #response =  tr34.importTr34("ONLINE",MAC,"E","M3","C","")
-    response = tr31.importTR31(KEK,MAC,"E","M3","X","T","ONLINE",tr34_response[0],None,macAlias)
+    response = tr31.importTR31(KEK,MAC,"E","M3","C","T","ONLINE",tr34_response[0],None,macAlias)
     print("MAC Key ARN:",response[0])
     print("Alias:",response[1])
     """ try:

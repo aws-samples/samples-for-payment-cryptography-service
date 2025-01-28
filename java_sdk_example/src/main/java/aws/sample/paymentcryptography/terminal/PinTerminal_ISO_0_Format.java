@@ -1,5 +1,7 @@
 package aws.sample.paymentcryptography.terminal;
 
+import java.util.logging.Logger;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -34,7 +36,7 @@ public class PinTerminal_ISO_0_Format extends AbstractTerminal {
             JSONObject panPinOBject = pinDataList.getJSONObject(i);
 
             try {
-                System.out.println("---------testDUKPTPinValidation ---------");
+                Logger.getGlobal().info("---------testDUKPTPinValidation ---------");
                 String pan = (panPinOBject).getString("pan");
                 String pin = (panPinOBject).getString("pin");
 
@@ -48,11 +50,11 @@ public class PinTerminal_ISO_0_Format extends AbstractTerminal {
                 String arqcTransactionData = panArqcDList.getJSONObject(i).getString("transactionData");
                 String arqcCryptogram = Utils.generateIso9797Alg3Mac(arqcKey, arqcTransactionData);
                 
-                System.out.println(
+                Logger.getGlobal().info(
                         "PAN -> " + pan + ", PIN -> " + pin + ", key -> " + dukptVariantKey + ", ksn -> " + ksn);
-                System.out.println("EncodedPin block is " + encodedPin);
-                System.out.println(("DUKPT encrypted block - " + dukptEncryptedBlock));
-                System.out.println("ARQC payload is " + arqcCryptogram);
+                Logger.getGlobal().info("EncodedPin block is " + encodedPin);
+                Logger.getGlobal().info(("DUKPT encrypted block - " + dukptEncryptedBlock));
+                Logger.getGlobal().info("ARQC payload is " + arqcCryptogram);
                 //Thread.sleep(2000);
                 RestTemplate restTemplate = new RestTemplate();
 
@@ -74,7 +76,7 @@ public class PinTerminal_ISO_0_Format extends AbstractTerminal {
 
                 ResponseEntity<String> verifyPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl,
                         String.class);
-                System.out.println("Response from PinTranslate service for (DUKPT encrypted) pin verify operation is "
+                Logger.getGlobal().info("Response from PinTranslate service for (DUKPT encrypted) pin verify operation is "
                         + verifyPinResponse.getBody());
                 //System.exit(1);
                 Thread.sleep(3500);

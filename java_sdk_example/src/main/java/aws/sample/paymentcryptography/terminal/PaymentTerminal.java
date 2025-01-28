@@ -1,6 +1,7 @@
 package aws.sample.paymentcryptography.terminal;
 
 import java.math.BigInteger;
+import java.util.logging.Logger;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
@@ -29,14 +30,14 @@ public class PaymentTerminal extends AbstractTerminal {
         String paymentAuthorizationUrl = ServiceConstants.HOST
                 + ServiceConstants.PAYMENT_PROCESSOR_SERVICE_AUTHORIZE_PAYMENT_API;
 
-        System.out.println("curr dir is " + System.getProperty("user.dir"));
+        Logger.getGlobal().info("curr dir is " + System.getProperty("user.dir"));
         JSONObject keyAndKSNData = loadKeyAndKSNData();
         JSONArray dataList = keyAndKSNData.getJSONArray("data");
 
         dataList.forEach(dataObject -> {
             try {
 
-                System.out.println("--------------------------------------------------------------");
+                Logger.getGlobal().info("--------------------------------------------------------------");
                 String track2Data = new StringBuilder()
                 .append(";")
                 .append((new BigInteger(getRandomNumber(20))))
@@ -49,7 +50,7 @@ public class PaymentTerminal extends AbstractTerminal {
                         ((JSONObject) dataObject).get("dataKey").toString(),
                         track2Data,
                         ((JSONObject) dataObject).get("ksn").toString());
-                System.out.println("track2data is " + track2Data + ", DUKPT encrypted data is " + encryptedData);
+                Logger.getGlobal().info("track2data is " + track2Data + ", DUKPT encrypted data is " + encryptedData);
                 Thread.sleep(1000);
                 StringBuilder builder = new StringBuilder()
                         .append("?encryptedData=")
@@ -59,11 +60,11 @@ public class PaymentTerminal extends AbstractTerminal {
                         .append(((JSONObject) dataObject).get("ksn").toString());
                 String finalUrl = new StringBuilder(paymentAuthorizationUrl).append(builder).toString();
                 ResponseEntity<String> response = restTemplate.getForEntity(finalUrl, String.class);
-                System.out.println("Decrypted response from Cryptography Service - " + response.getBody());
+                Logger.getGlobal().info("Decrypted response from Cryptography Service - " + response.getBody());
                 Thread.sleep(1200);
                 JSONObject responseObject = new JSONObject(response.getBody());
-                //System.out.println("response is " + responseObject.getString("response") + " mac is " + responseObject.getString("mac"));
-                System.out.println("MAC Validated - " + validateMAC(responseObject.getString("response"),responseObject.getString("mac").toLowerCase()));
+                //Logger.getGlobal().info("response is " + responseObject.getString("response") + " mac is " + responseObject.getString("mac"));
+                Logger.getGlobal().info("MAC Validated - " + validateMAC(responseObject.getString("response"),responseObject.getString("mac").toLowerCase()));
                 Thread.sleep(3500);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -76,7 +77,7 @@ public class PaymentTerminal extends AbstractTerminal {
             return false;
         }
         String macOnTerminal = TerminalMAC.getMac(Hex.encodeHexString(response.getBytes()));
-        System.out.println("MAC from payment service - " + macToVerify + ", MAC from terminal - " + macOnTerminal);
+        Logger.getGlobal().info("MAC from payment service - " + macToVerify + ", MAC from terminal - " + macOnTerminal);
         return macOnTerminal.trim().toLowerCase().startsWith(macToVerify);
     }
 

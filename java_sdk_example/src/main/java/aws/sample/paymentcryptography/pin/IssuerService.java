@@ -95,16 +95,19 @@ public class IssuerService extends AbstractIssuerService {
                         Logger.getGlobal().info("Sync IssuerService:pinAuthorizationFlow PIN and ARQC, PIN Block - " + encryptedPin
                                         + " with PAN " + pan + " ARQC " + arqcCryptogram);
 
-                        Logger.getGlobal().info("Step A - verifyARQCCryptogram");
+                        Logger.getGlobal().info("Step A - verifyARQCCryptogram start");
                         VerifyAuthRequestCryptogramResponse verifyAuthRequestCryptogramResponse = verifyARQCCryptogram(
                                         arqcCryptogram, transactionData, pan);
-                        Logger.getGlobal().info("Step B - verifyPinData");
+                        Logger.getGlobal().info("Step A - verifyARQCCryptogram complete");                                        
+                        Logger.getGlobal().info("Step B - verifyPinData start");
                         VerifyPinDataResponse verifyPinDataResponse = verifyPinData(encryptedPin,
                                         issuerPekAlias.keyArn(),
                                         pinValidationKeyAlias.keyArn(), getRepository().getEntry(pan),
                                         ServiceConstants.ISO_0_PIN_BLOCK_FORMAT, pan);
-                        Logger.getGlobal().info("Step C - verifyBalance");                
+                                        Logger.getGlobal().info("Step B - verifyPinData complete");
+                        Logger.getGlobal().info("Step C - verifyBalance");
                         boolean verifyBalance = validateTransaction(transactionData);
+                        Logger.getGlobal().info("Step C - verifyBalance complete");
 
                         if (verifyPinDataResponse != null && verifyAuthRequestCryptogramResponse != null
                                         && verifyBalance) {

@@ -1,6 +1,7 @@
 package aws.sample.paymentcryptography;
 
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Logger;
 
 import software.amazon.awssdk.services.paymentcryptography.model.Alias;
 
@@ -12,7 +13,7 @@ public class CreateAliasUtil {
             aliasName = args[0];
         }
         Alias alias = ControlPlaneUtils.getOrCreateAlias(aliasName);
-        System.out.println(String.format("Alias name: %s", alias.aliasName()));
-        System.out.println(String.format("Key ARN: %s", alias.keyArn()));
+        Logger.getGlobal().info(String.format("Alias name: %s", alias.aliasName()));
+        Logger.getGlobal().info(String.format("Key ARN: %s", alias.keyArn()));
     }
 }

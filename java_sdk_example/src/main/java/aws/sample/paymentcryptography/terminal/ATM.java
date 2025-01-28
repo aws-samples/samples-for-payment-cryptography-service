@@ -1,6 +1,7 @@
 package aws.sample.paymentcryptography.terminal;
 
 import java.io.IOException;
+import java.util.logging.Logger;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
@@ -28,14 +29,14 @@ public class ATM extends AbstractTerminal {
 
         dataList.forEach(panPinOBject -> {
             try {
-                System.out.println("---------testPinSet ---------");
+                Logger.getGlobal().info("---------testPinSet ---------");
                 String pan = ((JSONObject) panPinOBject).getString("pan");
                 String pin = ((JSONObject) panPinOBject).getString("pin");
-                System.out.println("PAN -> " + pan + ", PIN -> " + pin);
+                Logger.getGlobal().info("PAN -> " + pan + ", PIN -> " + pin);
                 String encodedPin = encodeForISO0Format(pin, pan);
-                System.out.println("ISO_0_Format Encoded Pin block is " + encodedPin);
+                Logger.getGlobal().info("ISO_0_Format Encoded Pin block is " + encodedPin);
                 String pekEncryptedBlock = encryptPINWithPEK(TerminalConstants.PEK, encodedPin);
-                System.out.println(("PEK encrypted block - " + pekEncryptedBlock));
+                Logger.getGlobal().info(("PEK encrypted block - " + pekEncryptedBlock));
                 Thread.sleep(2000);
                 RestTemplate restTemplate = new RestTemplate();
 
@@ -49,7 +50,7 @@ public class ATM extends AbstractTerminal {
                         .append(pan).toString();
 
                 ResponseEntity<String> setPinResponse = restTemplate.getForEntity(finaSetPinlUrl, String.class);
-                System.out.println("Response from issuer service for (PEK encrypted) pin set operation is "
+                Logger.getGlobal().info("Response from issuer service for (PEK encrypted) pin set operation is "
                         + setPinResponse.getBody());
                 Thread.sleep(3500);
             } catch (Exception e) {

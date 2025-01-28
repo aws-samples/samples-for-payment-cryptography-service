@@ -53,7 +53,7 @@ public class PaymentProcessorPinTranslateService {
                 .toString();
 
         ResponseEntity<String> verifyPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl, String.class);
-        System.out.println("Issuer service response for PEK Pin verify is " + verifyPinResponse.getBody());
+        Logger.getGlobal().info("Issuer service response for PEK Pin verify is " + verifyPinResponse.getBody());
         return verifyPinResponse.getBody();
     }
 
@@ -89,7 +89,7 @@ public class PaymentProcessorPinTranslateService {
                     .toString();
 
         ResponseEntity<String> verifyPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl, String.class);
-        System.out.println("Issuer service response for PEK Pin verify is " + verifyPinResponse.getBody());
+        Logger.getGlobal().info("Issuer service response for PEK Pin verify is " + verifyPinResponse.getBody());
         return verifyPinResponse.getBody();
     }
 
@@ -102,11 +102,11 @@ public class PaymentProcessorPinTranslateService {
     private static String getAcquirerWorkingKeyArn() throws InterruptedException, ExecutionException {
         Alias acquirerWorkingKeyAlias = ControlPlaneUtils.getOrCreateAlias(ServiceConstants.PIN_TRANSLATION_KEY_ALIAS);
         if (StringUtils.isBlank(acquirerWorkingKeyAlias.keyArn())) {
-            System.out.println("No AWS PEK found, creating a new one.");
+            Logger.getGlobal().info("No AWS PEK found, creating a new one.");
             Key acquirerWorkingKey = ControlPlaneUtils.createPEK(ServiceConstants.PEK_ALGORITHM);
             acquirerWorkingKeyAlias = ControlPlaneUtils.upsertAlias(acquirerWorkingKeyAlias.aliasName(),
                     acquirerWorkingKey.keyArn());
-            System.out.println(String.format("PEK created: %s", acquirerWorkingKeyAlias.keyArn()));
+            Logger.getGlobal().info(String.format("PEK created: %s", acquirerWorkingKeyAlias.keyArn()));
             return acquirerWorkingKeyAlias.keyArn();
         }
         return acquirerWorkingKeyAlias.keyArn();

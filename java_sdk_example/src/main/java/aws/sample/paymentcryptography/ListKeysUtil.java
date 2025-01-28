@@ -2,6 +2,7 @@ package aws.sample.paymentcryptography;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Logger;
 
 import software.amazon.awssdk.services.paymentcryptography.PaymentCryptographyClient;
 import software.amazon.awssdk.services.paymentcryptography.model.Key;
@@ -23,14 +24,14 @@ public class ListKeysUtil {
         ListKeysRequest request = ListKeysRequest.builder().build();
         List<KeySummary> keys = client.listKeys(request).keys();
         if (keys.size() == 0) {
-            System.out.println("No keys found");
+            Logger.getGlobal().info("No keys found");
             return;
         }
 
         for (KeySummary key : keys) {
             Key fullKey = ControlPlaneUtils.getKey(key.keyArn());
             KeyAttributes attrs = fullKey.keyAttributes();
-            System.out.println(String.format(
+            Logger.getGlobal().info(String.format(
                     "%s (%s / %s / %s)",
                     key.keyArn(),
                     attrs.keyClass(),

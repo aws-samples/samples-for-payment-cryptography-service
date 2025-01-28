@@ -129,44 +129,44 @@ public abstract class AbstractIssuerService {
     /* private GeneratePinDataResponse generatePinData() {
         // finds or generates a Pin Generation Key (used for generating random PINs)
         if (null == pgkAlias.keyArn()) {
-            System.out.println("No PGK found, creating a new one.");
+            Logger.getGlobal().info("No PGK found, creating a new one.");
             Key pgkKey = ControlPlaneUtils.createVisaPGK(ServiceConstants.PGK_ALGORITHM);
             pgkAlias = ControlPlaneUtils.upsertAlias(pgkAliasName, pgkKey.keyArn());
-            System.out.println(String.format("PGK created: %s", pgkAlias.keyArn()));
+            Logger.getGlobal().info(String.format("PGK created: %s", pgkAlias.keyArn()));
         } else {
-            System.out.println(String.format("PGK already exists: %s", pgkAlias.keyArn()));
+            Logger.getGlobal().info(String.format("PGK already exists: %s", pgkAlias.keyArn()));
         }
 
         // finds existing or generates a Pin Encryption Key (used for encryption pin
         // payloads)
         if (null == pekAlias.keyArn()) {
-            System.out.println("No PEK found, creating a new one.");
+            Logger.getGlobal().info("No PEK found, creating a new one.");
             Key pekKey = ControlPlaneUtils.createPEK(ServiceConstants.PEK_ALGORITHM);
             pekAlias = ControlPlaneUtils.upsertAlias(pekAliasName, pekKey.keyArn());
-            System.out.println(String.format("PEK created: %s", pekAlias.keyArn()));
+            Logger.getGlobal().info(String.format("PEK created: %s", pekAlias.keyArn()));
         } else {
-            System.out.println(String.format("PEK already exists: %s", pekAlias.keyArn()));
+            Logger.getGlobal().info(String.format("PEK already exists: %s", pekAlias.keyArn()));
         }
 
         // Generate a BDK used as the base deriviation key typically for DUKPT
         if (null == bdkAlias.keyArn()) {
-            System.out.println("No BDK found, creating a new one.");
+            Logger.getGlobal().info("No BDK found, creating a new one.");
             Key bdkKey = ControlPlaneUtils.createBDK(ServiceConstants.BDK_ALGORITHM);
             bdkAlias = ControlPlaneUtils.upsertAlias(bdkAliasName, bdkKey.keyArn());
-            System.out.println(String.format("BDK created: %s", bdkAlias.keyArn()));
+            Logger.getGlobal().info(String.format("BDK created: %s", bdkAlias.keyArn()));
         } else {
-            System.out.println(String.format("BDK already exists: %s", bdkAlias.keyArn()));
+            Logger.getGlobal().info(String.format("BDK already exists: %s", bdkAlias.keyArn()));
         }
-        System.out.println("Creating a random pin and returns back the encrypted pin and visa/ABA PVV");
+        Logger.getGlobal().info("Creating a random pin and returns back the encrypted pin and visa/ABA PVV");
         GeneratePinDataResponse pinDataGenerationResponse = DataPlaneUtils.generateVisaPinBlock(
                 pekAliasName,
                 pgkAliasName,
                 ServiceConstants.ISO_0_PIN_BLOCK_FORMAT,
                 ServiceConstants.PAN,
                 ServiceConstants.PIN_VERIFICATION_KEY_INDEX);
-        System.out.println(String.format("PIN block: %s", pinDataGenerationResponse.encryptedPinBlock()));
+        Logger.getGlobal().info(String.format("PIN block: %s", pinDataGenerationResponse.encryptedPinBlock()));
 
-        System.out.println("Translating encrypted PIN under PEK to encrypted under DUKPT");
+        Logger.getGlobal().info("Translating encrypted PIN under PEK to encrypted under DUKPT");
         String pinBlockUnderBDK = DataPlaneUtils.translateVisaPinBlockPekToBdk(
                 pekAliasName,
                 ServiceConstants.ISO_0_PIN_BLOCK_FORMAT,
@@ -177,7 +177,7 @@ public abstract class AbstractIssuerService {
                 ServiceConstants.KSN,
                 ServiceConstants.PAN);
 
-        System.out.println(String.format("Translated PIN block: %s", pinBlockUnderBDK));
+        Logger.getGlobal().info(String.format("Translated PIN block: %s", pinBlockUnderBDK));
         return pinDataGenerationResponse;
     } */
 

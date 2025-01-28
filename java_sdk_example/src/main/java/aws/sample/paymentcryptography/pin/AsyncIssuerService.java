@@ -171,11 +171,12 @@ public class AsyncIssuerService extends AbstractIssuerService {
         CompletableFuture<Boolean> futureVerifyBalance = CompletableFuture.supplyAsync(() -> {
             // Check if the balance is sufficient
             try {
-                Logger.getGlobal().info("STEP B - validateTransactionAsync");
+                Logger.getGlobal().info("STEP B - validateTransactionAsync started");
                 boolean transactionValid = validateTransaction(transactionData);
-                Logger.getGlobal().info("STEP B - validateTransactionAsync");
+                Logger.getGlobal().info("STEP B - validateTransactionAsync completed");
                 return transactionValid;
             } catch (Exception e) {
+                Logger.getGlobal().info("STEP B - validateTransactionAsync failed");
                 throw new CompletionException(e);
             }
         });

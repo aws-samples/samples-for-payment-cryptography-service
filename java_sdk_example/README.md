@@ -73,7 +73,7 @@ cd samples-for-payment-cryptography-service/java_sdk_example
 ```
 #### PinTerminals
 
-There are 2 variations of Pin terminals.
+There are 2 variations of Pin terminals. Both of these create the encrypted PIN block along with [ARQC cryptogram](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/data-operations.verifyauthrequestcryptogram.html) for pin authorization flow.
 
 - [PinTerminal using ISO 0 Format for Pin Encryption](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_0_Format.java)
 
@@ -84,7 +84,7 @@ There are 2 variations of Pin terminals.
   This class simulates terminal encrypting a plain text PIN using [ISO 4 Format](https://listings.pcisecuritystandards.org/documents/Implementing_ISO_Format_4_PIN_Blocks_Information_Supplement.pdf) for PIN encryption.
   
      
-Both classes above are a simulation of a terminal that accepts PIN and sends it for verification. It uses pre setup PIN data to create an encoded PIN block and encrypts that block using pres setup [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json) and [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json) . The classes are setup for 2 flows 1/new pin setup, 2/ pin verification. The encrypted data is then sent to the [PIN translating service](src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) which translates the encrypted pin blocks according to the incoming and outgoing ISO formats then connects to the [Issuer](src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) to verify the PIN.
+Both classes above are a simulation of a terminal that accepts PIN and transaction and sends it for authorization. It uses pre setup PIN data to create an encoded PIN block and encrypts that block using pres setup samples of [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json), [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json) and [ARQC key and transaction data](/java_sdk_example/test-data/sample-pan-arqc-key.json). The classes are setup for 2 flows 1/new pin setup, 2/ pin authorization. The encrypted data is then sent to the [PIN translating service](src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) which translates the encrypted pin blocks according to the incoming and outgoing ISO formats then connects to the [Issuer](src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) to verify the PIN.
 
 To run - 
 
@@ -101,7 +101,7 @@ cd samples-for-payment-cryptography-service/java_sdk_example
 ```
 
 ## Helper classes
-Following are helper classes to support the flows defined above. 
+Following are additional helper classes for reference only.
 
 #### CreateAlias
 
