@@ -14,7 +14,7 @@ import logging
 import argparse
 
 
-from Crypto.Hash import SHA256
+from Crypto.Hash import SHA256, CMAC
 from Crypto.Cipher import DES3
 from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
@@ -42,10 +42,6 @@ OID_SHA256 = bytes.fromhex('608648016503040201')
 OID_DES_EDE3_CBC =   bytes.fromhex('2A864886F70D0307')
 OID_AES_AES128_CBC = bytes.fromhex('608648016503040102')
 
-OID_ENCRYPTION = OID_DES_EDE3_CBC
-BLOCK_SIZE = 8
-
-
 OID_PKCS7_DATA = bytes.fromhex('2A864886F70D010701')
 OID_RSAES_OEAP = bytes.fromhex('2A864886F70D010107')
 OID_P_SPECIFIED = bytes.fromhex('2A864886F70D010109')
@@ -62,15 +58,15 @@ IMPORT_KEY_ALIAS = 'alias/tr34-key-import'
 
 
 
-def constructTr34Header(keyType,modeOfUse,exportMode):
+def constructTr34Header(algo,keyType,modeOfUse,exportMode):
     """
     Constructs the TR34 header (which is the same as TR-31 header with the length ignored
     """
-    versionID = 'D'
+    versionID = 'D' #ignored in tr-34
     length = '9999' #ignored in tr-34
 
 
-    header = versionID + length + keyType + 'T' + modeOfUse + "00" + exportMode + "0000"
+    header = versionID + length + keyType + algo + modeOfUse + "00" + exportMode + "0000"
     return header
 
 
@@ -147,7 +143,7 @@ def encode_asn(asn_data):
     certificates this is meant for development purposes only. This assumes permissions to run relevant commands on the service.
     If run in offline mode (runMode = OFFLINE), then this script can be run without direct access to the service as well.
     """
-def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",bdkAliasName=None,deleteOldKeys=False):
+def importTr34(runMode,clearKey,exportMode,algorithm,keyType,modeOfUse,region,krdCert="",bdkAliasName=None,deleteOldKeys=False):
     global KDH_CA_KEY_ALIAS
 
 
@@ -263,7 +259,7 @@ def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",b
 
 
     ###########################################################
-    # Generate a TDES_3DES key
+    # Generate a key
     ###########################################################
     if (clearKey == None or clearKey == ""):
         symmetric_key_binary = secrets.token_bytes(16)
@@ -284,9 +280,10 @@ def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",b
     if (runMode == "OFFLINE"):
         krd_cert_base64 = krdCert
     else:
+        # RSA_3072 allows for an AES-128 ephemeral key to be used, extending TR-34 wrapped key support up to AES-128
         import_parameters_res = apc_client.get_parameters_for_import(
             KeyMaterialType='TR34_KEY_BLOCK',
-            WrappingKeyAlgorithm='RSA_2048')
+            WrappingKeyAlgorithm='RSA_3072') 
         import_token = import_parameters_res['ImportToken']
 
         krd_cert_base64 = import_parameters_res['WrappingKeyCertificate'];
@@ -312,42 +309,57 @@ def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",b
     kdh_certificate_id_asn = (0x30, True, [kdh_certificate_issuer_asn, kdh_certificate_serial_number_asn])
 
     ###########################################################
+    # Generate ephemeral key and iv
+    ###########################################################
+
+    # All key blocks may be protected with AES128-CBC-Pad, the purpose
+    # of this validation is to demonstrate the use of both methods
+    if algorithm == "A":
+        key_block_encryption_oid = OID_AES_AES128_CBC
+        key_block_encryption_block_size = AES.block_size
+        ephemeral_key_size = 16
+    else:
+        key_block_encryption_oid = OID_DES_EDE3_CBC
+        key_block_encryption_block_size = DES3.block_size
+        ephemeral_key_size = 24
+
+    key_block_iv = secrets.token_bytes(key_block_encryption_block_size) #8 for 3DES, #16 for AES
+    ephemeral_key = secrets.token_bytes(ephemeral_key_size) #24 for 3DES3key, #16 for AES-128
+
+    ###########################################################
     # Build TR-34 Key Block
     ###########################################################
+
+    key_block_header_attr = (0x30, True, [
+        (0x06, False, OID_PKCS7_DATA),
+        (0x31, True, [
+            (0x04, False, constructTr34Header(algorithm,keyType,modeOfUse,exportMode).encode())
+        ])
+    ])
 
     key_block_unpadded = encode_asn([(0x30, True, [
         (0x02, False, bytes.fromhex('01')),
         kdh_certificate_id_asn,
         (0x04, False, symmetric_key_binary),
-        (0x30, True, [
-            (0x06, False, OID_PKCS7_DATA),
-            (0x31, True, [
-                (0x04, False, constructTr34Header(keyType,modeOfUse,exportMode).encode())
-            ])
-        ])
+        key_block_header_attr,
     ])])
 
 
     key_block_pkcs_padding = b''
-    if len(key_block_unpadded) % BLOCK_SIZE != 0:
-        padding_length = BLOCK_SIZE - (len(key_block_unpadded) % BLOCK_SIZE)
-        key_block_pkcs_padding = bytes.fromhex((str("{:02d}".format(padding_length)))*padding_length)
+    # Padding is always applied, even when the unpadded data matches a
+    # block size multiple, to allow for unambiguous padding removal.
+    padding_length = key_block_encryption_block_size - (len(key_block_unpadded) % key_block_encryption_block_size)
+    key_block_pkcs_padding = bytes.fromhex((str("{:02x}".format(padding_length)))*padding_length)
     key_block = key_block_unpadded + key_block_pkcs_padding
-
-    ###########################################################
-    # Generate ephemeral key and iv
-    ###########################################################
-
-    key_block_iv = secrets.token_bytes(BLOCK_SIZE) #8 for 3DES
-    ephemeral_key = secrets.token_bytes(24) #24 for 3DES
 
     ###########################################################
     # Encrypt Key Block
     ###########################################################
 
-    tr34_key_block_cipher = DES3.new(ephemeral_key, DES3.MODE_CBC, key_block_iv)
-
-
+    if key_block_encryption_oid == OID_AES_AES128_CBC:
+        tr34_key_block_cipher = AES.new(ephemeral_key, AES.MODE_CBC, key_block_iv)
+    else:
+        tr34_key_block_cipher = DES3.new(ephemeral_key, DES3.MODE_CBC, key_block_iv)
 
     encrypted_key_block = tr34_key_block_cipher.encrypt(key_block)
 
@@ -396,7 +408,7 @@ def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",b
         (0x30, True, [
             (0x06, False, OID_PKCS7_DATA),
             (0x30, True, [
-                (0x06, False, OID_ENCRYPTION),
+                (0x06, False, key_block_encryption_oid),
                 (0x04, False, key_block_iv),
                 (0x80, False, encrypted_key_block)
             ])
@@ -414,10 +426,6 @@ def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",b
     ###########################################################
 
 
-
-
-    tr34header = constructTr34Header(keyType,modeOfUse,exportMode);
-
     tr34_authentication_data_asn = [
         (0x30, True, [
             (0x06, False, OID_CONTENT_TYPE),
@@ -431,12 +439,7 @@ def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",b
                 (0x04, False, tr34_2pass_nonce)
             ])
         ]),
-        (0x30, True, [
-            (0x06, False, OID_PKCS7_DATA),
-            (0x31, True, [
-                (0x04, False, tr34header.encode())
-            ])
-        ]),
+        key_block_header_attr,
         (0x30, True, [
             (0x06, False, OID_MESSAGE_DIGEST),
             (0x31, True, [
@@ -521,7 +524,7 @@ def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",b
                     'RandomNonce': tr34_2pass_nonce.hex().upper(),
                 }
             },
-            KeyCheckValueAlgorithm='ANSI_X9_24', Tags=[]
+            KeyCheckValueAlgorithm="CMAC" if algorithm == "A" else 'ANSI_X9_24', Tags=[]
         )
         try: 
             apc_client.get_alias(AliasName=IMPORT_KEY_ALIAS) 
@@ -529,11 +532,16 @@ def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",b
         except apc_client.exceptions.ResourceNotFoundException: 
             apc_client.create_alias(AliasName=IMPORT_KEY_ALIAS, KeyArn=imported_symmetric_key_res['Key']['KeyArn'])
 
+        if algorithm == "A":
+            calculated_kcv = CMAC.new(symmetric_key_binary, msg=bytes.fromhex('00'*AES.block_size), ciphermod=AES).digest()[:3].hex().upper()
+        else:
+            calculated_kcv = DES3.new(symmetric_key_binary, DES3.MODE_ECB).encrypt(bytes.fromhex('00'*DES3.block_size))[:3].hex().upper()
+
         print('************************ DONE *****************')
         print('Imported Key: ' + symmetric_key_binary.hex())
         print('Key Arn: ' + imported_symmetric_key_res['Key']['KeyArn'])
         print('Reported KCV: ' + imported_symmetric_key_res['Key']['KeyCheckValue'])
-        print('Calculated KCV: ' + DES3.new(symmetric_key_binary, DES3.MODE_ECB).encrypt(bytes.fromhex('0000000000000000'))[:3].hex().upper())
+        print('Calculated KCV: ' + calculated_kcv)
         print('Reported Type: ' + imported_symmetric_key_res['Key']['KeyAttributes']['KeyAlgorithm'])
 
         return imported_symmetric_key_res['Key']['KeyArn'],IMPORT_KEY_ALIAS
@@ -542,12 +550,13 @@ def importTr34(runMode,clearKey,exportMode,keyType,modeOfUse,region,krdCert="",b
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(prog='TR-34 Key Import Sample Code',
-                                     description='Sample code to generate a TR-34 2012 non-CMS format and import it into AWS Payment Cryptography.  This assumes that the clear key is 3DES.  The application can be run in the default \
+                                     description='Sample code to generate a TR-34 2012 non-CMS format and import it into AWS Payment Cryptography.  Clear keys up to AES-128 are supported, in the same way as RSA Wrap.  The application can be run in the default \
                         mode which will directly import the key into the service. Alternately, it can be run in offline mode where you specify the KRD X509 cert (in base64) \
                             and it will only produce the tr-34 payload but leave the importing up to you.',
                                      epilog='This is intended as sample code and comes with no warranty and is not intended for us with production keys.')
     parser.add_argument("--clearkey", help="Clear Text Key to import", default="8A8349794C9EE9A4C2927098F249FED6")
     parser.add_argument("--exportmode", "-e", help="Export Mode - E, S or N", default="E",choices=['E', 'S', 'N'])
+    parser.add_argument("--algorithm", "-a", help="Algorithm of key - (T)DES or (A)ES", default="T", choices=['A', 'T'])
     parser.add_argument("--keytype", "-t", help="Key Type according to TR-31 norms. For instance K0, B0, etc", default="K0",choices=['K0', 'K1', 'B0', 'D0','P0','E0','E3','E6','E1','C0','E2'])
     parser.add_argument("--modeofuse", "-m", help="Mode of use according to TR-31 norms.  For instance B (encrypt/decrypt),X (derive key)", default="B",choices=['B', 'X', 'N','E','D','C','G','V'])
     parser.add_argument("--runmode", help="Run mode. APC will directly import will offline will only produce tr-34 payload", default="APC",choices=['APC', 'OFFLINE'])
@@ -559,7 +568,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print ("Sample code to generate a TR-34 2012 non-CMS format and import it into AWS Payment Cryptography")
-    print ("Assumes that the clear key is 3DES.")
+    print ("Clear keys up to AES-128 are supported, in the same way as RSA Wrap.")
     print ("Can be run in the default mode where it generates the payload and directly makes all required service calls OR ")
     print ("Given the additional input of a KRD X509 cert, it will produce the appropriate payload to be imported at a later time.")
 
@@ -567,7 +576,7 @@ if __name__ == "__main__":
     print ("Export Mode:",args.exportmode)
     print ("Key Type:",args.keytype)
     print ("Key Mode of use:",args.modeofuse)
-    print ("Key Algorithm:","TDES")
+    print ("Key Algorithm:",args.algorithm)
 
 
     if (args.runmode == 'OFFLINE'):
@@ -576,7 +585,7 @@ if __name__ == "__main__":
     else:
         print ("AWS Region:%s" % (args.region))
 
-        importTr34(args.runmode,args.clearkey,args.exportmode,args.keytype,args.modeofuse,args.region,args.krdcert,None,args.deleteoldkeys)
+        importTr34(args.runmode,args.clearkey,args.exportmode,args.algorithm,args.keytype,args.modeofuse,args.region,args.krdcert,None,args.deleteoldkeys)
 
         print('')
         print('')
