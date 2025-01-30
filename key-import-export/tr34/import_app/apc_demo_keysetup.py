@@ -33,8 +33,10 @@ issuerGenerationAlias = 'alias/issuerPinValidationKey'
 """ ISO_9797_3_MAC_KEY for MAC verification """
 MAC = '75BDAEF54587CAE6563A5CE57B4B9F9F'
 """ MAC = '8A8349794C9EE9A4C2927098F249FED6' """
-macAlias = 'alias/tr31_macValidationKey'
+macAlias = 'alias/macValidationKey'
 
+ARQC = "6786D3D6F2266E19B67302438ACE7551" # MDK
+arqcAlias = 'alias/arqcValidationKey'
 
 apc_client = boto3.client('payment-cryptography')
 
@@ -107,12 +109,20 @@ if __name__ == "__main__":
     print("Pin Verification Value Alias",response[1])
 
     print("")
+    print("*********Importing ARQC key for cryptogram validation*********")
+    print("")
+    response = tr31.importTR31(KEK,ARQC,"E","E0","X","T","ONLINE",tr34_response[0],None,arqcAlias)
+    print("ARQC Validation Key ARN:",response[0])
+    print("Alias:",response[1])
+
+    print("")
     print("*********Generating a MAC key for MAC verification********")
     print("")
 
-    response =  tr34.importTr34("ONLINE",MAC,"E","M3","C","")
-
-    try:
+    response = tr31.importTR31(KEK,MAC,"E","M3","C","T","ONLINE",tr34_response[0],None,macAlias)
+    print("MAC Key ARN:",response[0])
+    print("Alias:",response[1])
+    """ try:
         alias_res = apc_client.get_alias(AliasName=macAlias)
     except apc_client.exceptions.ResourceNotFoundException:
         alias_res = apc_client.create_alias(AliasName=macAlias)
@@ -120,7 +130,7 @@ if __name__ == "__main__":
     
     macResponse = apc_client.update_alias(AliasName=macAlias,KeyArn=response[0])
     print("MAC Key Alias:",macResponse['Alias']['AliasName'])
-    print("MAC Key ARN:",macResponse['Alias']['KeyArn'])
+    print("MAC Key ARN:",macResponse['Alias']['KeyArn']) """
 
     
     print("")
