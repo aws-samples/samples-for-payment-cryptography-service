@@ -1,6 +1,7 @@
 package aws.sample.paymentcryptography.pin;
 
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.json.JSONObject;
@@ -47,13 +48,14 @@ public class IssuerService extends AbstractIssuerService {
                                 null);
         }
 
+        // GET API for simplicity. In production scenarios, this would typically be a POST API
         @GetMapping(ServiceConstants.ISSUER_SERVICE_PIN_SET_API)
         @ResponseBody
         public String setPinData(@RequestParam String encryptedPinBLock, @RequestParam String pan) {
                 JSONObject response = new JSONObject();
-                Logger.getGlobal().info(
-                                "IssuerService:setPinData Attempting to set PIN thru AWS Cryptography Service via encrypted PIN Block - "
-                                                + encryptedPinBLock);
+                Logger.getGlobal().log(Level.INFO,
+                                "IssuerService:setPinData Attempting to set PIN via encrypted PIN Block {0}",
+                                encryptedPinBLock);
                 try {
                         VisaPinVerificationValue pinVerificationValue = VisaPinVerificationValue
                                         .builder()
@@ -75,9 +77,9 @@ public class IssuerService extends AbstractIssuerService {
 
                         GeneratePinDataResponse generatePinDataResponse = client.generatePinData(request);
                         response.put("status", "ok");
-                        Logger.getGlobal().info(
-                                        "IssuerService:setPinData Set PIN Data successful for encrypted PIN Block "
-                                                        + encryptedPinBLock);
+                        Logger.getGlobal().log(Level.INFO,
+                                        "IssuerService:setPinData Set PIN Data successful for encrypted PIN Block {0}",
+                                        encryptedPinBLock);
                         getRepository().addEntry(pan, generatePinDataResponse.pinData().verificationValue());
                 } catch (Exception exception) {
                         response.put("error", exception.getMessage());
@@ -86,36 +88,32 @@ public class IssuerService extends AbstractIssuerService {
                 return response.toString();
         }
 
+        // GET API for simplicity. In production scenarios, this would typically be a POST API
         @GetMapping(ServiceConstants.ISSUER_SERVICE_PIN_VERIFY_API)
         @ResponseBody
         public String pinAuthorizationFlow(@RequestParam String encryptedPin, @RequestParam String pan,
                         @RequestParam String transactionData, @RequestParam String arqcCryptogram) {
                 JSONObject response = new JSONObject();
                 try {
-                        Logger.getGlobal().info("Sync IssuerService:pinAuthorizationFlow PIN and ARQC, PIN Block - " + encryptedPin
-                                        + " with PAN " + pan + " ARQC " + arqcCryptogram);
+                        Logger.getGlobal().log(Level.INFO,
+                                        "Sync IssuerService:pinAuthorizationFlow PIN and ARQC, PIN Block {0} with PAN %s, ARQC {1} ",
+                                        new Object[] { encryptedPin,
+                                                        pan, arqcCryptogram });
 
-                        Logger.getGlobal().info("Step A - verifyARQCCryptogram start");
+                        Logger.getGlobal().log(Level.INFO, "Step A Start verifyARQCCryptogram");
                         VerifyAuthRequestCryptogramResponse verifyAuthRequestCryptogramResponse = verifyARQCCryptogram(
                                         arqcCryptogram, transactionData, pan);
-                        Logger.getGlobal().info("Step A - verifyARQCCryptogram complete");                                        
-                        Logger.getGlobal().info("Step B - verifyPinData start");
+                        Logger.getGlobal().log(Level.INFO, "Step A Complete - verifyARQCCryptogram complete");
+                        Logger.getGlobal().log(Level.INFO, "Step B Start - verifyPinData");
                         VerifyPinDataResponse verifyPinDataResponse = verifyPinData(encryptedPin,
                                         issuerPekAlias.keyArn(),
                                         pinValidationKeyAlias.keyArn(), getRepository().getEntry(pan),
                                         ServiceConstants.ISO_0_PIN_BLOCK_FORMAT, pan);
-                                        Logger.getGlobal().info("Step B - verifyPinData complete");
-                        Logger.getGlobal().info("Step C - verifyBalance");
-                        boolean verifyBalance = validateTransaction(transactionData);
-                        Logger.getGlobal().info("Step C - verifyBalance complete");
-
-                        if (verifyPinDataResponse != null && verifyAuthRequestCryptogramResponse != null
-                                        && verifyBalance) {
-                                response.put("status", "valid");
-                        } else {
-                                response.put("status", "fail");
-                        }
-                        return response.toString();
+                        Logger.getGlobal().log(Level.INFO, "Step B Complete - verifyPinData");
+                        Logger.getGlobal().log(Level.INFO, "Step C Start - verifyBalance");
+                        JSONObject verifyBalanceStatus = validateTransaction(transactionData);
+                        Logger.getGlobal().log(Level.INFO, "Step C Complete - verifyBalance");
+                        return verifyBalanceStatus.toString();
                 } catch (Exception exception) {
                         exception.printStackTrace();
                         response.put("status", "fail");
@@ -129,20 +127,20 @@ public class IssuerService extends AbstractIssuerService {
                 VerifyPinDataRequest verifyPinDataRequest = getVerifyPinDataRequest(encryptedPinBlock,
                                 encryptionKeyIdentifier,
                                 verificationKeyIdentifer, pinVerificationValue, pinBlockFormat, primaryAccountNumber);
-                Logger.getGlobal().info(
-                                "IssuerService:verifyPinData Attempting to verify PIN data through AWS Cryptography Service for encrypted PIN block "
-                                                + encryptedPinBlock);
+                Logger.getGlobal().log(Level.INFO,
+                                "IssuerService:verifyPinData Attempting to verify PIN for encrypted PIN block {0}",
+                                encryptedPinBlock);
                 VerifyPinDataResponse verifyPinDataResponse = client.verifyPinData(verifyPinDataRequest);
                 Logger.getGlobal()
-                                .info("IssuerService:verifyPinData Verification of encrypted PIN block "
-                                                + encryptedPinBlock
-                                                + " through AWS Cryptography Service is successful");
+                                .log(Level.INFO, "IssuerService:verifyPinData Verification of encrypted PIN block {0} is successful",
+                                                encryptedPinBlock);
                 return verifyPinDataResponse;
         }
 
         protected VerifyAuthRequestCryptogramResponse verifyARQCCryptogram(String arqcCryptogram,
                         String transactionData, String pan) {
-                Logger.getGlobal().info("IssuerService:verifyARQCCryptogram " + arqcCryptogram + " pan " + pan);
+                Logger.getGlobal().log(Level.INFO, "IssuerService:verifyARQCCryptogram {0} pan {1}",
+                                new Object[] { arqcCryptogram, pan });
                 VerifyAuthRequestCryptogramRequest request = getVerifyARQCCryptogramRequest(arqcCryptogram,
                                 transactionData,
                                 pan);

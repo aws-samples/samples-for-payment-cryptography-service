@@ -2,6 +2,7 @@ package aws.sample.paymentcryptography;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import software.amazon.awssdk.services.paymentcryptography.PaymentCryptographyAsyncClient;
@@ -66,7 +67,7 @@ public class ControlPlaneUtils {
             
             return response
                 .thenCompose(aliasResponse -> {
-                    Logger.getGlobal().info("alias " + aliasName + " exists.");
+                    Logger.getGlobal().log(Level.INFO,"alias {0}",aliasName);
                     // If alias exists, return it
                     return CompletableFuture.completedFuture(aliasResponse.alias());
                 })

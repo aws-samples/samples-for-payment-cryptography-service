@@ -88,47 +88,4 @@ public abstract class AbstractTerminal {
         return output;
     }
 
-    /* // Utility method to convert hex string to byte array
-    public static byte[] hexStringToByteArray(String hex) {
-        int len = hex.length();
-        byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
-                    + Character.digit(hex.charAt(i + 1), 16));
-        }
-        return data;
-    }
-
-    // Utility method to convert byte array to hex string
-    public static String byteArrayToHexString(byte[] bytes) {
-        StringBuilder hex = new StringBuilder();
-        for (byte b : bytes) {
-            hex.append(String.format("%02X", b));
-        }
-        return hex.toString();
-    }
-
-    public static byte[] applyISO9797Method1Padding(byte[] input, int blockSize) {
-        // Calculate padding length
-        int paddingLength = blockSize - (input.length % blockSize);
-        if (paddingLength == blockSize) {
-            // If data is already aligned with block size, no padding needed
-            return input;
-        }
-        
-        // Create new array with room for padding
-        byte[] paddedData = new byte[input.length + paddingLength];
-        
-        // Copy original data
-        System.arraycopy(input, 0, paddedData, 0, input.length);
-        
-        // Fill remaining bytes with zeros (M1 padding)
-        for (int i = input.length; i < paddedData.length; i++) {
-            paddedData[i] = 0x00;
-        }
-        
-        return paddedData;
-    } */
-    
-    
 }

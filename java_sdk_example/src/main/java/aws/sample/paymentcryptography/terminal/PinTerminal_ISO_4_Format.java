@@ -1,5 +1,6 @@
 package aws.sample.paymentcryptography.terminal;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.crypto.Cipher;
@@ -63,13 +64,13 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
         for (int i = 0; i < pinDataList.length(); i++) {
             JSONObject panPinOBject = pinDataList.getJSONObject(i);
             try {
-                Logger.getGlobal().info("---------testDUKPTPinValidation with ISO 4 FORMAT Pin Block---------");
+                Logger.getGlobal().log(Level.INFO,"---------testDUKPTPinValidation with ISO 4 FORMAT Pin Block---------");
                 String pan = (panPinOBject).getString("pan");
                 String pin = (panPinOBject).getString("pin");
 
                 //pan = pan.substring(0, 12); // READ FROM END INSTEAD OF BEGINNING
 
-                Logger.getGlobal().info("plain text pin is " + pin + " and pan is " + pan);
+                Logger.getGlobal().log(Level.INFO,"plain text pin is {0}, and pan is {1}", new Object[] {pin,pan});
 
                 String pinBlock = getISO4FormatPINBlock(pin);
                 String panBlock = getISO4FormatPANBlock(pan);
@@ -77,33 +78,30 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
                 String dukptVariantKey = keyKsnDList.getJSONObject(i).getString("pek");
                 String ksn = keyKsnDList.getJSONObject(i).getString("ksn");
 
-                Logger.getGlobal().info("pin block is " + pinBlock.toString());
-                Logger.getGlobal().info("pan block is " + panBlock.toString());
-                Logger.getGlobal().info("DUKPT is " + dukptVariantKey);
-                Logger.getGlobal().info("KSN is  " + ksn);
                 String encryptedPinBlock = aesEncryptPINWithDukpt(dukptVariantKey, pinBlock.toString());
-                Logger.getGlobal().info("ISO_4_FORMAT Encrypted Intermeidiate pinblock A = " + encryptedPinBlock);
+                Logger.getGlobal().log(Level.INFO,"ISO_4_FORMAT Encrypted Intermeidiate pinblock A is {0}", encryptedPinBlock);
 
                 byte[] encodedPinAndPanXorBytes = xorBytes(Hex.decodeHex(encryptedPinBlock),
                         Hex.decodeHex(panBlock));
 
                 String encodedPinPanBlock = Hex.encodeHexString(encodedPinAndPanXorBytes);
-                Logger.getGlobal().info("ISO_4_FORMAT Encrypted Intermeidiate pinblock B = " + encodedPinPanBlock);
+                Logger.getGlobal().log(Level.INFO,"ISO_4_FORMAT Encrypted Intermeidiate pinblock B is {0}", encodedPinPanBlock);
                 String encryptedPinPanBlock = aesEncryptPINWithDukpt(dukptVariantKey, encodedPinPanBlock.toString());
-                Logger.getGlobal().info("ISO_4_FORMAT Final encrypted pin pan block = " + encryptedPinPanBlock);
+                Logger.getGlobal().log(Level.INFO,"ISO_4_FORMAT Final encrypted pin pan block is {0}", encryptedPinPanBlock);
                 
                 
                 String arqcKey = panArqcDList.getJSONObject(i).getString("udk");
                 String arqcTransactionData = panArqcDList.getJSONObject(i).getString("transactionData");
                 
                 String arqcCryptogram = Utils.generateIso9797Alg3Mac(arqcKey, arqcTransactionData);
-                Logger.getGlobal().info("ARQC payload is " + arqcCryptogram);
 
-                //Thread.sleep(2000);
+                Logger.getGlobal().log(Level.INFO, "PAN -> {0}, PIN Block {1}, Key {2}, KSN {3}, ARQC {4}",  new Object[] {pan,pin,dukptVariantKey,ksn,arqcCryptogram});
+
                 RestTemplate restTemplate = new RestTemplate();
                 String verifyPinUrl = ServiceConstants.HOST
                         + ServiceConstants.PIN_PROCESSOR_SERVICE_ISO_4_FORMAT_PIN_VERIFY_API;
 
+                // Making GET calls for simplicity. In produciton scenarios these would typically be POST calls with appropriate payload.
                 String finalVerifyPinlUrl = new StringBuilder(verifyPinUrl)
                         .append("?encryptedPin=")
                         .append(encryptedPinPanBlock)
@@ -116,13 +114,9 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
                         .append("&ksn=")
                         .append(ksn)
                         .toString();
-                Logger.getGlobal().info("pin verification endpoint url -> " + finalVerifyPinlUrl);
                 ResponseEntity<String> setPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl, String.class);
-                Logger.getGlobal().info("Pin Verify operation response from issuer service for ISO_4_FORMAT encrypted pin is "
-                        + setPinResponse.getBody());
+                Logger.getGlobal().log(Level.INFO,"Pin Verify operation response from issuer service for ISO_4_FORMAT encrypted pin is {0}", setPinResponse.getBody());
                         Thread.sleep(3500);
-                // final byte[] pinblock = xorBytes(pinToByteArray, panToByteArray);
-                
             } catch (Exception exception) {
                 exception.printStackTrace();
             }

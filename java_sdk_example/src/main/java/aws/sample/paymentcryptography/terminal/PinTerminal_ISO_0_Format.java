@@ -1,5 +1,6 @@
 package aws.sample.paymentcryptography.terminal;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.crypto.Cipher;
@@ -36,7 +37,7 @@ public class PinTerminal_ISO_0_Format extends AbstractTerminal {
             JSONObject panPinOBject = pinDataList.getJSONObject(i);
 
             try {
-                Logger.getGlobal().info("---------testDUKPTPinValidation ---------");
+                Logger.getGlobal().log(Level.INFO,"---------testDUKPTPinValidation ---------");
                 String pan = (panPinOBject).getString("pan");
                 String pin = (panPinOBject).getString("pin");
 
@@ -50,17 +51,14 @@ public class PinTerminal_ISO_0_Format extends AbstractTerminal {
                 String arqcTransactionData = panArqcDList.getJSONObject(i).getString("transactionData");
                 String arqcCryptogram = Utils.generateIso9797Alg3Mac(arqcKey, arqcTransactionData);
                 
-                Logger.getGlobal().info(
-                        "PAN -> " + pan + ", PIN -> " + pin + ", key -> " + dukptVariantKey + ", ksn -> " + ksn);
-                Logger.getGlobal().info("EncodedPin block is " + encodedPin);
-                Logger.getGlobal().info(("DUKPT encrypted block - " + dukptEncryptedBlock));
-                Logger.getGlobal().info("ARQC payload is " + arqcCryptogram);
-                //Thread.sleep(2000);
+                Logger.getGlobal().log(Level.INFO, "PAN -> {0}, PIN {1}, key {2}, ksn {3}, ARQC {4}",  new Object[] {pan,pin,dukptVariantKey,ksn,arqcCryptogram});
+                
                 RestTemplate restTemplate = new RestTemplate();
 
                 String verifyPinUrl = ServiceConstants.HOST
                         + ServiceConstants.PIN_PROCESSOR_SERVICE_ISO_0_FORMAT_PIN_VERIFY_API;
 
+                // Making GET calls for simplicity. In produciton scenarios these would typically be POST calls with appropriate payload.        
                 String finalVerifyPinlUrl = new StringBuilder(verifyPinUrl)
                         .append("?encryptedPin=")
                         .append(dukptEncryptedBlock)
@@ -76,10 +74,10 @@ public class PinTerminal_ISO_0_Format extends AbstractTerminal {
 
                 ResponseEntity<String> verifyPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl,
                         String.class);
-                Logger.getGlobal().info("Response from PinTranslate service for (DUKPT encrypted) pin verify operation is "
-                        + verifyPinResponse.getBody());
-                //System.exit(1);
-                Thread.sleep(3500);
+                Logger.getGlobal().log(Level.INFO,"Response from PinTranslate service for (DUKPT encrypted) pin verify operation is {0} "
+                        , verifyPinResponse.getBody());
+                // Adding sleep so there's time between each request - making it easy to look at requsts on the console
+                Thread.sleep(3000);
             } catch (Exception e) {
                 e.printStackTrace();
             }

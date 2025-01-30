@@ -8,6 +8,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.springframework.stereotype.Component;
@@ -23,8 +24,7 @@ public class Repository {
 
     public Repository() throws Exception {
         if (!getPanToPinVerificationValueMapFile().exists()) {
-            Logger.getGlobal().info("Creating new pan to pin verification map file - "
-                    + getPanToPinVerificationValueMapFile().getAbsoluteFile());
+            Logger.getGlobal().log(Level.INFO,"Creating new pan to pin verification map file {0} ", getPanToPinVerificationValueMapFile().getAbsoluteFile());
             try {
                 panToPinVerificationValueMapFile.createNewFile();
             } catch (Exception exception) {
@@ -48,7 +48,8 @@ public class Repository {
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
-                bufferedReader.close();
+                if(bufferedReader!=null) 
+                    bufferedReader.close();
             }
             return map;
     }
