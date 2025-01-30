@@ -38,7 +38,6 @@ public class ATM extends AbstractTerminal {
                 Logger.getGlobal().log(Level.INFO,"ISO_0_Format Encoded Pin block is {0}" , encodedPin);
                 String pekEncryptedBlock = encryptPINWithPEK(TerminalConstants.PEK, encodedPin);
                 Logger.getGlobal().log(Level.INFO,"PEK encrypted block {0}",pekEncryptedBlock);
-                Thread.sleep(2000);
                 RestTemplate restTemplate = new RestTemplate();
 
                 String setPinUrl = ServiceConstants.HOST
@@ -52,7 +51,8 @@ public class ATM extends AbstractTerminal {
 
                 ResponseEntity<String> setPinResponse = restTemplate.getForEntity(finaSetPinlUrl, String.class);
                 Logger.getGlobal().log(Level.INFO,"Response from issuer service for (PEK encrypted) pin set operation is {0}",setPinResponse.getBody());
-                Thread.sleep(3500);
+                // Adding sleep to pause between requests so it's easier to read the log.
+                Thread.sleep(sleepTimeInMs);
             } catch (Exception e) {
                 e.printStackTrace();
             }
