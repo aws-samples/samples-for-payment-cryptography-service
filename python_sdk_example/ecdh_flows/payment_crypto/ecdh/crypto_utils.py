@@ -13,6 +13,8 @@ import base64
 import time
 import secrets
 
+private_ca_client = boto3.client('acm-pca')
+
 
 class CryptoUtils:
 
@@ -93,8 +95,8 @@ class CryptoUtils:
         :param template: Template ARN to use for the certificate
         :return:
         """
-        client = boto3.client('acm-pca')
-        response = client.issue_certificate(
+
+        response = private_ca_client.issue_certificate(
             CertificateAuthorityArn=ca_arn,
             Csr=csr,
             TemplateArn=template,
@@ -106,12 +108,12 @@ class CryptoUtils:
 
         while 1:
             try:
-                certificate_response = client.get_certificate(CertificateArn=certificate_arn,
-                                                              CertificateAuthorityArn=ca_arn)
+                certificate_response = private_ca_client.get_certificate(CertificateArn=certificate_arn,
+                                                                         CertificateAuthorityArn=ca_arn)
                 if 'CertificateChain' in certificate_response:
                     chain = certificate_response['CertificateChain']
                 else:
                     chain = None
                 return certificate_response['Certificate'], chain
-            except client.exceptions.RequestInProgressException:
+            except private_ca_client.exceptions.RequestInProgressException:
                 time.sleep(0.1)
