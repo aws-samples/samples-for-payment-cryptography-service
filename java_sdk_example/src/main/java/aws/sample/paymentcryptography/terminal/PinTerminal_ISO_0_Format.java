@@ -77,7 +77,7 @@ public class PinTerminal_ISO_0_Format extends AbstractTerminal {
                 Logger.getGlobal().log(Level.INFO,"Response from PinTranslate service for (DUKPT encrypted) pin verify operation is {0} "
                         , verifyPinResponse.getBody());
                 // Adding sleep so there's time between each request - making it easy to look at requsts on the console
-                Thread.sleep(3000);
+                Thread.sleep(sleepTimeInMs);
             } catch (Exception e) {
                 e.printStackTrace();
             }

@@ -64,7 +64,7 @@ public class PaymentTerminal extends AbstractTerminal {
                 ResponseEntity<String> response = restTemplate.getForEntity(finalUrl, String.class);
                 Logger.getGlobal().log(Level.INFO,"Decrypted response from Cryptography Service - {0}",response.getBody());
                 // Adding sleep to pause between requests so it's easier to read the log.
-                Thread.sleep(2000);
+                Thread.sleep(sleepTimeInMs);
                 JSONObject responseObject = new JSONObject(response.getBody());
                 //Logger.getGlobal().log(Level.INFO,"response is " + responseObject.getString("response") + " mac is " + responseObject.getString("mac"));
                 Logger.getGlobal().log(Level.INFO,"MAC Validated - {0}", validateMAC(responseObject.getString("response"),responseObject.getString("mac").toLowerCase()));
