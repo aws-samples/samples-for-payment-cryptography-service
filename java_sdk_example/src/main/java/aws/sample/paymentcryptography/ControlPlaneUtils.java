@@ -1,7 +1,11 @@
 package aws.sample.paymentcryptography;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import software.amazon.awssdk.services.paymentcryptography.PaymentCryptographyAsyncClient;
 import software.amazon.awssdk.services.paymentcryptography.PaymentCryptographyClient;
 import software.amazon.awssdk.services.paymentcryptography.model.Alias;
 import software.amazon.awssdk.services.paymentcryptography.model.CreateAliasRequest;
@@ -17,7 +21,8 @@ import software.amazon.awssdk.services.paymentcryptography.model.UpdateAliasResp
 public class ControlPlaneUtils {
 
     private static PaymentCryptographyClient controlPlaneClient = null;
-
+    private static PaymentCryptographyAsyncClient controlPlaneAsyncClient = null;
+    
     public static PaymentCryptographyClient  getControlPlaneClient() {
         if (controlPlaneClient != null) {
             return controlPlaneClient;
@@ -25,6 +30,15 @@ public class ControlPlaneUtils {
         }
         controlPlaneClient =  PaymentCryptographyClient.create();
         return controlPlaneClient;
+    }
+
+    public static PaymentCryptographyAsyncClient  getControlPlaneAsyncClient() {
+        if (controlPlaneAsyncClient != null) {
+            return controlPlaneAsyncClient;
+
+        }
+        controlPlaneAsyncClient =  PaymentCryptographyAsyncClient.create();
+        return controlPlaneAsyncClient;
     }
 
     public static Alias getOrCreateAlias(String aliasName) throws InterruptedException, ExecutionException {
@@ -39,6 +53,38 @@ public class ControlPlaneUtils {
         } catch (RuntimeException ex) {
             CreateAliasRequest request = CreateAliasRequest.builder().aliasName(aliasName).keyArn(keyArn).build();
             return client.createAlias(request).alias();
+        }
+    }
+
+    public static Alias getOrCreateAliasAsync(String aliasName, String keyArn) throws InterruptedException, ExecutionException {
+        PaymentCryptographyAsyncClient client = getControlPlaneAsyncClient();
+        try {
+            CompletableFuture<GetAliasResponse> response = client.getAlias(
+                GetAliasRequest.builder()
+                    .aliasName(aliasName)
+                    .build()
+            );
+            
+            return response
+                .thenCompose(aliasResponse -> {
+                    Logger.getGlobal().log(Level.INFO,"alias {0}",aliasName);
+                    // If alias exists, return it
+                    return CompletableFuture.completedFuture(aliasResponse.alias());
+                })
+                .exceptionally(throwable -> {
+                    // If alias doesn't exist, create it
+                    CreateAliasRequest request = CreateAliasRequest.builder()
+                        .aliasName(aliasName)
+                        .keyArn(keyArn)
+                        .build();
+                        
+                    return client.createAlias(request)
+                        .thenApply(createResponse -> createResponse.alias())
+                        .join();
+                })
+                .get();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get or create alias: " + aliasName, e);
         }
     }
 

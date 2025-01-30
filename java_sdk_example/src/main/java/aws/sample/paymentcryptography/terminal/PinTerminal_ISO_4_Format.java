@@ -1,6 +1,7 @@
 package aws.sample.paymentcryptography.terminal;
 
-import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
@@ -51,22 +52,25 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
     */
     public static void testISOFormat4Block() throws Exception {
 
-        JSONObject pinData = loadPinAndPanData();
+        JSONObject pinData = loadData(System.getProperty("user.dir") + PINS_DATA_FILE);
         JSONArray pinDataList = pinData.getJSONArray("pins");
 
-        JSONObject keyKsnData = loadPEKAndKSNData();
+        JSONObject keyKsnData = loadData(System.getProperty("user.dir") + KEYS_KSN_DATA_FILE);
         JSONArray keyKsnDList = keyKsnData.getJSONArray("data");
+
+        JSONObject panArqcData = loadData(System.getProperty("user.dir") + ARQC_DATA_FILE);
+        JSONArray panArqcDList = panArqcData.getJSONArray("arqcData");
         
         for (int i = 0; i < pinDataList.length(); i++) {
             JSONObject panPinOBject = pinDataList.getJSONObject(i);
             try {
-                System.out.println("---------testDUKPTPinValidation with ISO 4 FORMAT Pin Block---------");
+                Logger.getGlobal().log(Level.INFO,"---------testDUKPTPinValidation with ISO 4 FORMAT Pin Block---------");
                 String pan = (panPinOBject).getString("pan");
                 String pin = (panPinOBject).getString("pin");
 
                 //pan = pan.substring(0, 12); // READ FROM END INSTEAD OF BEGINNING
 
-                System.out.println("plain text pin is " + pin + " and pan is " + pan);
+                Logger.getGlobal().log(Level.INFO,"plain text pin is {0}, and pan is {1}", new Object[] {pin,pan});
 
                 String pinBlock = getISO4FormatPINBlock(pin);
                 String panBlock = getISO4FormatPANBlock(pan);
@@ -74,41 +78,45 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
                 String dukptVariantKey = keyKsnDList.getJSONObject(i).getString("pek");
                 String ksn = keyKsnDList.getJSONObject(i).getString("ksn");
 
-                System.out.println("pin block is " + pinBlock.toString());
-                System.out.println("pan block is " + panBlock.toString());
-                System.out.println("DUKPT is " + dukptVariantKey);
-                System.out.println("KSN is  " + ksn);
                 String encryptedPinBlock = aesEncryptPINWithDukpt(dukptVariantKey, pinBlock.toString());
-                System.out.println("ISO_4_FORMAT Encrypted Intermeidiate pinblock A = " + encryptedPinBlock);
+                Logger.getGlobal().log(Level.INFO,"ISO_4_FORMAT Encrypted Intermeidiate pinblock A is {0}", encryptedPinBlock);
 
                 byte[] encodedPinAndPanXorBytes = xorBytes(Hex.decodeHex(encryptedPinBlock),
                         Hex.decodeHex(panBlock));
 
                 String encodedPinPanBlock = Hex.encodeHexString(encodedPinAndPanXorBytes);
-                System.out.println("ISO_4_FORMAT Encrypted Intermeidiate pinblock B = " + encodedPinPanBlock);
+                Logger.getGlobal().log(Level.INFO,"ISO_4_FORMAT Encrypted Intermeidiate pinblock B is {0}", encodedPinPanBlock);
                 String encryptedPinPanBlock = aesEncryptPINWithDukpt(dukptVariantKey, encodedPinPanBlock.toString());
-                System.out.println("ISO_4_FORMAT Final encrypted pin pan block = " + encryptedPinPanBlock);
-                Thread.sleep(2000);
+                Logger.getGlobal().log(Level.INFO,"ISO_4_FORMAT Final encrypted pin pan block is {0}", encryptedPinPanBlock);
+                
+                
+                String arqcKey = panArqcDList.getJSONObject(i).getString("udk");
+                String arqcTransactionData = panArqcDList.getJSONObject(i).getString("transactionData");
+                
+                String arqcCryptogram = Utils.generateIso9797Alg3Mac(arqcKey, arqcTransactionData);
+
+                Logger.getGlobal().log(Level.INFO, "PAN -> {0}, PIN Block {1}, Key {2}, KSN {3}, ARQC {4}",  new Object[] {pan,pin,dukptVariantKey,ksn,arqcCryptogram});
+
                 RestTemplate restTemplate = new RestTemplate();
                 String verifyPinUrl = ServiceConstants.HOST
                         + ServiceConstants.PIN_PROCESSOR_SERVICE_ISO_4_FORMAT_PIN_VERIFY_API;
 
+                // Making GET calls for simplicity. In produciton scenarios these would typically be POST calls with appropriate payload.
                 String finalVerifyPinlUrl = new StringBuilder(verifyPinUrl)
                         .append("?encryptedPin=")
                         .append(encryptedPinPanBlock)
-                        //.append("55E6425336993ABF7FE30065C3AB09F1")
+                        .append("&transactionData=")
+                        .append(arqcTransactionData)
+                        .append("&arqcCryptogram=")
+                        .append(arqcCryptogram)
                         .append("&pan=")
                         .append(pan)
                         .append("&ksn=")
                         .append(ksn)
                         .toString();
-                System.out.println("pin verification endpoint url -> " + finalVerifyPinlUrl);
                 ResponseEntity<String> setPinResponse = restTemplate.getForEntity(finalVerifyPinlUrl, String.class);
-                System.out.println("Pin Verify operation response from issuer service for ISO_4_FORMAT encrypted pin is "
-                        + setPinResponse.getBody());
+                Logger.getGlobal().log(Level.INFO,"Pin Verify operation response from issuer service for ISO_4_FORMAT encrypted pin is {0}", setPinResponse.getBody());
                         Thread.sleep(3500);
-                // final byte[] pinblock = xorBytes(pinToByteArray, panToByteArray);
-                
             } catch (Exception exception) {
                 exception.printStackTrace();
             }
@@ -168,14 +176,6 @@ public class PinTerminal_ISO_4_Format extends AbstractTerminal {
             hexValue.append(String.format("%02X", i));
         }
         return hexValue.toString();
-    }
-
-    private static JSONObject loadPinAndPanData() throws IOException {
-        return loadData(System.getProperty("user.dir") + PINS_DATA_FILE);
-    }
-
-    private static JSONObject loadPEKAndKSNData() throws IOException {
-        return loadData(System.getProperty("user.dir") + KEYS_KSN_DATA_FILE);
     }
 
 }

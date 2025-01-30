@@ -2,6 +2,8 @@ package aws.sample.paymentcryptography;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import software.amazon.awssdk.services.paymentcryptography.PaymentCryptographyClient;
 import software.amazon.awssdk.services.paymentcryptography.model.Alias;
@@ -21,11 +23,11 @@ public class ListAliasesUtil {
         ListAliasesRequest request = ListAliasesRequest.builder().build();
         List<Alias> aliases = client.listAliases(request).aliases();
         if (aliases.size() == 0) {
-            System.out.println("No aliases found");
+            Logger.getGlobal().log(Level.INFO,"No aliases found");
             return;
         }
         for (Alias alias : aliases) {
-            System.out.println(String.format("%s : %s", alias.aliasName(), alias.keyArn()));
+            Logger.getGlobal().log(Level.INFO,"{0} : {1}", new Object[] {alias.aliasName(), alias.keyArn()});
         }
     }
 }

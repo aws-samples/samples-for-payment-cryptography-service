@@ -12,6 +12,9 @@ import org.json.JSONObject;
 
 public abstract class AbstractTerminal {
 
+    protected static String PINS_DATA_FILE = "/test-data/sample-pin-pan.json";
+    protected static String ARQC_DATA_FILE = "/test-data/sample-pan-arqc-key.json";
+
     private static Random rnd = new Random();
 
     protected static JSONObject loadData(String filePath) throws IOException {
@@ -83,7 +86,6 @@ public abstract class AbstractTerminal {
         }
 
         return output;
-
     }
 
 }

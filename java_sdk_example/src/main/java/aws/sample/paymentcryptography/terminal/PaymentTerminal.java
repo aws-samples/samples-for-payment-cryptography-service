@@ -1,6 +1,8 @@
 package aws.sample.paymentcryptography.terminal;
 
 import java.math.BigInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
@@ -29,14 +31,14 @@ public class PaymentTerminal extends AbstractTerminal {
         String paymentAuthorizationUrl = ServiceConstants.HOST
                 + ServiceConstants.PAYMENT_PROCESSOR_SERVICE_AUTHORIZE_PAYMENT_API;
 
-        System.out.println("curr dir is " + System.getProperty("user.dir"));
+        Logger.getGlobal().log(Level.INFO,"curr dir is {0}" ,System.getProperty("user.dir"));
         JSONObject keyAndKSNData = loadKeyAndKSNData();
         JSONArray dataList = keyAndKSNData.getJSONArray("data");
 
         dataList.forEach(dataObject -> {
             try {
 
-                System.out.println("--------------------------------------------------------------");
+                Logger.getGlobal().log(Level.INFO,"--------------------------------------------------------------");
                 String track2Data = new StringBuilder()
                 .append(";")
                 .append((new BigInteger(getRandomNumber(20))))
@@ -49,8 +51,9 @@ public class PaymentTerminal extends AbstractTerminal {
                         ((JSONObject) dataObject).get("dataKey").toString(),
                         track2Data,
                         ((JSONObject) dataObject).get("ksn").toString());
-                System.out.println("track2data is " + track2Data + ", DUKPT encrypted data is " + encryptedData);
-                Thread.sleep(1000);
+                Logger.getGlobal().log(Level.INFO,"track2data is {0}, DUKPT encrypted data is {1} " , new Object[] {track2Data,encryptedData});
+
+                // Making GET calls for simplicity. In produciton scenarios these would typically be POST calls with appropriate payload.        
                 StringBuilder builder = new StringBuilder()
                         .append("?encryptedData=")
                         .append(encryptedData)
@@ -59,12 +62,12 @@ public class PaymentTerminal extends AbstractTerminal {
                         .append(((JSONObject) dataObject).get("ksn").toString());
                 String finalUrl = new StringBuilder(paymentAuthorizationUrl).append(builder).toString();
                 ResponseEntity<String> response = restTemplate.getForEntity(finalUrl, String.class);
-                System.out.println("Decrypted response from Cryptography Service - " + response.getBody());
-                Thread.sleep(1200);
+                Logger.getGlobal().log(Level.INFO,"Decrypted response from Cryptography Service - {0}",response.getBody());
+                // Adding sleep to pause between requests so it's easier to read the log.
+                Thread.sleep(2000);
                 JSONObject responseObject = new JSONObject(response.getBody());
-                //System.out.println("response is " + responseObject.getString("response") + " mac is " + responseObject.getString("mac"));
-                System.out.println("MAC Validated - " + validateMAC(responseObject.getString("response"),responseObject.getString("mac").toLowerCase()));
-                Thread.sleep(3500);
+                //Logger.getGlobal().log(Level.INFO,"response is " + responseObject.getString("response") + " mac is " + responseObject.getString("mac"));
+                Logger.getGlobal().log(Level.INFO,"MAC Validated - {0}", validateMAC(responseObject.getString("response"),responseObject.getString("mac").toLowerCase()));
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -76,7 +79,7 @@ public class PaymentTerminal extends AbstractTerminal {
             return false;
         }
         String macOnTerminal = TerminalMAC.getMac(Hex.encodeHexString(response.getBytes()));
-        System.out.println("MAC from payment service - " + macToVerify + ", MAC from terminal - " + macOnTerminal);
+        Logger.getGlobal().log(Level.INFO,"MAC from payment service {0}, MAC from terminal {1}" , new Object[] {macToVerify,macOnTerminal});
         return macOnTerminal.trim().toLowerCase().startsWith(macToVerify);
     }
 
