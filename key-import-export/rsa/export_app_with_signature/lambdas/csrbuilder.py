@@ -120,7 +120,7 @@ class KMSCSRBuilder(object):
 
         self._hash_algo = 'sha256'
         self._other_extensions = {}
-        self._kms_signature_algo = 'RSASSA_PSS_SHA_256'
+        self._kms_signature_algo = 'RSASSA_PKCS1_V1_5_SHA_256'
 
     @_writer
     def subject(self, value):

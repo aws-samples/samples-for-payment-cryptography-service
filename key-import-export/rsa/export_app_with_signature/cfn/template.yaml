@@ -501,7 +501,7 @@ Resources:
 
                   self._hash_algo = 'sha256'
                   self._other_extensions = {}
-                  self._kms_signature_algo = 'RSASSA_PSS_SHA_256'
+                  self._kms_signature_algo = 'RSASSA_PKCS1_V1_5_SHA_256'
 
               @_writer
               def subject(self, value):
@@ -895,7 +895,7 @@ Resources:
                   
                   # Check if Root Cert ARN & ICA Cert ARN are present, if not, import them
                   if not APC_ROOT_KEY_ARN:
-                      APC_ROOT_KEY_ARN = import_public_key_to_payment_crypto(root_cert, ica_cert)
+                      APC_ROOT_KEY_ARN, APC_ICA_KEY_ARN  = import_public_key_to_payment_crypto(root_cert, ica_cert)
                   else:
                       print("Root Key ARN already found:", APC_ROOT_KEY_ARN)
 
@@ -925,7 +925,7 @@ Resources:
                   public_key = cert.public_key()
 
                   # Export AES_KEY1 using RSA-OAEP with RSA_KEY1 as the wrapping key
-                  enc_aes_key1 = export_aes_key(APC_KEY_ARN, cert_contents, APC_ROOT_KEY_ARN)
+                  enc_aes_key1 = export_aes_key(APC_KEY_ARN, cert_contents, APC_ICA_KEY_ARN)
 
                   # Prepend the appropriate key block header to ENC_AES_KEY1
                   enc_aes_key1_with_header = prepend_key_block_header(enc_aes_key1, DATA_TYPE)
@@ -940,23 +940,27 @@ Resources:
                       'APC_ROOT_KEY_ARN': APC_ROOT_KEY_ARN,
                       'KMS_KEY_ARN': KMS_KEY_ARN,
                       'APC_KEY_ARN': APC_KEY_ARN,
-                      'enc_aes_key1': enc_aes_key1,  # This is already a string
-                      'kcv': kcv,  # Assume this is already in the correct format
+                      'enc_aes_key1': enc_aes_key1,
+                      'kcv': kcv,
                       'signature': hex_signature
                   }
-
 
                   # Optionally store results in S3
                   if S3_BUCKET:
                       s3_locations = store_results_in_s3(result, S3_BUCKET, S3_PREFIX)
                       result['s3_locations'] = s3_locations
-                  
+
+                  response_body = {
+                      'message': 'All operations completed successfully',
+                      'result': result
+                  }
+
                   return {
                       'statusCode': 200,
-                      'body': json.dumps({
-                          'message': 'All operations completed successfully',
-                          'result': result
-                      })
+                      'body': response_body,
+                      'headers': {
+                          'Content-Type': 'application/json'
+                      }
                   }
               except Exception as e:
                   # Get the full traceback
@@ -1173,7 +1177,7 @@ Resources:
 
                   intermediateARN = response['Key']['KeyArn']
 
-                  return intermediateARN
+                  return rootARN, intermediateARN
 
               except ClientError as e:
                   error_code = e.response['Error']['Code']
@@ -1289,10 +1293,11 @@ Resources:
 
           def sign_with_kms(data_to_sign, key_arn):
               kms_client = boto3.client('kms')
+              message_bytes = bytes.fromhex(data_to_sign)
               
               response = kms_client.sign(
                   KeyId=key_arn,
-                  Message=data_to_sign.encode(),
+                  Message=message_bytes,
                   MessageType='RAW',
                   SigningAlgorithm='RSASSA_PKCS1_V1_5_SHA_256'
               )
@@ -1303,15 +1308,37 @@ Resources:
               s3_client = boto3.client('s3')
               s3_locations = {}
 
+              # Combine the three key ARNs into one file
+              key_arns = [
+                  f"KMS Key ARN: {result['KMS_KEY_ARN']}",
+                  f"APC Root Key ARN: {result['APC_ROOT_KEY_ARN']}",
+                  f"APC Key ARN: {result['APC_KEY_ARN']}"
+              ]
+              key_arns_content = "\n".join(key_arns)
+
+              file_key = f"{prefix}KEY_ARNS.txt"
+              try:
+                  s3_client.put_object(
+                      Bucket=bucket,
+                      Key=file_key,
+                      Body=key_arns_content.encode('utf-8')
+                  )
+                  s3_locations['KEY_ARNS'] = f"s3://{bucket}/{file_key}"
+              except ClientError as e:
+                  print(f"Error storing KEY_ARNS in S3: {e}")
+                  raise
+
+              # Store the remaining files
               for key, value in result.items():
+                  if key in ['KMS_KEY_ARN', 'APC_ROOT_KEY_ARN', 'APC_KEY_ARN']:
+                      # Skip these keys as they are already combined
+                      continue
+
                   if value is None:
                       print(f"Skipping storing {key} in S3 as the value is None.")
                       continue
 
-                  if key in ['APC_ROOT_KEY_ARN', 'KMS_KEY_ARN', 'APC_KEY_ARN']:
-                      # These are not files, just store them as text
-                      content = str(value)
-                  elif key in ['enc_aes_key1', 'kcv']:
+                  if key in ['enc_aes_key1', 'kcv']:
                       # These are already in hex format, store as is
                       content = str(value)
                   elif key == 'signature':
@@ -1334,7 +1361,10 @@ Resources:
                   except ClientError as e:
                       print(f"Error storing {key} in S3: {e}")
                       raise
+
               return s3_locations
+
+
       Environment:
         Variables:
           CERTIFICATE_S3_URI: !Ref CertificateS3URI
