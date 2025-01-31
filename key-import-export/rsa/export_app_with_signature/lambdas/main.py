@@ -99,7 +99,7 @@ def lambda_handler(event, context):
         
         # Check if Root Cert ARN & ICA Cert ARN are present, if not, import them
         if not APC_ROOT_KEY_ARN:
-            APC_ROOT_KEY_ARN = import_public_key_to_payment_crypto(root_cert, ica_cert)
+            APC_ROOT_KEY_ARN, APC_ICA_KEY_ARN  = import_public_key_to_payment_crypto(root_cert, ica_cert)
         else:
             print("Root Key ARN already found:", APC_ROOT_KEY_ARN)
 
@@ -129,7 +129,7 @@ def lambda_handler(event, context):
         public_key = cert.public_key()
 
         # Export AES_KEY1 using RSA-OAEP with RSA_KEY1 as the wrapping key
-        enc_aes_key1 = export_aes_key(APC_KEY_ARN, cert_contents, APC_ROOT_KEY_ARN)
+        enc_aes_key1 = export_aes_key(APC_KEY_ARN, cert_contents, APC_ICA_KEY_ARN)
 
         # Prepend the appropriate key block header to ENC_AES_KEY1
         enc_aes_key1_with_header = prepend_key_block_header(enc_aes_key1, DATA_TYPE)
@@ -381,7 +381,7 @@ def import_public_key_to_payment_crypto(root_cert, ica_cert):
 
         intermediateARN = response['Key']['KeyArn']
 
-        return intermediateARN
+        return rootARN, intermediateARN
 
     except ClientError as e:
         error_code = e.response['Error']['Code']
@@ -497,10 +497,11 @@ def prepend_key_block_header(enc_aes_key, DATA_TYPE):
 
 def sign_with_kms(data_to_sign, key_arn):
     kms_client = boto3.client('kms')
+    message_bytes = bytes.fromhex(data_to_sign)
     
     response = kms_client.sign(
         KeyId=key_arn,
-        Message=data_to_sign.encode(),
+        Message=message_bytes,
         MessageType='RAW',
         SigningAlgorithm='RSASSA_PKCS1_V1_5_SHA_256'
     )
