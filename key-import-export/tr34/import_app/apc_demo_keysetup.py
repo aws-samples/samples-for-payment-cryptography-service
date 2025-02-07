@@ -66,7 +66,7 @@ if __name__ == "__main__":
     print("*********Importing a KEK for importing subsequent keys*********")
     print("")
 
-    tr34_response = tr34.importTr34("ONLINE",KEK,"E","K0","B","","")
+    tr34_response = tr34.importTr34("ONLINE",KEK,"E","T","K0","B","","")
     print("KEK/KPBK/ZMK ARN:",tr34_response[0])
 
 
