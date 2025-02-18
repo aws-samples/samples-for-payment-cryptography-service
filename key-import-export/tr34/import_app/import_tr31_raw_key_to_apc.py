@@ -11,7 +11,7 @@ import argparse
 
 def constructTr31Header(algo,exportMode,keyType,modeOfUse):
 
-    versionID = 'B' #version D is supported also but it requires kbpk to be AES as well
+    versionID = 'D' if algo == 'A' else 'B'
     length = '9999' #this library will overwrite it with the correct value
 
     header = versionID + length + keyType + algo + modeOfUse + "00" + exportMode + "0000"
