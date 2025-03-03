@@ -1,0 +1,41 @@
+{
+    "kdh": {
+        "futurex": {
+            "host": "127.0.0.1",
+            "port": 9000,
+            "tr34": {
+                "transport_key": "",
+                "transport_key_kcv": ""
+            },
+            "tr31": {
+                "kek": "",
+                "transport_key": "",
+                "transport_key_kcv": ""
+            }
+        },
+        "apc": {
+            "region": "us-west-2"
+        },
+        "payshield": {
+            "host": "127.0.0.1",
+            "port": 9150,
+            "tr34": {
+                "transport_key": "",
+                "transport_key_kcv": ""
+            },
+            "tr31": {
+                "kek": "",
+                "transport_key": "",
+                "transport_key_kcv": ""
+            }
+        }
+    },
+    "krd": {
+        "apc": {
+            "region": "us-east-2",
+            "tr31": {
+                "kek": ""
+            }
+        }
+    }
+}
