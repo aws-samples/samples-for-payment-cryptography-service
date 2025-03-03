@@ -4,8 +4,8 @@ import secrets
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
-from import_export.futurex.commands import FuturexCommands
-from import_export.utils.enums import (
+from key_import_export.hsm.futurex.commands import FuturexCommands
+from key_import_export.utils.enums import (
     AsymmetricKeyAlgorithm,
     AsymmetricKeyUsage,
     EccKeyAlgorithm,

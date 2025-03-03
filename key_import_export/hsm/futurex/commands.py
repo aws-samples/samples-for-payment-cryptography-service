@@ -3,7 +3,7 @@ import socket
 import sys
 import time
 
-from import_export.utils.enums import (
+from key_import_export.utils.enums import (
     AsymmetricKeyUsage,
     EccKeyAlgorithm,
     RsaKeyAlgorithm,

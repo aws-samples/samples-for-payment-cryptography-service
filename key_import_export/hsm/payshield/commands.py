@@ -5,7 +5,7 @@ from collections import namedtuple
 from struct import pack
 from typing import Tuple
 
-from import_export.utils.enums import (
+from key_import_export.utils.enums import (
     AsymmetricKeyUsage,
     RsaKeyAlgorithm,
     SymmetricKeyAlgorithm,

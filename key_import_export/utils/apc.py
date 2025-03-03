@@ -4,7 +4,7 @@ import boto3
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
-from import_export.utils.enums import (
+from key_import_export.utils.enums import (
     AsymmetricKeyAlgorithm,
     AsymmetricKeyUsage,
     KeyExchangeType,

@@ -6,10 +6,10 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from import_export.futurex.futurex_hsm import FuturexHsm
-from import_export.payshield.payshield_hsm import PayshieldHsm
-from import_export.utils.apc import Apc
-from import_export.utils.enums import SymmetricKeyAlgorithm, SymmetricKeyUsage
+from key_import_export.hsm.futurex.futurex_hsm import FuturexHsm
+from key_import_export.hsm.payshield.payshield_hsm import PayshieldHsm
+from key_import_export.utils.apc import Apc
+from key_import_export.utils.enums import SymmetricKeyAlgorithm, SymmetricKeyUsage
 
 
 def _get_command_line_args():

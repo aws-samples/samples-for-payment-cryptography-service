@@ -6,9 +6,9 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
-from import_export.payshield import asn_utils
-from import_export.payshield.commands import PayshieldCommands
-from import_export.utils.enums import (
+from key_import_export.hsm.payshield import asn_utils
+from key_import_export.hsm.payshield.commands import PayshieldCommands
+from key_import_export.utils.enums import (
     AsymmetricKeyUsage,
     KeyExchangeType,
     RsaKeyAlgorithm,
