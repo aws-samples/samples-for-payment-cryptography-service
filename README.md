@@ -17,7 +17,7 @@ Before running the sample [JAVA](java_sdk_example/README.md) or [Python](python_
 ### [JAVA Based Flows](java_sdk_example/README.md)
 This section contains flows such as P2PE, Pin set/verify and translation. Additionally, the flows are implemented using both [synchronous](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) and [asynchronous](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/AsyncIssuerService.java) APIs showing flexibility of APC.
 
-### [Python Based Flows](python_sdk_example/)
+### [Python Based Flows](python_sdk_example/ecdh_flows/README.md)
 This section contains ECDH flow for pin set and pin reveal functionalities
 
 ## Contributing
