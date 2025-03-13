@@ -1,19 +1,6 @@
-import json
 import helpers.atalla_helper as atalla_helper
-import helpers.csr_helper as csr_helper
-from typing import Tuple
-
-from Crypto.Hash import SHA256
-from Crypto.PublicKey.RSA import construct
-from oscrypto import asymmetric
-import helpers.aws_private_ca_helper as private_ca_helper
 import helpers.apc_helper as apc_helper
-
-
-from cryptography import x509
-from cryptography.hazmat.primitives import serialization
 import argparse
-import base64
 
 """ 
 Usage - python3 atalla_to_apc_tr31.py --host localhost --port 7000 

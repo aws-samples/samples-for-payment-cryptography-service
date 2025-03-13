@@ -47,28 +47,23 @@ This script will exchange the Key Exchange Key (KEK) from Atalla into APC, thus 
 ## TR-34 KEK Exchange Flow
 ![Atalla TR-34 Flow](./assets/atalla-apc-tr34-key-exchange-sequence-diagram%20-%20Key%20Exchange.png)
 
-### After running the script and having KEK exchanged, you can import the working key 2 ways below - 
+## TR-31 Exchagne flow for working keys 
 
-#### 1. atalla_to_apc_tr31.py script
-Pass the AKB of wrapping key from step 5 above, AKB of working key and ARN of the wrapping key (KEK) imported into APC from step 8 above
-   - ```
-      python3 atalla_to_apc_tr31.py --host localhost --port 7000 
+After KEK exchange, you can now import working keys as below via script `atalla_to_apc_tr31.py` - 
+
+### Usage
+Pass the MFK encrypted wrapping key from step 5 above, MFK encrypted working key and ARN of the wrapping key (KEK) imported into APC from step 8 above
+   ```
+   1. python -m venv .venv
+   2. source .venv/bin/activate 
+   3. python3 atalla_to_apc_tr31.py --host localhost --port 7000 
             -wrappingKey "1kDNE000,14FB26DD179D6AD587FA0181E599F6CC07F0C8D2AAA2334D,BB6AE577B37A1CD7" 
             --wrappedKey "1CDNE000,55343DEFA0898223CCCDD33AAAFFFF2342B09234ABCDEF54,CDA43234FFFED091" 
             --apcWrappingKeyARN "arn:aws:payment-cryptography:us-west-2:111222333444:key/rd56grgskugzelkz
-      ```
+   
+   ```
 
-#### 2. Using CLI
-
-Use TR-31 to export keys using KEK generated in step #5 (command 11A)
-   - Example 
-      - Request ```<11A#B###1kDNE000,14FB26DD179D6AD587FA0181E599F6CC07F0C8D2AAA2334D,BB6AE577B37A1CD7#1CDNE000,55343DEFA0898223CCCDD33AAAFFFF2342B09234ABCDEF54,CDA43234FFFED091#00#0##>```
-      where, field 4 is the KEK generated from step 5 above and field 5 is the AKB of the working key to export.
-
-      - Response ```<21A#BBAA4453FDDCC089AB8C50BB184BBA7499EA610346321F5952C602204AE6C4FFF89F547A2E51E9456456DDDAACCCC556#1786#>```
-      where field 1 is the TR-31 block and field 2 is the check digits that should match with the key check value from APC after import. 
-
- **_NOTE:_** Unless otherwise enabled, option E2 on Atalla may restrict your ability to output certain keys (including other KEK)s. This is a common source of error 0607 (security violation)
+ **_NOTE:_** If option E2 is not enabled on Atalla, it may restrict your ability to output certain keys (including KEKs). This is a common source of error 0607 (security violation).
 
  ## AWS Resource Used
  1. This sample uses a Private CA short lived CA.  To limit charges, delete the CA after completing testing
