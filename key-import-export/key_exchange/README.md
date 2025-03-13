@@ -1,4 +1,5 @@
 # Import Export Migration Scripts
+**Note**: Currently supports Payshield and Futurex HSMs
 
 ## Assumptions
 KDH : Key Distribution Host

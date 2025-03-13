@@ -4,7 +4,7 @@ This script will exchange the Key Exchange Key (KEK) from Atalla into APC, thus 
 ## Assumptions
 1. This script assumes that you have access to an Atalla HSM and can perform administrative commands such as 12A
 2. The Atalla HSM is configured using a TDES MFK.  Slight changes might be needed if you are using an AES MFK
-3. Keys to be transferred are 2-key or 3-key TDES.
+3. Working keys to be migrated are 2-key or 3-key TDES
 4. The HSM is enabled for the following commands: 12A,120,136,139 for initial exchange and then 11A and option E2 to migrate working keys using TR-31.
 5. You have access to AWS Private CA or access to another CA of your chosing to sign a CSR.
 
@@ -33,7 +33,7 @@ This script will exchange the Key Exchange Key (KEK) from Atalla into APC, thus 
     Example: python3 atalla_to_apc_tr34.py '127.0.0.1' 7000 
  ```
 
-## The script does the following - 
+## The atalla_to_apc_tr34.py script does the following - 
 1. Generate Signing Key on Atalla (command 120)
 2. Generate CSR within this sample code and then sign on the Atalla (command 139). Update the CSR subject information in file `atalla_to_apc_tr34.py` if desired.
  **_NOTE:_** although command 124 is typically used for digital signatures, it cannot be used when the purpose of the key will be to sign TR-34 payloads.
@@ -44,25 +44,27 @@ This script will exchange the Key Exchange Key (KEK) from Atalla into APC, thus 
 7. Build combined payload using the TR-34 non-CMS payload structure  (code sample - not cryptographic)
 8. Import key into APC by calling [ImportKey](https://docs.aws.amazon.com/payment-cryptography/latest/APIReference/API_ImportKey.html)
 
-## TR-34 Key Exchange Flow
+## TR-34 KEK Exchange Flow
 ![Atalla TR-34 Flow](./assets/atalla-apc-tr34-key-exchange-sequence-diagram%20-%20Key%20Exchange.png)
 
-### After running the script and having KEK exchanged, here are the steps to transfer working keys - 
-1. Use TR-31 to export keys using KEK generated in step #5 (command 11A)
-   - Example 
-      - Request ```<11A#B###1kDNE000,542DEAC009433454AAAAAABBBBBBCCCCC93453FFFFFFFFFD,455BBBBAAAACCCCC#1CDNE000,FFFFAAA98923423423CCCCCEE34545655BBBAAAFFFF45354,93245FFAADDDCCAA#00#0##>```
-      where, field 4 is the KEK generated from step 5 above and field 5 is the AKB of the working key to export.
+## TR-31 Exchagne flow for working keys 
 
-      - Response ```<21A#BBAA4453FDDCC089AB8C50BB184BBA7499EA610346321F5952C602204AE6C4FFF89F547A2E51E9456456DDDAACCCC556#1786#>```
-      where field 1 is the TR-31 block and field 2 is the check digits that should match with the key check value from the APC after import. 
-2. Call Import key on APC passing TR-31 block from previous step
-   - ```
-      aws payment-cryptography import-key \
-            --key-material="Tr31KeyBlock={WrappingKeyIdentifier="arn:aws:payment-cryptography:us-west-2:017213218332:key/b4423463aaagnr",\
-           WrappedKeyBlock="BBAA4453FDDCC089AB8C50BB184BBA7499EA610346321F5952C602204AE6C4FFF89F547A2E51E9456456DDDAACCCC556"}" --region us-west-2
-      ```
- **_NOTE:_** Unless otherwise enabled, option E2 on Atalla may restrict your ability to output certain keys (including other KEK)s. This is a common source of error 0607 (security violation)
+After KEK exchange, you can now import working keys as below via script `atalla_to_apc_tr31.py` - 
+
+### Usage
+Pass the MFK encrypted wrapping key from step 5 above, MFK encrypted working key and ARN of the wrapping key (KEK) imported into APC from step 8 above
+   ```
+   1. python -m venv .venv
+   2. source .venv/bin/activate 
+   3. python3 atalla_to_apc_tr31.py --host localhost --port 7000 
+            -wrappingKey "1kDNE000,14FB26DD179D6AD587FA0181E599F6CC07F0C8D2AAA2334D,BB6AE577B37A1CD7" 
+            --wrappedKey "1CDNE000,55343DEFA0898223CCCDD33AAAFFFF2342B09234ABCDEF54,CDA43234FFFED091" 
+            --apcWrappingKeyARN "arn:aws:payment-cryptography:us-west-2:111222333444:key/rd56grgskugzelkz
+   
+   ```
+
+ **_NOTE:_** If option E2 is not enabled on Atalla, it may restrict your ability to output certain keys (including KEKs). This is a common source of error 0607 (security violation).
 
  ## AWS Resource Used
  1. This sample uses a Private CA short lived CA.  To limit charges, delete the CA after completing testing
- 2. This sample creates one key on AWS Payment Cryptography.  To limit charges, delete the key after completing testing
+ 2. This sample creates key(s) on AWS Payment Cryptography.  To limit charges, delete  key(s) after completing testing
