@@ -1,5 +1,5 @@
-# TR-34 Exchange between Atalla -> AWS Payment Cryptography (APC)
-This script will exchange the Key Exchange Key (KEK) from Atalla into APC, thus bootstrapping it for migration of working keys from Atalla to APC.
+# TR-34 Exchange between Atalla -> AWS Payment Cryptography
+This script will exchange the Key Exchange Key (KEK) from Atalla into AWS Payment Cryptography, thus bootstrapping it for migration of working keys from Atalla to AWS Payment Cryptography.
 
 ## Assumptions
 1. This script assumes that you have access to an Atalla HSM and can perform administrative commands such as 12A
@@ -12,8 +12,8 @@ This script will exchange the Key Exchange Key (KEK) from Atalla into APC, thus 
 ## Prerequisites
 
  1. Call [GetParametersForImport](https://docs.aws.amazon.com/payment-cryptography/latest/APIReference/API_GetParametersForImport.html). Save the output under [keys/params_for_import.json](./keys/params_for_import.json)
- 2. Import the KRD (in this case is APC) Leaf certificate [WrappingKeyCertificate] from [params_for_import.json](./keys/params_for_import.json).json into Atalla.
- **_NOTE:_** Typically you would import the CA certificate and then root certificate.  However, the command for importing chained certificates (123) does not support the SHA-512 hash used by the APC service, so you must directly trust the leaf cert using 12A instead which is a manual process requiring dual control.
+ 2. Import the KRD (in this case AWS Payment Cryptography) Leaf certificate [WrappingKeyCertificate] from [params_for_import.json](./keys/params_for_import.json).json into Atalla.
+ **_NOTE:_** Typically you would import the CA certificate and then root certificate.  However, the command for importing chained certificates (123) does not support the SHA-512 hash used by the AWS Payment Cryptography Service, so you must directly trust the leaf cert using 12A instead which is a manual process requiring dual control.
 
       Steps - 
       1. Get the modulus of the public key cert. Example - ```echo "LS0tLS1CRUdJTiBDRVJUSUZJQ..." | base64 -d | openssl x509 -modulus -noout```
@@ -38,11 +38,11 @@ This script will exchange the Key Exchange Key (KEK) from Atalla into APC, thus 
 2. Generate CSR within this sample code and then sign on the Atalla (command 139). Update the CSR subject information in file `atalla_to_apc_tr34.py` if desired.
  **_NOTE:_** although command 124 is typically used for digital signatures, it cannot be used when the purpose of the key will be to sign TR-34 payloads.
 3. Have CSR signed by CA of your choice ([AWS Private Certificate Authority](https://aws.amazon.com/private-ca/) is used here)
-4. Trust Signing CA on APC - Use APC.[Import Public Root KeyCertificate](https://docs.aws.amazon.com/payment-cryptography/latest/APIReference/API_ImportKey.html)
+4. Trust Signing CA on AWS Payment Cryptography - Use [Import Public Root KeyCertificate](https://docs.aws.amazon.com/payment-cryptography/latest/APIReference/API_ImportKey.html)
 5. Build TR-34 payload and generate KEK (136).  Save Atalla KEK for future use.
 6. Sign TR-34 payload (139)
 7. Build combined payload using the TR-34 non-CMS payload structure  (code sample - not cryptographic)
-8. Import key into APC by calling [ImportKey](https://docs.aws.amazon.com/payment-cryptography/latest/APIReference/API_ImportKey.html)
+8. Import key into AWS Payment Cryptography by calling [ImportKey](https://docs.aws.amazon.com/payment-cryptography/latest/APIReference/API_ImportKey.html)
 
 ## TR-34 KEK Exchange Flow
 ![Atalla TR-34 Flow](./assets/atalla-apc-tr34-key-exchange-sequence-diagram%20-%20Key%20Exchange.png)
@@ -52,7 +52,7 @@ This script will exchange the Key Exchange Key (KEK) from Atalla into APC, thus 
 After KEK exchange, you can now import working keys as below via script `atalla_to_apc_tr31.py` - 
 
 ### Usage
-Pass the MFK encrypted wrapping key from step 5 above, MFK encrypted working key and ARN of the wrapping key (KEK) imported into APC from step 8 above
+Pass the MFK encrypted wrapping key from step 5 above, MFK encrypted working key and ARN of the wrapping key (KEK) imported into AWS Payment Cryptography from step 8 above
    ```
    1. python -m venv .venv
    2. source .venv/bin/activate 

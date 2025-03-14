@@ -13,4 +13,4 @@ HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTIO
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-Using this sample code will require access to Atalla payment hsm hardware that is not provided as part of this sample code and that needs to be provisioned separately by the relevant manufacturers or their resellers. This sample code does not imply an endorsement by any third parties mentioned.
+Using HSM based key exchange sample code will require access to Payment HSMs that is not provided and needs to be provisioned separately through relevant manufacturers or their resellers. This sample code does not imply an endorsement by any third parties mentioned.
