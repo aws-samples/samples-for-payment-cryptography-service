@@ -52,7 +52,7 @@ cd samples-for-payment-cryptography-service/java_sdk_example
 
 #### [PaymentTerminal](src/main/java/aws/sample/paymentcryptography/terminal/PaymentTerminal.java)
 
-This class is a simulation of payment terminal and is setup for P2PE flow. It uses pre created DUKPT to encrypt data to send to Payment Processor API endpoint.
+This class is a simulation of payment terminal and is setup for P2PE flow. It uses previously derived DUKPT transaction keys to encrypt data to send to Payment Processor API endpoint.
 The test DUKPT data is defined on [key-ksn-data.json](/java_sdk_example/test-data/sample-pek-ksn-data.json). For every increment of KSN counter (last 2 digits of KSN), a corresponding DUKPT has been pre-created.
 
 To run - 

@@ -1,5 +1,5 @@
 # Import Export Migration Scripts
-**Note**: Currently supports Payshield and Futurex HSMs
+**Note**: Currently supports payShield and Futurex HSMs
 
 ## Assumptions
 KDH : Key Distribution Host
@@ -10,8 +10,8 @@ Futurex : HSM is configured using PMK
 
 The script will establish a KEK (Key Encryption Key) between the chosen KDH and KRD. A set of options are supported for KDH and KRD type.
 Update the input_config.json file with details on the host connection.
-If KDH or KRD is APC (AWS Payment Cryptography), update the region and/or endpoint you would like to connect to.
-If KDH or KRD is Futurex or Payshield HSM, update the host ip address and port that you would like to stablish the connection to.
+If KDH or KRD is AWS Payment Cryptography, update the region and/or endpoint you would like to connect to.
+If KDH or KRD is Futurex or payShield HSM, update the host ip address and port that you would like to stablish the connection to.
 
 As part of the key exchange, if you would like to generate a new symmetric KEK, leave 'transport_key' and 'transport_key_kcv' in the config file for KDH as blank.
 If you already have a key created, update the key and kcv in the config file for KDH.
