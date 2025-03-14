@@ -13,7 +13,7 @@ This section contains Python based script to exchange keys between AWS Payment C
 Alternatively, for testing, you can also import plain text keys using either [TR-34](key-import-export/tr34/import_app/Readme.md) or [RSA](key-import-export/rsa/import_app/import_raw_key_into_apc_with_rsa_wrap.py) into AWS Payment Cryptography.
 
 #### Prerequisite
-Before running the [JAVA](java_sdk_example/README.md) or [Python](python_sdk_example/ecdh_flows/README.md) based sample applications, you will need to import the required keys into AWS Payment Cryptography. 
+Before running the [JAVA](java_sdk_example/README.md) or [Python](python_sdk_example/ecdh_flows/README.md) based sample applications, you will need to import the required keys into AWS Payment Cryptography. Refer to [instructions](key-import-export/tr34/import_app/Readme.md) for importing plain text keys before running the sample applications. **Note: This should be used in non-production testing environment only.**
 
 
 ### [JAVA Based Flows](java_sdk_example/README.md)
