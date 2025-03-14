@@ -75,14 +75,14 @@ if __name__ == "__main__":
     print("")
     print("*********Importing TDES BDK for DUKPT*********")
     print("")
-    response = tr31.importTR31(KEK,BDK,"E","B0","X","T",tr31_versionID,"ONLINE",tr34_response[0],None,tdesBDKAlias)
+    response = tr31.importTR31(KEK,BDK,"E","B0","X","T","ONLINE",tr34_response[0],None,tdesBDKAlias,tr31_versionID)
     print("TDES BDK ARN:",response[0])
     print("Alias",response[1])
 
     print("")
     print("*********Importing AES BDK for DUKPT*********")
     print("")
-    response = tr31.importTR31(KEK,BDK,"E","B0","X","A",tr31_versionID,"ONLINE",tr34_response[0],None,aesBDKAlias)
+    response = tr31.importTR31(KEK,BDK,"E","B0","X","A","ONLINE",tr34_response[0],None,aesBDKAlias,tr31_versionID)
     print("AES BDK ARN:",response[0])
     print("Alias",response[1])
 
@@ -90,14 +90,14 @@ if __name__ == "__main__":
     print("")
     print("*********Importing a PEK for communicating with ATM*********")
     print("")
-    response = tr31.importTR31(KEK,PEK,"E","P0","B","T",tr31_versionID,"ONLINE",tr34_response[0],None,pinTranslateServicePekAlias)
+    response = tr31.importTR31(KEK,PEK,"E","P0","B","T","ONLINE",tr34_response[0],None,pinTranslateServicePekAlias,tr31_versionID)
     print("PEK(ATM PEK) ARN:",response[0])
     print("Alias:",response[1])
 
     print("")
     print("*********Importing a PEK for Pin Translate Service to Issuer communication. This service sits between between issuer and ATM) *********")
     print("")
-    response = tr31.importTR31(KEK,PEK,"E","P0","B","T",tr31_versionID,"ONLINE",tr34_response[0],None,issuerPekAlias)
+    response = tr31.importTR31(KEK,PEK,"E","P0","B","T","ONLINE",tr34_response[0],None,issuerPekAlias,tr31_versionID)
     print("PEK(ATM PEK) ARN:",response[0])
     print("Alias:",response[1])
 
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     print("")
     print("*********Importing ARQC key for cryptogram validation*********")
     print("")
-    response = tr31.importTR31(KEK,ARQC,"E","E0","X","T",tr31_versionID,"ONLINE",tr34_response[0],None,arqcAlias)
+    response = tr31.importTR31(KEK,ARQC,"E","E0","X","T","ONLINE",tr34_response[0],None,arqcAlias,tr31_versionID)
     print("ARQC Validation Key ARN:",response[0])
     print("Alias:",response[1])
 
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     print("*********Generating a MAC key for MAC verification********")
     print("")
 
-    response = tr31.importTR31(KEK,MAC,"E","M3","C","T",tr31_versionID,"ONLINE",tr34_response[0],None,macAlias)
+    response = tr31.importTR31(KEK,MAC,"E","M3","C","T","ONLINE",tr34_response[0],None,macAlias,tr31_versionID)
     print("MAC Key ARN:",response[0])
     print("Alias:",response[1])
     """ try:

@@ -9,7 +9,7 @@ import boto3
 import argparse
 
 
-def constructTr31Header(algo,versionID,exportMode,keyType,modeOfUse):
+def constructTr31Header(algo,exportMode,keyType,modeOfUse,versionID):
 
     #versionID = 'D' if algo == 'A' else 'B'
     length = '9999' #this library will overwrite it with the correct value
@@ -28,13 +28,13 @@ def constructTr31Header(algo,versionID,exportMode,keyType,modeOfUse):
     return header
 
 
-def importTR31(kbpk_clearkey,wk_clearkey,exportmode,keytype,modeofuse,algorithm,tr31_versionID,runmode,kbpkkey_apcIdentifier,region,aliasName=None):
+def importTR31(kbpk_clearkey,wk_clearkey,exportmode,keytype,modeofuse,algorithm,runmode,kbpkkey_apcIdentifier,region,aliasName=None,tr31_versionID=None):
 
     kbpkkey = binascii.unhexlify(kbpk_clearkey.replace(" ",""))
 
     binaryWkKey = binascii.unhexlify(wk_clearkey.replace(" ",""))
 
-    wrappedKey = (psec.tr31.wrap(kbpk=kbpkkey, header=constructTr31Header(algorithm,tr31_versionID,exportmode,keytype,modeofuse), key=binaryWkKey)).upper()
+    wrappedKey = (psec.tr31.wrap(kbpk=kbpkkey, header=constructTr31Header(algorithm,exportmode,keytype,modeofuse,tr31_versionID), key=binaryWkKey)).upper()
 
     print("WRAPPED KEY IN TR-31",wrappedKey)
 
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     algorithm = args.algorithm
     tr31_versionID = 'D' if algorithm == 'A' else 'B'
     result = importTR31(kbpk_clearkey=args.kbpk_clearkey,wk_clearkey=args.clearkey,exportmode=args.exportmode, \
-                        algorithm=args.algorithm,tr31_versionID=tr31_versionID,keytype=args.keytype,modeofuse=args.modeofuse, runmode=args.runmode,kbpkkey_apcIdentifier=args.kbpkkey_apcIdentifier,region=region)
+                        algorithm=args.algorithm,keytype=args.keytype,modeofuse=args.modeofuse, runmode=args.runmode,kbpkkey_apcIdentifier=args.kbpkkey_apcIdentifier,region=region,tr31_versionID=tr31_versionID)
 
         #print('TR-31 Payload:',wrappedKey)
 
