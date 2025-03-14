@@ -9,9 +9,9 @@ import boto3
 import argparse
 
 
-def constructTr31Header(algo,exportMode,keyType,modeOfUse):
+def constructTr31Header(algo,versionID,exportMode,keyType,modeOfUse):
 
-    versionID = 'D' if algo == 'A' else 'B'
+    #versionID = 'D' if algo == 'A' else 'B'
     length = '9999' #this library will overwrite it with the correct value
 
     header = versionID + length + keyType + algo + modeOfUse + "00" + exportMode + "0000"
@@ -28,13 +28,13 @@ def constructTr31Header(algo,exportMode,keyType,modeOfUse):
     return header
 
 
-def importTR31(kbpk_clearkey,wk_clearkey,exportmode,keytype,modeofuse,algorithm,runmode,kbpkkey_apcIdentifier,region,aliasName=None):
+def importTR31(kbpk_clearkey,wk_clearkey,exportmode,keytype,modeofuse,algorithm,tr31_versionID,runmode,kbpkkey_apcIdentifier,region,aliasName=None):
 
     kbpkkey = binascii.unhexlify(kbpk_clearkey.replace(" ",""))
 
     binaryWkKey = binascii.unhexlify(wk_clearkey.replace(" ",""))
 
-    wrappedKey = (psec.tr31.wrap(kbpk=kbpkkey, header=constructTr31Header(algorithm,exportmode,keytype,modeofuse), key=binaryWkKey)).upper()
+    wrappedKey = (psec.tr31.wrap(kbpk=kbpkkey, header=constructTr31Header(algorithm,tr31_versionID,exportmode,keytype,modeofuse), key=binaryWkKey)).upper()
 
     print("WRAPPED KEY IN TR-31",wrappedKey)
 
@@ -105,7 +105,6 @@ if __name__ == "__main__":
     print ("Key to import:",args.clearkey)
     print ("Key Encryption Key (in cleartext)",args.kbpk_clearkey)
     print ("Key Encryption Key identifier on the service",args.kbpkkey_apcIdentifier)
-    print ("Key Encryption Key identifier on the service",args.kbpkkey_apcIdentifier)
     print ("Export Mode:",args.exportmode)
     print ("Key Type:",args.keytype)
     print ("Key Mode of use:",args.modeofuse)
@@ -114,12 +113,10 @@ if __name__ == "__main__":
     region = args.kbpkkey_apcIdentifier.split(":")[3]
     print ("Region implied from keyARN",region)
 
-
+    algorithm = args.algorithm
+    tr31_versionID = 'D' if algorithm == 'A' else 'B'
     result = importTR31(kbpk_clearkey=args.kbpk_clearkey,wk_clearkey=args.clearkey,exportmode=args.exportmode, \
-                        algorithm=args.algorithm,keytype=args.keytype,modeofuse=args.modeofuse, runmode=args.runmode,kbpkkey_apcIdentifier=args.kbpkkey_apcIdentifier,region=region)
-
-
-
+                        algorithm=args.algorithm,tr31_versionID=tr31_versionID,keytype=args.keytype,modeofuse=args.modeofuse, runmode=args.runmode,kbpkkey_apcIdentifier=args.kbpkkey_apcIdentifier,region=region)
 
         #print('TR-31 Payload:',wrappedKey)
 
