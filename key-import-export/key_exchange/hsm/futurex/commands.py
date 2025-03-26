@@ -3,6 +3,7 @@ import socket
 import sys
 import time
 
+from datetime import datetime, timedelta
 from key_exchange.utils.enums import (
     AsymmetricKeyUsage,
     EccKeyAlgorithm,
@@ -78,7 +79,10 @@ class FuturexCommands:
         return wrapped_private_key, trusted_public_key, clear_public_key
 
     def asgc_command(self, private_key: str):
-        command = f"[AOASGC;RY3;XE1122;KUdigitalSignature,nonRepudiation,keyCertSign;AL6;AD1;BCCA:TRUE;RTKDH CA1;RSSelfSignedCertificate;SG10101;FS6;RC{private_key};]"
+        # To account for any potential system time skewing
+        current_time = datetime.now() - timedelta(hours=1)
+        formatted_time = current_time.strftime("%Y%m%d")
+        command = f"[AOASGC;RY3;BF{formatted_time};XE1122;KUdigitalSignature,nonRepudiation,keyCertSign;AL6;AD1;BCCA:TRUE;RTKDH CA1;RSSelfSignedCertificate;SG10101;FS6;RC{private_key};]"
         response = self._send_payload(command.encode())
 
         certificate_der = self._get_response_token("RV", response)
@@ -92,7 +96,10 @@ class FuturexCommands:
         return csr
 
     def assr_command(self, csr, ca_wrapped_private_key, ca_certificate_der):
-        command = f"[AOASSR;RY3;XE1122;AL6;KUdigitalSignature,nonRepudiation;RU{csr};SG20301;FS6;RH{ca_certificate_der};RC{ca_wrapped_private_key};RG1;]"
+        # To account for any potential system time skewing
+        current_time = datetime.now() - timedelta(hours=1)
+        formatted_time = current_time.strftime("%Y%m%d")
+        command = f"[AOASSR;RY3;BF{formatted_time};XE1122;AL6;KUdigitalSignature,nonRepudiation;RU{csr};SG20301;FS6;RH{ca_certificate_der};RC{ca_wrapped_private_key};RG1;]"
         response = self._send_payload(command.encode())
 
         certificate_der = self._get_response_token("RV", response)
