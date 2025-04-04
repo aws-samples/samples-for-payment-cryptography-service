@@ -48,5 +48,5 @@ Using this path, you can import/export upto AES-256 keys.
 ### Usage
 
 ```
-python3 src/import_export/import_export_ecdh.py --kdh <Options: "futurex | payshield | apc"> --krd <Options: "apc">
+python3 import_export_ecdh.py --kdh <Options: "futurex | payshield | apc"> --krd <Options: "apc">
 ```
