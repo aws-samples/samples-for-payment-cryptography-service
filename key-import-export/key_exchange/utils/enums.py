@@ -22,11 +22,13 @@ class AsymmetricKeyAlgorithm(Enum):
     RSA_4096 = "RSA_4096"
     ECC_NIST_P256 = "ECC_NIST_P256"
     ECC_NIST_P384 = "ECC_NIST_P384"
+    ECC_NIST_P521 = "ECC_NIST_P521"
 
 
 class EccKeyAlgorithm(Enum):
     ECC_NIST_P256 = "ECC_NIST_P256"
     ECC_NIST_P384 = "ECC_NIST_P384"
+    ECC_NIST_P521 = "ECC_NIST_P521"
 
 
 class RsaKeyAlgorithm(Enum):
@@ -45,3 +47,15 @@ class AsymmetricKeyUsage(Enum):
 class KeyExchangeType(Enum):
     IMPORT_TR34_KEY_BLOCK = "IMPORT_TR34_KEY_BLOCK"
     EXPORT_TR34_KEY_BLOCK = "EXPORT_TR34_KEY_BLOCK"
+    ECDH = "ECDH"
+
+
+class KeyDerivationFunction(Enum):
+    NIST_SP800 = "NIST_SP800"
+    ANSI_X963 = "ANSI_X963"
+
+
+class KeyDerivationHashAlgorithm(Enum):
+    SHA_256 = "SHA_256"
+    SHA_384 = "SHA_384"
+    SHA_512 = "SHA_512"

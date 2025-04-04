@@ -4,15 +4,17 @@ import pytz
 import binascii
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509.oid import NameOID
 
 from key_exchange.hsm.payshield import asn_utils
 from key_exchange.hsm.payshield.commands import PayshieldCommands
 from key_exchange.utils.enums import (
+    AsymmetricKeyAlgorithm,
     AsymmetricKeyUsage,
     KeyExchangeType,
     RsaKeyAlgorithm,
+    EccKeyAlgorithm,
     SymmetricKeyAlgorithm,
     SymmetricKeyUsage,
 )
@@ -28,6 +30,10 @@ class PayshieldHsm(object):
         public_key, private_key = self.payshield_commands.ei_command(key_algorithm, key_usage)
         return public_key, private_key
 
+    def create_ecc_key_pair(self, key_algorithm: EccKeyAlgorithm, key_usage: AsymmetricKeyUsage):
+        public_key, private_key = self.payshield_commands.fy_command(key_algorithm, key_usage)
+        return public_key, private_key
+
     def create_symmetric_key(
         self, key_algorithm: SymmetricKeyAlgorithm, key_usage: SymmetricKeyUsage
     ):
@@ -40,21 +46,28 @@ class PayshieldHsm(object):
 
     def generate_certificate_and_chain(
         self,
-        key_algorithm: RsaKeyAlgorithm,
-        ca_key_algorithm: RsaKeyAlgorithm,
+        key_algorithm: AsymmetricKeyAlgorithm,
+        ca_key_algorithm: AsymmetricKeyAlgorithm,
         key_usage: AsymmetricKeyUsage,
         key_exchange_type: KeyExchangeType,
     ):
-        public_key, private_key = self.create_rsa_key_pair(
-            RsaKeyAlgorithm(key_algorithm), key_usage
-        )
-
-        print("Generating CA Key Pair (locally)")
-        ca_private_key = rsa.generate_private_key(
-            public_exponent=65537,
-            key_size=int(ca_key_algorithm.name.split("_")[1]),
-        )
-        ca_public_key = ca_private_key.public_key()
+        if key_algorithm.name in RsaKeyAlgorithm.__members__:
+            public_key, private_key = self.create_rsa_key_pair(
+                RsaKeyAlgorithm(key_algorithm), key_usage
+            )
+            print("Generating CA Key Pair (locally)")
+            ca_private_key = rsa.generate_private_key(
+                public_exponent=65537,
+                key_size=int(ca_key_algorithm.name.split("_")[1]),
+            )
+            ca_public_key = ca_private_key.public_key()
+        else:
+            public_key, private_key = self.create_ecc_key_pair(
+                EccKeyAlgorithm(key_algorithm), key_usage
+            )
+            print("Generating CA Key Pair (locally)")
+            ca_private_key = ec.generate_private_key(ec.SECP521R1())
+            ca_public_key = ca_private_key.public_key()
 
         print("Generating CA Certificate (locally)")
         ca_certificate = (
@@ -263,7 +276,40 @@ class PayshieldHsm(object):
 
         return tr34_payload, random_nonce
 
-    def export_symmetric_key_using_tr31(self, transport_key, kek):
-        wrapped_key, kcv = self.payshield_commands.a8_command(transport_key, kek)
+    def export_symmetric_key_using_tr31(self, transport_key, kek, transport_key_algorithm):
+        wrapped_key, kcv = self.payshield_commands.a8_command(transport_key, kek, transport_key_algorithm)
 
         return wrapped_key
+
+    def export_symmetric_key_using_ecdh(
+        self,
+        kdh_private_key,
+        krd_ca_certificate_trusted,
+        krd_certificate,
+        derive_key_algorithm,
+        key_derivation_function,
+        hash_algorithm,
+        shared_info,
+        transport_key,
+        transport_key_algorithm,
+    ):
+        krd_public_key = (
+            krd_certificate.public_key()
+            .public_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+            .hex()
+        )
+        derived_key = self.payshield_commands.ig_command(
+            kdh_private_key,
+            krd_public_key,
+            derive_key_algorithm,
+            key_derivation_function,
+            hash_algorithm,
+            shared_info,
+        )
+        exported_key = self.export_symmetric_key_using_tr31(
+            transport_key, derived_key, transport_key_algorithm
+        )
+        return exported_key

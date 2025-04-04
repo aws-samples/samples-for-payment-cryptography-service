@@ -88,7 +88,7 @@ def main():
         print("KCV : ", transport_key_kcv)
 
     print("\nStep 2 ({}) : Export the transport key under the KEK using TR31.".format(kdh.upper()))
-    exported_key = kdh_host.export_symmetric_key_using_tr31(transport_key, kdh_kek)
+    exported_key = kdh_host.export_symmetric_key_using_tr31(transport_key, kdh_kek, key_algorithm.name)
     print("Exported Key using KEK : {}".format(exported_key))
 
     print("\nStep 3 ({}) : Import the transport key under the KEK using TR31.".format(krd.upper()))

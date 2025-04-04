@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from key_exchange.utils.enums import (
     AsymmetricKeyUsage,
     EccKeyAlgorithm,
+    KeyDerivationFunction,
+    KeyDerivationHashAlgorithm,
     RsaKeyAlgorithm,
     SymmetricKeyAlgorithm,
 )
@@ -22,6 +24,7 @@ CT_TOKEN = {
 RA_TOKEN = {
     EccKeyAlgorithm.ECC_NIST_P256: 2,
     EccKeyAlgorithm.ECC_NIST_P384: 3,
+    EccKeyAlgorithm.ECC_NIST_P521: 4,
 }
 RB_TOKEN = {
     RsaKeyAlgorithm.RSA_2048: 2048,
@@ -32,6 +35,15 @@ CZ_TOKEN = {
     AsymmetricKeyUsage.KEY_AGREEMENT_KEY: "X",
     AsymmetricKeyUsage.VERIFY: "V",
     AsymmetricKeyUsage.SIGN: "G",
+}
+RG_TOKEN = {
+    KeyDerivationHashAlgorithm.SHA_256: 4,
+    KeyDerivationHashAlgorithm.SHA_384: 5,
+    KeyDerivationHashAlgorithm.SHA_512: 6,
+}
+KM_TOKEN = {
+    KeyDerivationFunction.NIST_SP800: 0,
+    KeyDerivationFunction.ANSI_X963: 1,
 }
 
 
@@ -136,6 +148,24 @@ class FuturexCommands:
 
         wrapped_key = self._get_response_token("BH", response)
         return wrapped_key
+
+    def sddh_command(
+        self,
+        private_key,
+        trusted_public_key,
+        derive_key_algorithm,
+        key_derivation_function,
+        hash_algorithm,
+        shared_info,
+    ):
+        derive_key_type_token = CT_TOKEN[derive_key_algorithm]
+        hash_algorithm_token = RG_TOKEN[hash_algorithm]
+        key_derivation_function_token = KM_TOKEN[key_derivation_function]
+  
+        command = f"[AOSDDH;FS6;AS0;CT{derive_key_type_token};RG{hash_algorithm_token};AK{shared_info};KM{key_derivation_function_token};RC{private_key};RD{trusted_public_key};]"
+        response = self._send_payload(command.encode())
+        derived_key = self._get_response_token("BG", response)
+        return derived_key
 
     def _send_payload(self, data: bytes, terminator=b"]"):
         output = b""

@@ -7,6 +7,8 @@ from cryptography.hazmat.primitives import serialization
 from key_exchange.utils.enums import (
     AsymmetricKeyAlgorithm,
     AsymmetricKeyUsage,
+    KeyDerivationFunction,
+    KeyDerivationHashAlgorithm,
     KeyExchangeType,
     SymmetricKeyAlgorithm,
     SymmetricKeyUsage,
@@ -69,6 +71,29 @@ class Apc(object):
             private_key_token = export_token_response["ExportToken"]
             certificate_base64 = export_token_response["SigningKeyCertificate"]
             ca_certificate_base64 = export_token_response["SigningKeyCertificateChain"]
+        elif key_exchange_type == KeyExchangeType.ECDH:
+            # If it is key agreement using ECDH, an ECC key pair is generated in APC
+            key_modes_of_use = {"DeriveKey": True}
+            key_usage = "TR31_K3_ASYMMETRIC_KEY_FOR_KEY_AGREEMENT"
+            key_attributes = {
+                "KeyAlgorithm": key_algorithm.name,
+                "KeyUsage": key_usage,
+                "KeyClass": "ASYMMETRIC_KEY_PAIR",
+                "KeyModesOfUse": key_modes_of_use,
+            }
+  
+            create_key_response = self.apc_client.create_key(
+                Exportable=True,
+                KeyAttributes=key_attributes,
+                DeriveKeyUsage="TR31_K1_KEY_BLOCK_PROTECTION_KEY",
+            )
+            private_key_token = create_key_response["Key"]["KeyArn"]
+  
+            get_public_key_certificate_response = self.apc_client.get_public_key_certificate(
+                KeyIdentifier=private_key_token
+            )
+            certificate_base64 = get_public_key_certificate_response["KeyCertificate"]
+            ca_certificate_base64 = get_public_key_certificate_response["KeyCertificateChain"]
 
         certificate = x509.load_pem_x509_certificate(base64.b64decode(certificate_base64))
         ca_certificate = x509.load_pem_x509_certificate(base64.b64decode(ca_certificate_base64))
@@ -137,3 +162,64 @@ class Apc(object):
 
         response = self.apc_client.import_key(Enabled=True, KeyMaterial=key_material)
         return response["Key"]["KeyArn"], response["Key"]["KeyCheckValue"]
+
+    def import_symmetric_key_using_ecdh(
+        self,
+        private_key,
+        ca_certificate_trusted,
+        public_key_certificate,
+        derive_key_algorithm: SymmetricKeyAlgorithm,
+        key_derivation_function: KeyDerivationFunction,
+        hash_algorithm: KeyDerivationHashAlgorithm,
+        shared_info,
+        key_to_import,
+    ):
+        response = self.apc_client.import_key(
+            Enabled=True,
+            KeyCheckValueAlgorithm="CMAC",
+            KeyMaterial={
+                "DiffieHellmanTr31KeyBlock": {
+                    "CertificateAuthorityPublicKeyIdentifier": ca_certificate_trusted,
+                    "DerivationData": {"SharedInformation": shared_info},
+                    "DeriveKeyAlgorithm": derive_key_algorithm.name,
+                    "KeyDerivationFunction": key_derivation_function.name,
+                    "KeyDerivationHashAlgorithm": hash_algorithm.name,
+                    "PrivateKeyIdentifier": private_key,
+                    "PublicKeyCertificate": base64.b64encode(
+                        public_key_certificate.public_bytes(encoding=serialization.Encoding.PEM)
+                    ).decode("UTF-8"),
+                    "WrappedKeyBlock": key_to_import,
+                }
+            },
+        )
+        return response["Key"]["KeyArn"], response["Key"]["KeyCheckValue"]
+
+    def export_symmetric_key_using_ecdh(
+        self,
+        private_key,
+        ca_certificate_trusted,
+        public_key_certificate,
+        derive_key_algorithm: SymmetricKeyAlgorithm,
+        key_derivation_function: KeyDerivationFunction,
+        hash_algorithm: KeyDerivationHashAlgorithm,
+        shared_info,
+        key_to_export,
+        key_algorithm,
+    ):
+        response = self.apc_client.export_key(
+            ExportKeyIdentifier=key_to_export,
+            KeyMaterial={
+                "DiffieHellmanTr31KeyBlock": {
+                    "CertificateAuthorityPublicKeyIdentifier": ca_certificate_trusted,
+                    "DerivationData": {"SharedInformation": shared_info},
+                    "DeriveKeyAlgorithm": derive_key_algorithm.name,
+                    "KeyDerivationFunction": key_derivation_function.name,
+                    "KeyDerivationHashAlgorithm": hash_algorithm.name,
+                    "PrivateKeyIdentifier": private_key,
+                    "PublicKeyCertificate": base64.b64encode(
+                        public_key_certificate.public_bytes(encoding=serialization.Encoding.PEM)
+                    ).decode("UTF-8"),
+                }
+            },
+        )
+        return response["WrappedKey"]["KeyMaterial"]
