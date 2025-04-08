@@ -40,3 +40,13 @@ If you already have a key created, update the key and kcv in the config file for
 ```
 python3 import_export_tr31.py --kdh <Options: "futurex | payshield"> --krd <Options: "apc">
 ```
+
+### Key Exchange using ECDH
+The script will perform key agreement using ECDH between KDH and KRD, derive a shared key which will be the KEK to wrap the transport key.
+Using this path, you can import/export upto AES-256 keys.
+
+### Usage
+
+```
+python3 import_export_ecdh.py --kdh <Options: "futurex | payshield | apc"> --krd <Options: "apc">
+```

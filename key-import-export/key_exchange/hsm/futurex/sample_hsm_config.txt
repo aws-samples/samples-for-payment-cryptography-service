@@ -1,0 +1,26 @@
+Major Keys:
+-----------------
+PMK: KCV:****** Type:AES 256
+MFK: (Not Loaded)
+KEK: (Not Loaded)
+BAK: (Not Loaded)
+SCEK: (Not Loaded)
+FTK: (Not Loaded)
+
+Enabled Features:
+-----------------
+RSA: Enabled
+ECC: Enabled
+FIPS Mode: Disabled
+PCI-HSM Mode: Enabled
+Key Wrap Policy: CRYPTOGRAM,AKB
+PKCS 11: Enabled
+
+Misc Settings:
+----------------- 
+Key Block Policy: CRYPTOGRAM,TR31,AKB
+RSA Blinding: ON
+Check Digit Length: 6
+Major Key Standard KCV Length: 4
+Major Key CMAC KCV Length: 6
+RSA Legacy Functionality: ON

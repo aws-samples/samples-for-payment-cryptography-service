@@ -7,6 +7,8 @@ from typing import Tuple
 
 from key_exchange.utils.enums import (
     AsymmetricKeyUsage,
+    EccKeyAlgorithm,
+    KeyDerivationFunction,
     RsaKeyAlgorithm,
     SymmetricKeyAlgorithm,
     SymmetricKeyUsage,
@@ -18,10 +20,22 @@ RSA_KEY_LENGTH = {
     RsaKeyAlgorithm.RSA_4096: "4096",
 }
 
+ECC_KEY_ALGORITHM = {
+    EccKeyAlgorithm.ECC_NIST_P256: "00",
+    EccKeyAlgorithm.ECC_NIST_P384: "01",
+    EccKeyAlgorithm.ECC_NIST_P521: "02",
+}
+
 RSA_KEY_TYPE = {
     AsymmetricKeyUsage.KEY_AGREEMENT_KEY: "1",
     AsymmetricKeyUsage.VERIFY: "0",
     AsymmetricKeyUsage.SIGN: "0",
+}
+
+ECC_KEY_TYPE = {
+    AsymmetricKeyUsage.KEY_AGREEMENT_KEY: "X",
+    AsymmetricKeyUsage.VERIFY: "S",
+    AsymmetricKeyUsage.SIGN: "S",
 }
 
 KEY_USAGE = {
@@ -44,6 +58,26 @@ KEY_ALGORITHM = {
     SymmetricKeyAlgorithm.AES_128: "A1",
     SymmetricKeyAlgorithm.AES_192: "A2",
     SymmetricKeyAlgorithm.AES_256: "A3",
+}
+
+KEY_USAGE_VARIANT = {
+    SymmetricKeyUsage.BDK: "009",
+    SymmetricKeyUsage.KEK: "000",
+    SymmetricKeyUsage.PEK: "001",
+    SymmetricKeyUsage.KBPK: "000",
+}
+
+KDF_METHOD = {
+    KeyDerivationFunction.NIST_SP800: "1",
+    KeyDerivationFunction.ANSI_X963: "2",
+}
+
+DERIVE_KEY_LENGTH = {
+    SymmetricKeyAlgorithm.TDES_2KEY: "00128",
+    SymmetricKeyAlgorithm.TDES_3KEY: "00192",
+    SymmetricKeyAlgorithm.AES_128: "00128",
+    SymmetricKeyAlgorithm.AES_192: "00192",
+    SymmetricKeyAlgorithm.AES_256: "00256",
 }
 
 THALES_HEADER = "0000"
@@ -81,6 +115,16 @@ class PayshieldCommands:
         public_key, private_key = self._decode_ei(bytes(result))
         return public_key, private_key
 
+    def fy_command(self, key_algorithm: EccKeyAlgorithm, key_usage: AsymmetricKeyUsage):
+        ecc_key_algorithm = ECC_KEY_ALGORITHM[key_algorithm]
+        ecc_key_type = ECC_KEY_TYPE[key_usage]
+
+        command = self.command_builder.build_fy_command(ecc_key_type, ecc_key_algorithm)
+
+        result = self._send_receive(command)
+        public_key, private_key = self._decode_fy(bytes(result))
+        return public_key, private_key
+
     def qe_command(self, public_key, private_key, key_algorithm):
         if key_algorithm.name in RsaKeyAlgorithm.__members__:
             signature_id = "01"
@@ -108,8 +152,12 @@ class PayshieldCommands:
         csr = self._decode_qe(bytes(result))
         return csr
 
-    def a8_command(self, transport_key, kek):
-        command = self.command_builder.build_a8_command(kek, transport_key)
+    def a8_command(self, transport_key, kek, transport_key_algorithm):
+        if transport_key_algorithm.startswith("AES"):
+            key_block_version = "D"
+        else:
+            key_block_version = "B"
+        command = self.command_builder.build_a8_command(kek, transport_key, key_block_version)
         result = self._send_receive(command)
         tr31_payload, kcv = self._decode_a8(bytes(result))
 
@@ -140,6 +188,42 @@ class PayshieldCommands:
         tr34_payload = self._decode_b8(bytes(result))
         return tr34_payload
 
+    def ig_command(
+         self,
+         kdh_private_key,
+         krd_public_key,
+         derive_key_algorithm,
+         key_derivation_function,
+         hash_algorithm,
+         shared_info,
+     ):
+        kdf = KDF_METHOD[key_derivation_function]
+        derive_key_length = DERIVE_KEY_LENGTH[derive_key_algorithm]
+        key_algorithm = KEY_ALGORITHM[derive_key_algorithm]
+  
+        command = (
+            "IG"
+            + "2103"
+            + "<"
+            + krd_public_key
+            + ">"
+            + kdh_private_key
+            + kdf
+            + "06"
+            + "100"
+            + str(len(shared_info))
+            + shared_info
+            + ";01"
+            + derive_key_length
+            + "K1"
+            + key_algorithm
+            + "B00E00;:"
+        )
+        result = self._send_receive(command)
+        derived_key = self._decode_ig(bytes(result))
+  
+        return derived_key
+
     def _decode_a0(self, response_to_decode: bytes):
         response_to_decode_str, msg_len, str_pointer = self._common_parser(response_to_decode)
 
@@ -161,6 +245,36 @@ class PayshieldCommands:
             if key[0] == "R":  # TR-31 - Thales prefixs with an R
                 key = key[1:]
             return key, kcv
+        else:
+            print("Error Response Received : {}".format(response_to_decode_str[str_pointer:]))
+            sys.exit(1)
+
+    def _decode_fy(self, response_to_decode: bytes):
+        response_to_decode_str, msg_len, str_pointer = self._common_parser(response_to_decode)
+
+        if response_to_decode_str[str_pointer : str_pointer + 2] == "00":
+            str_pointer = str_pointer + 2
+            public_key_length = int(response_to_decode_str[str_pointer : str_pointer + 4])
+            str_pointer = str_pointer + 4
+            public_key = bytes.hex(
+                response_to_decode[str_pointer : str_pointer + public_key_length]
+            )
+            str_pointer = str_pointer + public_key_length
+            wrapped_private_key = response_to_decode[str_pointer:].decode()
+
+            return public_key, wrapped_private_key
+        else:
+            print("Error Response Received : {}".format(response_to_decode_str[str_pointer:]))
+            sys.exit(1)
+
+    def _decode_ig(self, response_to_decode: bytes):
+        response_to_decode_str, msg_len, str_pointer = self._common_parser(response_to_decode)
+  
+        if response_to_decode_str[str_pointer : str_pointer + 2] == "00":
+            str_pointer = str_pointer + 2
+            kcv_length = 3
+            derived_key = response_to_decode_str[str_pointer:-kcv_length]
+            return derived_key
         else:
             print("Error Response Received : {}".format(response_to_decode_str[str_pointer:]))
             sys.exit(1)
@@ -397,11 +511,27 @@ class KeyBlockLmkCommandBuilder:
         )
         return command
 
-    def build_a8_command(self, kek, transport_key):
-        key_block_version = "B"
+    def build_a8_command(self, kek, transport_key, key_block_version):
         lmk_id = "00"
         command = "A8" + "FFF" + kek + transport_key + "R" + "%" + lmk_id + "!" + key_block_version
         return command
+
+    def build_fy_command(self, ecc_key_type, ecc_key_algorithm):
+        command = (
+            "FY"
+            + "01"
+            + ecc_key_algorithm
+            + "03"
+            + "%"
+            + "00"
+            + "#"
+            + ecc_key_type
+            + "00"
+            + "S"
+            + "00"
+        )
+        return command
+
 
 class VariantLmkCommandBuilder:
     def __init__(self, lmk_identifier):
@@ -439,12 +569,11 @@ class VariantLmkCommandBuilder:
         )
         return command
 
-    def build_a8_command(self, kek, transport_key):
+    def build_a8_command(self, kek, transport_key, key_block_version):
         # Exporting a BDK. This can be changed to support any other type of key
         key_type = "009"
         key_usage = "B0"
         mode_of_use = "X"
-        key_block_version = "B"
         command = 'A8' + key_type + kek + transport_key + 'R' + '%' + self.lmk_identifier \
                    + '&' + key_usage + mode_of_use + '00' + 'S' + '00' + '!' + key_block_version
         return command

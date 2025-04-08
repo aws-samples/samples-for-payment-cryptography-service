@@ -11,15 +11,23 @@
                 "kek": "",
                 "transport_key": "",
                 "transport_key_kcv": ""
+            },
+            "ecdh": {
+                "transport_key": "",
+                "transport_key_kcv": ""
             }
         },
         "apc": {
-            "region": "us-west-2"
+            "region": "us-west-2",
+            "ecdh": {
+                 "transport_key": "",
+                 "transport_key_kcv": ""
+             }
         },
         "payshield": {
             "host": "127.0.0.1",
             "port": 9150,
-            "variant_lmk": false,
+            "variant_lmk": true,
             "variant_lmk_identifier": "02",
             "tr34": {
                 "transport_key": "",
@@ -29,7 +37,11 @@
                 "kek": "",
                 "transport_key": "",
                 "transport_key_kcv": ""
-            }
+            },
+            "ecdh": {
+                 "transport_key": "",
+                 "transport_key_kcv": ""
+             }
         }
     },
     "krd": {

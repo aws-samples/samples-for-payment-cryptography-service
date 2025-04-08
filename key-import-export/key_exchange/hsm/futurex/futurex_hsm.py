@@ -186,6 +186,31 @@ class FuturexHsm(object):
 
         return tr34_payload, random_nonce
 
-    def export_symmetric_key_using_tr31(self, transport_key, kek):
+    def export_symmetric_key_using_tr31(self, transport_key, kek, transport_key_algorithm):
         wrapped_key = self.futurex_commands.twka_command(transport_key, kek)
         return wrapped_key
+
+    def export_symmetric_key_using_ecdh(
+        self,
+        kdh_private_key,
+        krd_ca_certificate_trusted,
+        krd_certificate,
+        derive_key_algorithm,
+        key_derivation_function,
+        hash_algorithm,
+        shared_info,
+        transport_key,
+        transport_key_algorithm,
+    ):
+        krd_trusted_public_key = self.trust_certificate(krd_certificate, krd_ca_certificate_trusted)
+
+        derived_key = self.futurex_commands.sddh_command(
+            kdh_private_key,
+            krd_trusted_public_key,
+            derive_key_algorithm,
+            key_derivation_function,
+            hash_algorithm,
+            shared_info,
+        )
+        exported_key = self.export_symmetric_key_using_tr31(transport_key, derived_key, transport_key_algorithm)
+        return exported_key
