@@ -35,7 +35,10 @@ export AWS_SESSION_TOKEN=wxyz....
 There are samples for 2 flows below. The flows are setup on simulated terminals such as store terminal that processes payment or ATM that can be used for pin setup or PIN terminal that does PIN verification. Prior to running the samples, you will need to start the server like below. 
 The server has services that the terminals connect to support the flows.
 
-*Note:* Intentional delays are added between each transactions (using `Thread.sleep`) in [PaymentTerminal](src/main/java/aws/sample/paymentcryptography/terminal/PaymentTerminal.java), [ATM](src/main/java/aws/sample/paymentcryptography/terminal/ATM.java),[PinTerminal_ISO_Format_0](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_0_Format.java) and [PinTerminal_ISO_Format_4](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_4_Format.java) to make it easier to follow the flows.
+***Note:***
+- Intentional delays are added between each transactions (using `Thread.sleep`) in [PaymentTerminal](src/main/java/aws/sample/paymentcryptography/terminal/PaymentTerminal.java), [ATM](src/main/java/aws/sample/paymentcryptography/terminal/ATM.java),[PinTerminal_ISO_Format_0](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_0_Format.java) and [PinTerminal_ISO_Format_4](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_4_Format.java) to make it easier to follow the flows.
+
+- For simplicity, the APIs in samples are implemented with HTTP GET. This would not apply in production.*
 
 #### Pre Requisite
 The samples are setup to run based on keys in the [key import app](../key-import-export/import_app/apc_demo_keysetup.py). As a pre-requisite, you will need to run the key import app. Refer to [key import instructions](../key-import-export/import_app/Readme.md)
@@ -49,8 +52,8 @@ cd samples-for-payment-cryptography-service/java_sdk_example
 
 #### [PaymentTerminal](src/main/java/aws/sample/paymentcryptography/terminal/PaymentTerminal.java)
 
-This class is setup for P2PE flow and uses pre created DUKPT to encrypt data from [PaymentTerminal](src/main/java/aws/sample/paymentcryptography/terminal/PaymentTerminal.java) to send to Payment Processor API endpoint.
-The test data is defined on [key-ksn-data.json](/java_sdk_example/test-data/sample-pek-ksn-data.json) file. For every increment of KSN counter (last 2 digits of KSN), a corresponding DUKPT has been pre-created.
+This class is a simulation of payment terminal and is setup for P2PE flow. It uses previously derived DUKPT transaction keys to encrypt data to send to Payment Processor API endpoint.
+The test DUKPT data is defined on [key-ksn-data.json](/java_sdk_example/test-data/sample-pek-ksn-data.json). For every increment of KSN counter (last 2 digits of KSN), a corresponding DUKPT has been pre-created.
 
 To run - 
 
@@ -58,22 +61,29 @@ To run -
 cd samples-for-payment-cryptography-service/java_sdk_example
 ./run_example.sh aws.sample.paymentcryptography.terminal.PaymentTerminal
 ```
+Following diagram illustrates the flow - 
+
+![P2PE Flow](../flows/PaymentCryptographyServiceFlows-Payment%20Terminal%20Flow%20-%20P2PE.jpg)
 
 #### [ATM](src/main/java/aws/sample/paymentcryptography/terminal/ATM.java)
 
-This is a simulation of [ATM](src/main/java/aws/sample/paymentcryptography/terminal/ATM.java) that sets PIN through an Issuer. It uses pre setup [PIN](/java_sdk_example/test-data/sample-pin-pan.json) test
-data to create an encoded PIN block and encrypts that block using pre setup PEK. The encrypted data is then sent to the [issuer](src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) to set the PIN.
+This is a simulation of [ATM](src/main/java/aws/sample/paymentcryptography/terminal/ATM.java) that sets PIN for a user. It uses pre setup [PIN](/java_sdk_example/test-data/sample-pin-pan.json) test data to create encrypted PIN block using pre setup PEK. The encrypted data is then sent to the [issuer](src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) to set the PIN.
 
 To run - 
 
 ```
 cd samples-for-payment-cryptography-service/java_sdk_example
 ./run_example.sh aws.sample.paymentcryptography.terminal.ATM
-
 ```
+
+Following diagram illustrates the flow - 
+
+![Set PIN Flow - PEK](../flows/PaymentCryptographyServiceFlows-Pin%20Terminal%20Set%20Pin%20Flow%20(PEK).jpg)
+
+
 #### PinTerminals
 
-There are 2 variations of Pin terminals.
+There are 2 variations of Pin terminals. Both of these create the encrypted PIN block along with [ARQC cryptogram](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/data-operations.verifyauthrequestcryptogram.html) for pin authorization flow.
 
 - [PinTerminal using ISO 0 Format for Pin Encryption](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_0_Format.java)
 
@@ -84,7 +94,15 @@ There are 2 variations of Pin terminals.
   This class simulates terminal encrypting a plain text PIN using [ISO 4 Format](https://listings.pcisecuritystandards.org/documents/Implementing_ISO_Format_4_PIN_Blocks_Information_Supplement.pdf) for PIN encryption.
   
      
-Both classes above are a simulation of a terminal that accepts PIN and sends it for verification. It uses pre setup PIN data to create an encoded PIN block and encrypts that block using pres setup [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json) and [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json) . The classes are setup for 2 flows 1/new pin setup, 2/ pin verification. The encrypted data is then sent to the [PIN translating service](src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) which translates the encrypted pin blocks according to the incoming and outgoing ISO formats then connects to the [Issuer](src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) to verify the PIN.
+Both classes above are a simulation of a terminal that accepts PIN and transaction and sends it for authorization. It uses pre setup PIN data to create an encoded PIN block and encrypts that block using pre setup keys in [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json), [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json) and [ARQC key and transaction data](/java_sdk_example/test-data/sample-pan-arqc-key.json). 
+
+The DUKPT encrytion keys in [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json) and [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json) are derived off of the BDK defined in [apc_demo_keysetup.py](../key-import-export/tr34/import_app/apc_demo_keysetup.py) BDK variable.
+
+The ARQC UDK (Unique Derived Key) is derived from the MDK (Master Derivation Key) defined in [apc_demo_keysetup.py](../key-import-export/tr34/import_app/apc_demo_keysetup.py) ARQC variable, PAN and Pan Sequence Number (PSN) with value `00`. If PSN hasn't been set, the default is typically 00. ARQC is generated using Amex CVN01 which uses EMV Derivation Method A.
+
+***Note:** Derivation of DUKPT and ARQC keys used in the terminals are out of scope for provided samples. You can refer to [Payment Card Tools](https://paymentcardtools.com/) for reference.*
+
+The classes are setup for 2 flows 1/new pin setup, 2/ pin authorization. The encrypted data is sent to [PIN translating service](src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) which translates the encrypted pin blocks according to the incoming and outgoing ISO formats then invokes [Synchronous Issuer Service](src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) or [Asynchronous Issuer Service](src/main/java/aws/sample/paymentcryptography/pin/AsyncIssuerService.java) to verify the passed ARQC payload and PIN.
 
 To run - 
 
@@ -100,8 +118,12 @@ cd samples-for-payment-cryptography-service/java_sdk_example
 ./run_example.sh aws.sample.paymentcryptography.terminal.PinTerminal_ISO_4_Format
 ```
 
+Following diagrams illustrate the flow - 
+![Verify PIN Flow - DUKPT](../flows/PaymentCryptographyServiceFlows-Pin%20Terminal%20Pin%20Verification%20Flow%20(DUKPT).jpg)
+
+
 ## Helper classes
-Following are helper classes to support the flows defined above. 
+Following are additional helper classes for reference only.
 
 #### CreateAlias
 

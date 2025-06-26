@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Logger;
 
 import software.amazon.awssdk.http.SdkHttpResponse;
 import software.amazon.awssdk.services.paymentcryptography.PaymentCryptographyClient;
@@ -49,11 +50,11 @@ public class DeleteAliasUtil {
     }
 
     private static void deleteAllAliases() throws InterruptedException, ExecutionException {
-        System.out.println("delete all aliases...");
+        Logger.getGlobal().info("delete all aliases...");
         ListAliasesRequest request = ListAliasesRequest.builder().maxResults(100).build();
         List<Alias> aliases = client.listAliases(request).aliases();
         if (aliases.isEmpty()) {
-            System.out.println("No aliases found");
+            Logger.getGlobal().info("No aliases found");
         }
         for (Alias alias : aliases) {
             deleteAlias(alias);
@@ -73,9 +74,9 @@ public class DeleteAliasUtil {
         boolean deleted = response.statusCode() == 200;
 
         if (deleted) {
-            System.out.println(String.format("Alias %s deleted", aliasName));
+            Logger.getGlobal().info(String.format("Alias %s deleted", aliasName));
         } else {
-            System.out.println(String.format("Alias %s not deleted", aliasName));
+            Logger.getGlobal().info(String.format("Alias %s not deleted", aliasName));
         }
         return deleted;
     }
@@ -86,15 +87,15 @@ public class DeleteAliasUtil {
      */
     /*
      * private static boolean deleteKey(String keyARN) {
-     * System.out.println("deleting key " + keyARN);
+     * Logger.getGlobal().info("deleting key " + keyARN);
      * DeleteKeyRequest deleteKeyRequest = new
      * DeleteKeyRequest().withKeyIdentifier(keyARN);
      * DeleteKeyResult deleteKeyResult =
      * ControlPlaneUtils.getControlPlaneClient().deleteKey(deleteKeyRequest);
      * if (deleteKeyResult.getSdkHttpMetadata().getHttpStatusCode() == 200) {
-     * System.out.println(String.format("Key %s deleted", keyARN));
+     * Logger.getGlobal().info(String.format("Key %s deleted", keyARN));
      * } else {
-     * System.out.println(String.format("Key %s not deleted", keyARN));
+     * Logger.getGlobal().info(String.format("Key %s not deleted", keyARN));
      * }
      * return deleteKeyResult.getSdkHttpMetadata().getHttpStatusCode() == 200;
      * }

@@ -1,13 +1,13 @@
 # AWS Payment Cryptography terraform-samples
 This folder contains samples for [AWS Payment Cryptography](https://aws.amazon.com/payment-cryptography/) use-cases based on [HashiCorp Terraform](https://www.terraform.io/). Before exploring the use cases, ensure [service availability](https://aws.amazon.com/payment-cryptography/pricing/) in the specified AWS Region.
 
-Using AWS Payment Cryptography (APC) simplifies your implementation of cryptographic functions and key management used to secure data in payment processing in accordance with various PCI standards. 
+Using AWS Payment Cryptography simplifies your implementation of cryptographic functions and key management used to secure data in payment processing in accordance with various PCI standards. 
 
 Learn more about [AWS for PCI standards](https://aws.amazon.com/compliance/pci-dss-level-1-faqs/) and [AWS for FSI](https://aws.amazon.com/financial-services/) 
 
 ## Use-cases
 
-APC can be used to perform common data protection tasks for secure card payment processing. You can use APC in several common card payment processing use-cases like:
+AWS Payment Cryptography can be used to perform common data protection tasks for secure card payment processing. You can use AWS Payment Cryptography in several common card payment processing use-cases like:
 
 - Acquiring (Acquirer, Digital Wallet, Merchant, PSP or SoftPOS)
 - Issuing (ATM Driving, Issuer and processing)
@@ -79,10 +79,10 @@ In this Sample, We will cover Acquirer use case for DBK/AWK as well as Issuers u
 | <a name="input_application"></a> [application](#input\_application) | Name of the application | `string` | n/a | yes |
 | <a name="input_instance_type"></a> [instance\_type](#input\_instance\_type) | The type of EC2 instance to launch | `string` | `"t2.micro"` | no |
 | <a name="input_key_name"></a> [key\_name](#input\_key\_name) | Name of the EC2 key pair | `string` | n/a | yes |
-| <a name="input_s3_name"></a> [s3\_name](#input\_s3\_name) | S3 Bucket name for APC Log Archive | `string` | n/a | yes |
+| <a name="input_s3_name"></a> [s3\_name](#input\_s3\_name) | S3 Bucket name for AWS Payment Cryptography Log Archive | `string` | n/a | yes |
 | <a name="input_subnet_ids"></a> [subnet\_ids](#input\_subnet\_ids) | Eligible Subnets | `list(string)` | n/a | yes |
-| <a name="input_trail_name"></a> [trail\_name](#input\_trail\_name) | Trail name for APC Log Archive | `string` | n/a | yes |
-| <a name="input_trail_prefix"></a> [trail\_prefix](#input\_trail\_prefix) | Trail prefix name for APC Log Archive | `string` | n/a | yes |
+| <a name="input_trail_name"></a> [trail\_name](#input\_trail\_name) | Trail name for AWS Payment Cryptography Log Archive | `string` | n/a | yes |
+| <a name="input_trail_prefix"></a> [trail\_prefix](#input\_trail\_prefix) | Trail prefix name for AWS Payment Cryptography Log Archive | `string` | n/a | yes |
 | <a name="input_vpc_cidr_block"></a> [vpc\_cidr\_block](#input\_vpc\_cidr\_block) | Eligible CIDR ranges | `list(string)` | n/a | yes |
 | <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | Customers can pass the vpc\_id here | `string` | n/a | yes |
 

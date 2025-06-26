@@ -1,5 +1,6 @@
 package aws.sample.paymentcryptography.p2pe;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.commons.codec.DecoderException;
@@ -29,6 +30,7 @@ public class PaymentProcessorService {
     @Autowired
     private MACService macService;
 
+    // GET API for simplicity. In production scenarios, this would typically be a POST API
     @GetMapping(ServiceConstants.PAYMENT_PROCESSOR_SERVICE_AUTHORIZE_PAYMENT_API)
     @ResponseBody
     public String authorizePayment(@RequestParam String encryptedData, @RequestParam String ksn) {
@@ -54,8 +56,7 @@ public class PaymentProcessorService {
                     .build();
 
             Logger.getGlobal()
-                    .info("PaymentProcessorService:authorizePayment Attempting to decrypt data " + encryptedData
-                            + " by AWS Cryptography Service");
+                    .log(Level.INFO,"PaymentProcessorService:authorizePayment Attempting to decrypt data {0}" ,encryptedData);
             DecryptDataResponse decryptDataResponse = dataPlaneClient.decryptData(decryptDataRequest);
 
             int padCount = getPADCount(decryptDataResponse.plainText());
@@ -72,13 +73,13 @@ public class PaymentProcessorService {
             JSONObject returnJsonObject = new JSONObject()
                     .put("mac", macData)
                     .put("response", responseJsonObject.toString());
-            Logger.getGlobal().info(
-                    "PaymentProcessorService:authorizePayment Finished decrypting from AWS Cryptography Service. Returning to caller - "
-                            + responseJsonObject.toString());
+            Logger.getGlobal().log(Level.INFO,
+                    "PaymentProcessorService:authorizePayment Decryption completed -  {0}"
+                            ,responseJsonObject.toString());
             return returnJsonObject.toString();
         } catch (Exception exception) {
-            Logger.getGlobal().info(
-                    "PaymentProcessorService:authorizePayment Error occurred when decrypting from AWS Cryptography Service.");
+            Logger.getGlobal().log(Level.INFO,
+                    "PaymentProcessorService:authorizePayment Error occurred when decrypting");
             JSONObject returnJsonObject = new JSONObject()
                     .put("response", exception.getMessage())
                     .put("mac", "");

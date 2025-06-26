@@ -1,5 +1,7 @@
 package aws.sample.paymentcryptography;
 
+import software.amazon.awssdk.services.paymentcryptography.PaymentCryptographyAsyncClient;
+import software.amazon.awssdk.services.paymentcryptographydata.PaymentCryptographyDataAsyncClient;
 import software.amazon.awssdk.services.paymentcryptographydata.PaymentCryptographyDataClient;
 import software.amazon.awssdk.services.paymentcryptographydata.model.CardGenerationAttributes;
 import software.amazon.awssdk.services.paymentcryptographydata.model.DukptDerivationAttributes;
@@ -18,6 +20,7 @@ import software.amazon.awssdk.services.paymentcryptographydata.model.VisaPin;
 public class DataPlaneUtils {
 
         private static PaymentCryptographyDataClient dataPlaneClient;
+        private static PaymentCryptographyDataAsyncClient asyncClient;
 
         public static PaymentCryptographyDataClient getDataPlaneClient() {
                 if (dataPlaneClient != null) {
@@ -25,6 +28,14 @@ public class DataPlaneUtils {
                 }
                 dataPlaneClient = PaymentCryptographyDataClient.create();
                 return dataPlaneClient;
+        }
+
+        public static PaymentCryptographyDataAsyncClient getDataPlaneAsyncClient() {
+                if (asyncClient != null) {
+                        return asyncClient;
+                }
+                asyncClient = PaymentCryptographyDataAsyncClient.create();
+                return asyncClient;
         }
 
         public static GeneratePinDataResponse generateVisaPinBlock(

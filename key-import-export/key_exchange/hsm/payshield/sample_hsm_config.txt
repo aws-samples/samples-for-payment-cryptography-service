@@ -1,0 +1,18 @@
+Echo: OFF
+User storage key length: SINGLE
+Default LMK identifier: 00
+Management LMK identifier: 00
+Enable settings per LMK: NO
+Atalla ZMK variant support: OFF
+Enable ZMK translate command: NO
+Enable X9.17 for import: NO
+Enable X9.17 for export: NO
+ZMK length: DOUBLE
+Authorized State required when importing a key under an RSA key: YES
+Restrict key check values to 6 hex chars: YES
+Key export and import in trusted format only: YES
+Ensure LMK Identifier in command corresponds with host port: NO
+Ignore LMK ID in Key Block Header: NO
+Enable import and export of RSA Private keys: NO
+Enable import of a ZMK: NO
+Enable export of a ZMK: NO

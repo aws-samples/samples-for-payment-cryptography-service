@@ -99,7 +99,7 @@ def lambda_handler(event, context):
         
         # Check if Root Cert ARN & ICA Cert ARN are present, if not, import them
         if not APC_ROOT_KEY_ARN:
-            APC_ROOT_KEY_ARN = import_public_key_to_payment_crypto(root_cert, ica_cert)
+            APC_ROOT_KEY_ARN, APC_ICA_KEY_ARN  = import_public_key_to_payment_crypto(root_cert, ica_cert)
         else:
             print("Root Key ARN already found:", APC_ROOT_KEY_ARN)
 
@@ -129,7 +129,10 @@ def lambda_handler(event, context):
         public_key = cert.public_key()
 
         # Export AES_KEY1 using RSA-OAEP with RSA_KEY1 as the wrapping key
-        enc_aes_key1 = export_aes_key(APC_KEY_ARN, cert_contents, APC_ROOT_KEY_ARN)
+        enc_aes_key1 = export_aes_key(APC_KEY_ARN, cert_contents, APC_ICA_KEY_ARN)
+
+        # Convert to binary
+        enc_aes_key1 = base64.b64decode(enc_aes_key1)
 
         # Prepend the appropriate key block header to ENC_AES_KEY1
         enc_aes_key1_with_header = prepend_key_block_header(enc_aes_key1, DATA_TYPE)
@@ -137,30 +140,32 @@ def lambda_handler(event, context):
         # Sign enc_aes_key1_with_header using RSA_KEY2 in AWS KMS
         signature = sign_with_kms(enc_aes_key1_with_header, KMS_KEY_ARN)
 
-        hex_signature = signature.hex()
-
         # Prepare the result
         result = {
             'APC_ROOT_KEY_ARN': APC_ROOT_KEY_ARN,
             'KMS_KEY_ARN': KMS_KEY_ARN,
             'APC_KEY_ARN': APC_KEY_ARN,
-            'enc_aes_key1': enc_aes_key1,  # This is already a string
-            'kcv': kcv,  # Assume this is already in the correct format
-            'signature': hex_signature
+            'enc_aes_key1': enc_aes_key1.hex(),
+            'kcv': kcv,
+            'signature': signature
         }
-
 
         # Optionally store results in S3
         if S3_BUCKET:
             s3_locations = store_results_in_s3(result, S3_BUCKET, S3_PREFIX)
             result['s3_locations'] = s3_locations
-        
+
+        response_body = {
+            'message': 'All operations completed successfully',
+            'result': result
+        }
+
         return {
             'statusCode': 200,
-            'body': json.dumps({
-                'message': 'All operations completed successfully',
-                'result': result
-            })
+            'body': response_body,
+            'headers': {
+                'Content-Type': 'application/json'
+            }
         }
     except Exception as e:
         # Get the full traceback
@@ -377,7 +382,7 @@ def import_public_key_to_payment_crypto(root_cert, ica_cert):
 
         intermediateARN = response['Key']['KeyArn']
 
-        return intermediateARN
+        return rootARN, intermediateARN
 
     except ClientError as e:
         error_code = e.response['Error']['Code']
@@ -482,40 +487,70 @@ def export_aes_key(aes_key_arn, certificate_pem, ICA_ROOT_KEY_ARN):
     return response['WrappedKey']['KeyMaterial']
 
 def prepend_key_block_header(enc_aes_key, DATA_TYPE):
+    # headers are already in hex format
     if DATA_TYPE == 'cardholder':
-        header = '3130303030545041454159'
+        header = hex(int('3130303030545041454159'))[2:]  # Remove '0x' prefix 
     elif DATA_TYPE == 'pin':
-        header = '3130303030545041454959'
+        header = hex(int('3130303030545041454959'))[2:]  # Remove '0x' prefix 
     else:
         raise ValueError(f"Invalid DATA_TYPE: {DATA_TYPE}. Expected 'cardholder' or 'pin'.")
+
     
-    return header + enc_aes_key
+    # Prepend the header (hex) to the exported key (hex)
+    header_encKek = header + enc_aes_key.hex()
+    
+    # Convert combined hex string to binary for signing
+    return bytes.fromhex(header_encKek)
 
 def sign_with_kms(data_to_sign, key_arn):
     kms_client = boto3.client('kms')
     
+    # data_to_sign should already be in binary format from prepend_key_block_header
     response = kms_client.sign(
         KeyId=key_arn,
-        Message=data_to_sign.encode(),
+        Message=data_to_sign,
         MessageType='RAW',
         SigningAlgorithm='RSASSA_PKCS1_V1_5_SHA_256'
     )
 
-    return response['Signature']
+    # Convert signature to hex string
+    return response['Signature'].hex().upper()
 
 def store_results_in_s3(result, bucket, prefix):
     s3_client = boto3.client('s3')
     s3_locations = {}
 
+    # Combine the three key ARNs into one file
+    key_arns = [
+        f"KMS Key ARN: {result['KMS_KEY_ARN']}",
+        f"APC Root Key ARN: {result['APC_ROOT_KEY_ARN']}",
+        f"APC Key ARN: {result['APC_KEY_ARN']}"
+    ]
+    key_arns_content = "\n".join(key_arns)
+
+    file_key = f"{prefix}KEY_ARNS.txt"
+    try:
+        s3_client.put_object(
+            Bucket=bucket,
+            Key=file_key,
+            Body=key_arns_content.encode('utf-8')
+        )
+        s3_locations['KEY_ARNS'] = f"s3://{bucket}/{file_key}"
+    except ClientError as e:
+        print(f"Error storing KEY_ARNS in S3: {e}")
+        raise
+
+    # Store the remaining files
     for key, value in result.items():
+        if key in ['KMS_KEY_ARN', 'APC_ROOT_KEY_ARN', 'APC_KEY_ARN']:
+            # Skip these keys as they are already combined
+            continue
+
         if value is None:
             print(f"Skipping storing {key} in S3 as the value is None.")
             continue
 
-        if key in ['APC_ROOT_KEY_ARN', 'KMS_KEY_ARN', 'APC_KEY_ARN']:
-            # These are not files, just store them as text
-            content = str(value)
-        elif key in ['enc_aes_key1', 'kcv']:
+        if key in ['enc_aes_key1', 'kcv']:
             # These are already in hex format, store as is
             content = str(value)
         elif key == 'signature':
@@ -538,4 +573,5 @@ def store_results_in_s3(result, bucket, prefix):
         except ClientError as e:
             print(f"Error storing {key} in S3: {e}")
             raise
+
     return s3_locations

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import software.amazon.awssdk.http.SdkHttpResponse;
 import software.amazon.awssdk.services.paymentcryptography.PaymentCryptographyClient;
@@ -40,7 +42,7 @@ public class DeleteKeyUtil {
                 }
             }
         } else {
-            System.out.println("No keys passed to delete");
+            Logger.getGlobal().log(Level.INFO,"No keys passed to delete");
         }
     }
 
@@ -48,18 +50,18 @@ public class DeleteKeyUtil {
         ListKeysRequest request = ListKeysRequest.builder().maxResults(100).build();
         List<KeySummary> keySummaries = client.listKeys(request).keys();
         if (keySummaries.size() == 0) {
-            System.out.println("No keys to delete");
+            Logger.getGlobal().log(Level.INFO,"No keys to delete");
             return;
         }
         for (KeySummary keySummary : keySummaries) {
             // Only delete keys that are in CREATE_COMPLETE state and skip the ones that are
             // in pending deletion state etc.
             if (keySummary.keyState().toString().equals("CREATE_COMPLETE")) {
-                System.out.println("Attempting to delete key - " + keySummary.keyArn());
+                Logger.getGlobal().log(Level.INFO,"Attempting to delete key {0}" , keySummary.keyArn());
                 deleteKey(keySummary);
-                System.out.println("Deleteed key - " + keySummary.keyArn());
+                Logger.getGlobal().log(Level.INFO,"Deleted key {0}" , keySummary.keyArn());
             }else {
-                System.out.println("Skipping key - " + keySummary.keyArn() + " since it's key state is " + keySummary.keyState());
+                Logger.getGlobal().log(Level.INFO,"Skipping key {0} since it's key state is {1}" , new Object[] {keySummary.keyArn(),keySummary.keyState()});
             }
         }
     }
@@ -76,9 +78,9 @@ public class DeleteKeyUtil {
         SdkHttpResponse deleteResponse = client.deleteKey(deleteRequest).sdkHttpResponse();
         boolean deleted = deleteResponse.statusCode() == 200;
         if (deleted) {
-            System.out.println(String.format("Key %s deleted", keyARN));
+            Logger.getGlobal().log(Level.INFO,String.format("Key %s deleted", keyARN));
         } else {
-            System.out.println(String.format("Key %s not deleted", keyARN));
+            Logger.getGlobal().log(Level.INFO,String.format("Key %s not deleted", keyARN));
         }
         return deleted;
     }

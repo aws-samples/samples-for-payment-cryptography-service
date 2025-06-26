@@ -142,5 +142,25 @@ def importTR34Payload(tr34Payload,nonce,kdh_ca_key_arn,kdh_ca_certificate,import
             Tags= [{"Key": "Type", "Value" : "Atalla-Test"}]
         )
     KeyArn=trt34_import_res['Key']['KeyArn']
-    
     print(f"Imported TR34 payload with key ARN: {KeyArn}")
+
+def importTR31Payload(tr31_payload,wrappingKeyARN):
+    print("Importing TR31 payload into ", tr31_payload, "APC with wrapping key ", wrappingKeyARN)
+    keyMaterial={
+        "Tr31KeyBlock": {
+            'WrappedKeyBlock': tr31_payload.upper(),
+            'WrappingKeyIdentifier': wrappingKeyARN
+        }
+    }
+
+    try:
+        imported_symmetric_key_res = apc_client.import_key(
+        Enabled=True,
+        KeyMaterial=keyMaterial)
+        return imported_symmetric_key_res["Key"]["KeyArn"],imported_symmetric_key_res["Key"]["KeyCheckValue"]
+    except Exception as e:
+    # Capture error information
+        output = "failed: " + str(e)
+        detail = traceback.format_exc()
+        print(output+" "+ detail)
+        raise Exception("Error")   

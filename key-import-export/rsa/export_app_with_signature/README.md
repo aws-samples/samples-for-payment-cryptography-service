@@ -12,11 +12,15 @@ This solution includes the following components:
 - **Custom Resources**: Custom resources are used to trigger the CSRBuilderLambda function during the stack creation process, and create the Lambda layer used for both the deployed Lambda functions
 - **IAM Roles and Policies**: Necessary IAM roles and policies are created to grant the required permissions to the Lambda functions.
 
+## Architecture
+
+![Architecture Diagram](./images/arch-diagram.png)
+
 ## Background
 
 In order for customers to begin encrypting and decrypting payment data between business partners, the initial step is to exchange a Key Encrypting Key (KEK).  This solution uses RSA-OAEP to wrap and securely export the KEK.
 
-This solution can be used to combine AWS Payment Cryptography (APC) & AWS KMS to meet niche requirements for key exchange from specific business partners. There are two Lambda functions:
+This solution can be used to combine AWS Payment Cryptography & AWS KMS to meet niche requirements for key exchange from specific business partners. There are two Lambda functions:
 
 1. **CSRBuilderLambda** -- this function is used to create and sign a certificate signing request (CSR) using a specified AWS KMS asymmetric key (key usage: sign/verify). You can send this CSR to your business partner if needed to meet their key exchange requirements.
 2. **PspKEKexchangeLambda** -- this function is used to wrap and export a KEK that is created in AWS Payment Cryptography. You can either let the Lambda function generate a new KEK, or specify the ARN for an existing KEK in AWS Payment Cryptography. To use this, you must provide the S3 URI that points to: a leaf certificate from your business partner (this will be used as the transport key to wrap the KEK), the intermediate or issuing CA certificate in the leaf certificate's chain of trust, and the root CA certificate in the leaf certificate's chain of trust. The full certificate chain, including these three certificates, should all be provided by your business partner.
@@ -25,7 +29,7 @@ The basic steps taken by the **PspKEKexchangeLambda** follow:
 
 1. Ingests a leaf certificate from Amazon S3, and extracts the public key (sometimes referred to as transport key)
 2. Performs certificate validations (check validity of cert, revocation status of cert, and checks for expected UIDs in cert)
-3. Generates an AES128 key in APC (includes KCV [CMAC]), if one does not already exist
+3. Generates an AES128 key in AWS Payment Cryptography (includes KCV [CMAC]), if one does not already exist
 4. Uses transport key from step 1 to wrap and export AES128 key from AWS Payment Cryptography
 5. Appends predefined headers to encrypted AES128 key, based on environment & data type values
 6. Generates RSA keypair in AWS KMS (for signing), if one doesn't already exist. *Note:* If using the CloudFormation deployment, this KMS Key is pre-generated during stack creation.
@@ -75,8 +79,8 @@ Optional Parameters:
 
 | Parameter | Description |
 |------------|-------------|
-| **APCRootKeyARN** | The ARN of a root certificate that you have previously imported to AWS Payment Cryptography. Use this parameter if you have already imported the Root CA certificate into APC. You can modify this as an environment variable in the PspKEKExchangeLambda function after stack creation completes, if you choose. If this value is empty, the PspKEKExchangeLambda will import the certificate using the value specified in the **RootCertificateS3URI** parameter. |
-| **APCICAKeyARN** | The ARN of a intermediate or issuing certificate that you have previously imported to AWS Payment Cryptography. Use this parameter if you have already imported the ICA certificate into APC. You can modify this as an environment variable in the PspKEKExchangeLambda function after stack creation completes, if you choose. If this value is empty, the PspKEKExchangeLambda will import the certificate using the value specified in the **ICACertificateS3URI** parameter. |
+| **APCRootKeyARN** | The ARN of a root certificate that you have previously imported to AWS Payment Cryptography. Use this parameter if you have already imported the Root CA certificate into AWS Payment Cryptography. You can modify this as an environment variable in the PspKEKExchangeLambda function after stack creation completes, if you choose. If this value is empty, the PspKEKExchangeLambda will import the certificate using the value specified in the **RootCertificateS3URI** parameter. |
+| **APCICAKeyARN** | The ARN of a intermediate or issuing certificate that you have previously imported to AWS Payment Cryptography. Use this parameter if you have already imported the ICA certificate into AWS Payment Cryptography. You can modify this as an environment variable in the PspKEKExchangeLambda function after stack creation completes, if you choose. If this value is empty, the PspKEKExchangeLambda will import the certificate using the value specified in the **ICACertificateS3URI** parameter. |
 | **APCKeyARN** | The ARN of the KEK you want to securely export and exchange with your trusted business partner. Use this parameter if you have already generated or imported your KEK in AWS Payment Cryptography. You can modify this as an environment variable in the PspKEKExchangeLambda function after stack creation completes, if you choose. If this value is empty, the PspKEKExchangeLambda will generate a new AES128 KEK in AWS Payment Cryptography on your behalf. |
 
 9. Click "Next".
@@ -159,8 +163,8 @@ Optional Parameters:
 
 | Parameter | Description |
 |------------|-------------|
-| **APCRootKeyARN** | The ARN of a root certificate that you have previously imported to AWS Payment Cryptography. Use this parameter if you have already imported the Root CA certificate into APC. If this value is empty, the PspKEKExchangeLambda will import the certificate using the value specified in the **RootCertificateS3URI** parameter. |
-| **APCICAKeyARN** | The ARN of a intermediate or issuing certificate that you have previously imported to AWS Payment Cryptography. Use this parameter if you have already imported the ICA certificate into APC. If this value is empty, the PspKEKExchangeLambda will import the certificate using the value specified in the **ICACertificateS3URI** parameter. |
+| **APCRootKeyARN** | The ARN of a root certificate that you have previously imported to AWS Payment Cryptography. Use this parameter if you have already imported the Root CA certificate into AWS Payment Cryptography. If this value is empty, the PspKEKExchangeLambda will import the certificate using the value specified in the **RootCertificateS3URI** parameter. |
+| **APCICAKeyARN** | The ARN of a intermediate or issuing certificate that you have previously imported to AWS Payment Cryptography. Use this parameter if you have already imported the ICA certificate into AWS Payment Cryptography. If this value is empty, the PspKEKExchangeLambda will import the certificate using the value specified in the **ICACertificateS3URI** parameter. |
 | **APCKeyARN** | The ARN of the KEK you want to securely export and exchange with your trusted business partner. Use this parameter if you have already generated or imported your KEK in AWS Payment Cryptography. If this value is empty, the PspKEKExchangeLambda will generate a new AES128 KEK in AWS Payment Cryptography on your behalf. |
 
 ### Security Considerations

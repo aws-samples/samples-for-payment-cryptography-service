@@ -1,6 +1,7 @@
 package aws.sample.paymentcryptography.mac;
 
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.commons.codec.binary.Hex;
@@ -71,7 +72,7 @@ public class MACService {
                 .algorithm(MacAlgorithm.ISO9797_ALGORITHM3)
                 .build();
 
-        Logger.getGlobal().info("MACService:generateMac Attempting to generate MAC thru AWS Cryptography Service for text " + text);
+        Logger.getGlobal().log(Level.INFO,"MACService:generateMac Attempting to generate MAC thru AWS Cryptography Service for text {0}", text);
         GenerateMacRequest generateMacRequest = GenerateMacRequest
                 .builder()
                 .keyIdentifier(macKeyArn)
@@ -80,7 +81,7 @@ public class MACService {
                 .build();
 
         GenerateMacResponse macGenerateResponse = DataPlaneUtils.getDataPlaneClient().generateMac(generateMacRequest);
-        Logger.getGlobal().info("MACService:generateMac MAC generation successfult for " + text + ". MAC is " + macGenerateResponse.mac());
+        Logger.getGlobal().log(Level.INFO,"MACService:generateMac MAC generation successfult for {0}. MAC is {1}", new Object[] {text,macGenerateResponse.mac()});
         return macGenerateResponse;
     }
 
