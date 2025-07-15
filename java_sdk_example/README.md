@@ -4,6 +4,10 @@ These JAVA samples are to show payment flows supported by [`AWS Payment Cryptogr
 
 Please ensure you have Java 17 or higher.
 
+## Pre Requisite
+The samples are setup to run based on keys in the [key import app](../key-import-export/tr34/import_app/apc_demo_keysetup.py). As a pre-requisite, you will need to run the key import app. Refer to [key import instructions](../key-import-export/tr34/import_app/Readme.md)
+
+
 ## Instructions
 
 ### Install Maven
@@ -39,9 +43,6 @@ The server has services that the terminals connect to support the flows.
 - Intentional delays are added between each transactions (using `Thread.sleep`) in [PaymentTerminal](src/main/java/aws/sample/paymentcryptography/terminal/PaymentTerminal.java), [ATM](src/main/java/aws/sample/paymentcryptography/terminal/ATM.java),[PinTerminal_ISO_Format_0](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_0_Format.java) and [PinTerminal_ISO_Format_4](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_4_Format.java) to make it easier to follow the flows.
 
 - For simplicity, the APIs in samples are implemented with HTTP GET. This would not apply in production.*
-
-#### Pre Requisite
-The samples are setup to run based on keys in the [key import app](../key-import-export/import_app/apc_demo_keysetup.py). As a pre-requisite, you will need to run the key import app. Refer to [key import instructions](../key-import-export/import_app/Readme.md)
 
 #### Starting the Server
 ```
