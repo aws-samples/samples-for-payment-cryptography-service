@@ -16,9 +16,8 @@ The samples need Maven to run. You can install it from https://maven.apache.org/
 
 ### Build the samples app 
 
-cd samples-for-payment-cryptography-service/java_sdk_example
-
 ```
+cd samples-for-payment-cryptography-service/java_sdk_example
 mvn clean install
 ```
 
