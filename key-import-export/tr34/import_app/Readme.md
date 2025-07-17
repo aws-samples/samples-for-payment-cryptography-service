@@ -40,7 +40,7 @@ Once you run the commands above, it will import the keys and create aliases for 
 ```
 cd samples-for-payment-cryptography-service/key-import-export/tr34/import_app
 
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate 
 python3 -m pip install psec boto3 pycryptodome
 python3 apc_demo_keysetup.py
