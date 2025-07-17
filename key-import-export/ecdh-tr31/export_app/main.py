@@ -16,8 +16,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.cmac import CMAC
 from cryptography import x509
-from crypto_utils import CryptoUtils
-from setup import find_or_create_private_ca, import_ca_key_to_apc, create_alias, get_key_by_alias
+from crypto_utils import CryptoUtils, find_or_create_private_ca, import_ca_key_to_apc, create_alias, get_key_by_alias
 
 # Initialize AWS clients
 payment_crypto_client = boto3.client('payment-cryptography')
