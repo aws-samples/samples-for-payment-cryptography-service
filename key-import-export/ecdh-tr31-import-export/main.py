@@ -11,11 +11,13 @@ import base64
 import binascii
 import boto3
 import secrets
+import inquirer
+import argparse
+import sys
 from tr31 import unwrap_tr31, construct_tr31_header
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.cmac import CMAC
-from cryptography.hazmat.primitives import hashes, serialization
-
+from cryptography.hazmat.primitives import serialization
 import psec
 from crypto_utils import (
     CryptoUtils, find_or_create_local_ca, get_ca_certificate, import_ca_key_to_apc,
@@ -29,12 +31,164 @@ payment_crypto_data_client = boto3.client('payment-cryptography-data')
 KEY_ALIAS_PREFIX = "pindemo-"
 TAG_KEY = "pindemo"
 
-# Set operation mode: 'export' or 'import'
-operation = "export"
+def select_operation():
+    """
+    Interactive CLI prompt to select operation mode with descriptive labels
+    
+    Returns:
+        str: Selected operation ('import' or 'export')
+    """
+    questions = [
+        inquirer.List('operation',
+                      message="Select operation mode",
+                      choices=[
+                          ('Import a key from a raw plaintext key into AWS Payment Cryptography', 'import'),
+                          ('Create a random key in AWS Payment Cryptography and export it to plaintext', 'export')
+                      ],
+                      carousel=True),
+    ]
+    answers = inquirer.prompt(questions)
+    return answers['operation']
+
+def select_import_method():
+    """
+    Interactive CLI prompt to select key import method
+    
+    Returns:
+        str: Selected method ('random' or 'custom')
+    """
+    questions = [
+        inquirer.List('import_method',
+                      message="Select key import method",
+                      choices=[
+                          ('Generate a random AES-256 key', 'random'),
+                          ('Enter a custom hexadecimal key', 'custom')
+                      ],
+                      carousel=True),
+    ]
+    answers = inquirer.prompt(questions)
+    return answers['import_method']
+
+def get_custom_key():
+    """
+    Prompt user to enter a custom key in hexadecimal format
+    
+    Returns:
+        bytes: The key as bytes
+    """
+    valid_key = False
+    key_bytes = None
+    
+    while not valid_key:
+        questions = [
+            inquirer.Text('key_hex',
+                         message="Enter 32-byte (64 hex characters) AES-256 key",
+                         validate=lambda _, x: len(x.strip()) == 64 and all(c in '0123456789ABCDEFabcdef' for c in x.strip())
+                         )
+        ]
+        answers = inquirer.prompt(questions)
+        key_hex = answers['key_hex'].strip().upper()
+        
+        try:
+            key_bytes = binascii.unhexlify(key_hex)
+            valid_key = True
+        except binascii.Error:
+            print("❌ Invalid hexadecimal format. Please try again.")
+    
+    return key_bytes
+
+def parse_arguments():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(
+        description="AWS Payment Cryptography and Local CA Integration Application"
+    )
+    parser.add_argument(
+        "--operation", 
+        choices=["import", "export"],
+        help="Operation mode: import or export"
+    )
+    parser.add_argument(
+        "--import-method", 
+        choices=["random", "custom"],
+        help="Import method: random or custom key"
+    )
+    parser.add_argument(
+        "--key", 
+        help="Custom key in hexadecimal format (64 hex characters for AES-256)"
+    )
+    
+    args = parser.parse_args()
+    
+    # Validate arguments
+    if args.import_method == "custom" and args.operation == "import" and not args.key:
+        parser.error("--import-method custom requires --key to be specified")
+    
+    return args
+
+def get_user_inputs():
+    """
+    Gather all user inputs at the beginning of the interaction
+    
+    Returns:
+        dict: Dictionary containing all user inputs
+    """
+    inputs = {}
+    
+    # Parse command line arguments
+    args = parse_arguments()
+    
+    # Determine operation mode (from args or interactive)
+    if args.operation:
+        inputs['operation'] = args.operation
+        print(f"\nUsing command-line specified operation: {inputs['operation'].upper()}")
+    else:
+        inputs['operation'] = select_operation()
+        print(f"\nSelected operation: {inputs['operation'].upper()}")
+    
+    # If import operation, get import method and key
+    if inputs['operation'] == 'import':
+        # Determine import method (from args or interactive)
+        if args.import_method:
+            inputs['import_method'] = args.import_method
+            print(f"Using command-line specified import method: {inputs['import_method']}")
+        else:
+            inputs['import_method'] = select_import_method()
+            print(f"Selected import method: {inputs['import_method']}")
+        
+        # Get key based on import method
+        if inputs['import_method'] == 'random':
+            print("Will generate a random AES-256 key during execution")
+            inputs['plaintext_key_bytes'] = None  # Will be generated during execution
+        else:  # custom
+            # Check if key was provided via command line
+            if args.key:
+                try:
+                    # Validate the key format
+                    if len(args.key) != 64 or not all(c in '0123456789ABCDEFabcdef' for c in args.key):
+                        print("❌ Invalid key format. Key must be 64 hexadecimal characters.")
+                        sys.exit(1)
+                    
+                    inputs['plaintext_key_bytes'] = binascii.unhexlify(args.key.upper())
+                    print(f"Using command-line provided key: {args.key.upper()}")
+                except binascii.Error:
+                    print("❌ Invalid hexadecimal format in provided key.")
+                    sys.exit(1)
+            else:
+                print("Please enter your custom key:")
+                inputs['plaintext_key_bytes'] = get_custom_key()
+                print(f"Using custom key: {binascii.hexlify(inputs['plaintext_key_bytes']).decode().upper()}")
+    
+    return inputs
 
 def main():
     """Main function to orchestrate the application flow"""
     print("Starting AWS Payment Cryptography and Local CA Integration")
+    
+    # Gather all user inputs at the beginning
+    inputs = get_user_inputs()
+    operation = inputs['operation']
+    
+    print("\n=== Starting Execution ===")
     
     # Step 1: Create Local CA and import the public CA key into Payment Cryptography
     print("\n--- Step 1: Create Local CA and import public CA key ---")
@@ -117,15 +271,24 @@ def main():
         
         # Store for KCV verification
         unwrapped_key_bytes = binascii.unhexlify(unwrapped_key)
+        aes_key_arn = aes_key_arn
     
     elif operation == 'import':
         # Import flow
         print("\n=== IMPORT OPERATION ===")
         
-        # Step 8: Generate random key to import
-        print("\n--- Step 8: Generate random key to import ---")
-        plaintext_key_bytes = secrets.token_bytes(32)  # 32 bytes = 256 bits
-        print(f"Generated plaintext key: {binascii.hexlify(plaintext_key_bytes).decode().upper()}")
+        # Step 8: Get key to import (random or custom)
+        print("\n--- Step 8: Get key to import ---")
+        
+        import_method = inputs['import_method']
+        
+        if import_method == 'random':
+            print("Generating random AES-256 key...")
+            plaintext_key_bytes = secrets.token_bytes(32)  # 32 bytes = 256 bits
+            print(f"Generated plaintext key: {binascii.hexlify(plaintext_key_bytes).decode().upper()}")
+        else:  # custom
+            plaintext_key_bytes = inputs['plaintext_key_bytes']
+            print(f"Using provided custom key: {binascii.hexlify(plaintext_key_bytes).decode().upper()}")
         
         # Step 9: Wrap key using TR31 format
         print("\n--- Step 9: Wrap key using TR31 format ---")
@@ -180,7 +343,21 @@ def main():
     else:
         print("❌ KCV values do not match. There might be an issue with the key operation.")
     
+    # Step 12: Delete the ECDH key pair from AWS Payment Cryptography
+    print("\n--- Step 12: Deleting ECDH key pair from AWS Payment Cryptography ---")
+    try:
+        payment_crypto_client.delete_key(KeyIdentifier=server_ecdh_key_arn)
+        print(f"Successfully deleted ECDH key pair with ARN: {server_ecdh_key_arn}")
+    except Exception as e:
+        print(f"Warning: Failed to delete ECDH key pair: {e}")
+    
     print("\nApplication completed successfully!")
+    
+    # At the end of the execution, print the relevant outputs (ARN and Plaintext key)
+
+    print("\n===  OUTPUTS ===")
+    print(f"Key ARN: {aes_key_arn}")
+    print(f"Plaintext Key (hex): {binascii.hexlify(unwrapped_key_bytes).decode().upper()}")
 
 
 if __name__ == "__main__":
