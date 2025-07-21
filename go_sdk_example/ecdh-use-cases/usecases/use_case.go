@@ -14,9 +14,14 @@ type UseCase interface {
 	Cleanup(ctx context.Context)
 }
 
+// ECDHPacket is a condensed data packet containing relevant ECDH information for the execution of use cases.
 type ECDHPacket struct {
-	SharedSecret        []byte
-	PartyUCAArn         string
-	PartyUCertPEM       []byte
+	// Secret material resulting of the ECDH operation
+	SharedSecret []byte
+	// Party U's (operation initiator) CA certificate identifier at APC
+	PartyUCAArn string
+	// PEM bytes of the certificate containing Party U's ECC public key
+	PartyUCertPEM []byte
+	// Party V's (APC itself) ECC key pair identifier at APC
 	PartyVECCKeyPairArn string
 }

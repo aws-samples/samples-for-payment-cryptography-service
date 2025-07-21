@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// GenerateECDHKeys build an ECC key set for ECDH.
+// GenerateECDHKeys builds an ECC keyset for ECDH.
 func GenerateECDHKeys(curve elliptic.Curve) (privKey *ecdsa.PrivateKey, certPEM, caCertPEM []byte, err error) {
 	caPrivKey, err := ecdsa.GenerateKey(curve, rand.Reader)
 	if err != nil {
