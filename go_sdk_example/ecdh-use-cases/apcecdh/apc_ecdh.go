@@ -1,3 +1,5 @@
+// Package apcecdh implements the core AWS Payment Cryptography ECDH flow used
+// as the base for all the use cases.
 package apcecdh
 
 import (
@@ -14,6 +16,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/paymentcryptography/types"
 )
 
+// AWSPaymentCryptographyECDH performs the APC ECDH flow up to the derivation of a
+// shared secret, delegating final key derivation to the final user of generated
+// ECDHPacket instances.
 type AWSPaymentCryptographyECDH struct {
 	keyArns    []*string
 	ecdhPacket *usecases.ECDHPacket

@@ -4,6 +4,7 @@ import "slices"
 
 type KeyAlgorithm string
 
+// Values for the KeyAlgorithm enum.
 var (
 	KeyAlgorithmTDES2Key KeyAlgorithm = "TDES2Key"
 	KeyAlgorithmTDES3Key KeyAlgorithm = "TDES3Key"

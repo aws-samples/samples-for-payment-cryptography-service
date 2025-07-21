@@ -77,11 +77,7 @@ func (uc *importClearTransportKey) Execute(ctx context.Context, ecdhPacket *ECDH
 	return nil
 }
 
-// Cleanup performs any needed post execution cleanup, e.g. deleting generated keys
-// from APC. This function should be deferred as soon as possible in the majority of
-// cases.
 func (uc *importClearTransportKey) Cleanup(ctx context.Context) {
-	// Delete all ECDH-related keys
 	for _, keyArn := range uc.keyArns {
 		uc.apcClient.DeleteKey(ctx, &paymentcryptography.DeleteKeyInput{
 			KeyIdentifier:   keyArn,
@@ -210,7 +206,7 @@ func (p *ImportClearTransportKeyParams) Validate() error {
 	return nil
 }
 
-// ImportClearTransportKey returns a usecase that imports the
+// ImportClearTransportKey returns a use case that imports the
 // provided clear key as a KBPK (base transport key) for future
 // TR-31 imports.
 func ImportClearTransportKey(params ImportClearTransportKeyParams) (UseCase, error) {

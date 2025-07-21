@@ -118,11 +118,7 @@ func (uc *pinSelect) Execute(ctx context.Context, ecdhPacket *ECDHPacket) error 
 	return nil
 }
 
-// Cleanup performs any needed post execution cleanup, e.g. deleting generated keys
-// from APC. This function should be deferred as soon as possible in the majority of
-// cases.
 func (uc *pinSelect) Cleanup(ctx context.Context) {
-	// Delete all ECDH-related keys
 	for _, keyArn := range uc.keyArns {
 		uc.apcClient.DeleteKey(ctx, &paymentcryptography.DeleteKeyInput{
 			KeyIdentifier:   keyArn,
@@ -149,6 +145,9 @@ func (uc *pinSelect) derivePEK(sharedSecret []byte) (pek []byte, contextInfo []b
 	return pinEncKey, otherInfo, nil
 }
 
+// genPinBlockIsoFormat0 constructs an encrypted PIN block in
+// ISO 9564 Format 0, using the PIN and PAN passed to the use
+// case.
 func (uc *pinSelect) genPinBlockIsoFormat0(pekTDESBlock cipher.Block) ([]byte, error) {
 	paddedPIN := fmt.Sprintf("0%x%s", len(uc.pin), uc.pin)
 	paddedPIN += strings.Repeat("F", 16-len(paddedPIN))
@@ -169,9 +168,6 @@ func (uc *pinSelect) genPinBlockIsoFormat0(pekTDESBlock cipher.Block) ([]byte, e
 
 	pinBlock := make([]byte, 8)
 	subtle.XORBytes(pinBlock, paddedPINBytes, paddedPANBytes)
-	// for idx := range pinBlock {
-	// 	pinBlock[idx] = paddedPINBytes[idx] ^ paddedPANBytes[idx]
-	// }
 	slog.Info("PIN block generated.", slog.String("pinBlock", strings.ToUpper(hex.EncodeToString(pinBlock))))
 
 	encryptedPinBlock := make([]byte, des.BlockSize)
@@ -284,7 +280,7 @@ func (p *PINSelectParams) Validate() error {
 	return nil
 }
 
-// PINSelect returns a usecase that calculates validation
+// PINSelect returns a use case that calculates validation
 // information for the provided PIN.
 func PINSelect(params PINSelectParams) (UseCase, error) {
 	if err := params.Validate(); err != nil {
