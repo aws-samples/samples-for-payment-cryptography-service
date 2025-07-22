@@ -38,7 +38,7 @@ func (uc *pinSelect) Execute(ctx context.Context, ecdhPacket *ECDHPacket) error 
 		return errors.Join(errors.New("failed to derive PEK from shared secret"), err)
 	}
 
-	// Since uc.deriveWrappingKey derives a TDES2key PEK.
+	// Since uc.derivePEK derives a TDES2key PEK.
 	pekTDESBlock, err := des.NewTripleDESCipher(append(pek, pek[:8]...))
 	if err != nil {
 		return errors.Join(errors.New("failed to create PEK TDES cipher block"), err)
@@ -66,11 +66,11 @@ func (uc *pinSelect) Execute(ctx context.Context, ecdhPacket *ECDHPacket) error 
 			WrappedKeyMaterial: &apcdtypes.WrappedKeyMaterialMemberDiffieHellmanSymmetricKey{
 				Value: apcdtypes.EcdhDerivationAttributes{
 					CertificateAuthorityPublicKeyIdentifier: aws.String(ecdhPacket.PartyUCAArn),
-					// Since uc.deriveWrappingKey derives a TDES2key PEK.
+					// Since uc.derivePEK derives a TDES2key PEK.
 					KeyAlgorithm: apcdtypes.SymmetricKeyAlgorithmTdes2key,
-					// Since uc.deriveWrappingKey uses ConcatKDF
+					// Since uc.derivePEK uses ConcatKDF
 					KeyDerivationFunction: apcdtypes.KeyDerivationFunctionNistSp800,
-					// Since uc.deriveWrappingKey uses SHA-512 for ConcatKDF
+					// Since uc.derivePEK uses SHA-512 for ConcatKDF
 					KeyDerivationHashAlgorithm: apcdtypes.KeyDerivationHashAlgorithmSha512,
 					PublicKeyCertificate:       aws.String(base64.StdEncoding.EncodeToString(ecdhPacket.PartyUCertPEM)),
 					SharedInformation:          aws.String(hex.EncodeToString(contextInfo)),
