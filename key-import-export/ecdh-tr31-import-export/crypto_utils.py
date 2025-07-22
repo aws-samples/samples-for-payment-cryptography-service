@@ -6,7 +6,6 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.kdf.concatkdf import ConcatKDFHash
 import base64
 import binascii
-import time
 import secrets
 import datetime
 import os
@@ -23,6 +22,15 @@ class CryptoUtils:
 
     @staticmethod
     def generate_certificate_signing_request(private_key):
+        """
+        Generate a Certificate Signing Request (CSR) with standard attributes
+        
+        Args:
+            private_key (EC private key): The private key to sign the CSR with
+            
+        Returns:
+            x509.CertificateSigningRequest: The generated CSR
+        """
         # Generate a CSR
         csr = x509.CertificateSigningRequestBuilder().subject_name(x509.Name([
             # Provide various details about who we are.
@@ -37,12 +45,24 @@ class CryptoUtils:
 
     @staticmethod
     def generate_ecdh_key_pair():
+        """
+        Generate an ECDH key pair using the NIST P-521 curve
+        
+        Returns:
+            tuple: (private_key, public_key) - The generated EC key pair
+        """
         private_key = ec.generate_private_key(curve=ec.SECP521R1())
         public_key = private_key.public_key()
         return private_key, public_key
 
     @staticmethod
     def generate_shared_info():
+        """
+        Generate random shared information for key derivation
+        
+        Returns:
+            bytes: 32 bytes of cryptographically secure random data
+        """
         return secrets.token_bytes(32)
 
     @staticmethod
@@ -103,7 +123,7 @@ class CryptoUtils:
         csr = x509.load_pem_x509_csr(csr_pem)
         
         # Calculate validity period
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.UTC)
         if validity['Type'] == 'DAYS':
             valid_until = now + datetime.timedelta(days=validity['Value'])
         elif validity['Type'] == 'YEARS':
@@ -172,6 +192,15 @@ class CryptoUtils:
         return cert_pem, ca_cert_pem
 
 def import_ca_key_to_apc(certificate_authority):
+    """
+    Import a Certificate Authority public key into AWS Payment Cryptography
+    
+    Args:
+        certificate_authority (str): PEM-encoded certificate of the CA
+        
+    Returns:
+        str: ARN of the imported key
+    """
     print("Importing CA Key")
     key_arn = controlplane_client.import_key(
         Enabled=True, 
@@ -195,6 +224,12 @@ def import_ca_key_to_apc(certificate_authority):
 
 
 def apc_generate_pgk():
+    """
+    Create a PIN Generation Key (PGK) in AWS Payment Cryptography
+    
+    Returns:
+        str: ARN of the created PGK key
+    """
     print("Creating new PGK")
     key_arn = controlplane_client.create_key(
         Exportable=True,
@@ -209,6 +244,12 @@ def apc_generate_pgk():
 
 
 def apc_generate_pek():
+    """
+    Create a PIN Encryption Key (PEK) in AWS Payment Cryptography
+    
+    Returns:
+        str: ARN of the created PEK key
+    """
     print("Creating new PEK")
     key_arn = controlplane_client.create_key(
         Exportable=True,
@@ -249,7 +290,7 @@ def create_local_ca():
     ])
     
     # Create the CA certificate
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.UTC)
     
     # Generate Subject Key Identifier from the public key
     ski = x509.SubjectKeyIdentifier.from_public_key(private_key.public_key())
@@ -354,13 +395,21 @@ def setup():
     return ca_id, ca_key_arn
 
 
-def create_aes_256_data_encryption_key():
-    """Create an AES-256 data encryption key in AWS Payment Cryptography"""
-    print("Creating new AES-256 Data Encryption Key")
+def create_data_encryption_key(key_type='AES_256'):
+    """
+    Create a data encryption key in AWS Payment Cryptography
+    
+    Args:
+        key_type (str): Type of key to create ('AES_256', 'TDES_2KEY', or 'TDES_3KEY')
+        
+    Returns:
+        str: ARN of the created key
+    """
+    print(f"Creating new {key_type} Data Encryption Key")
     key_arn = controlplane_client.create_key(
         Exportable=True,
         KeyAttributes={
-            "KeyAlgorithm": "AES_256",
+            "KeyAlgorithm": key_type,
             "KeyUsage": "TR31_D0_SYMMETRIC_DATA_ENCRYPTION_KEY",
             "KeyClass": "SYMMETRIC_KEY",
             "KeyModesOfUse": {
@@ -373,9 +422,28 @@ def create_aes_256_data_encryption_key():
     )['Key']['KeyArn']
     return key_arn
 
+def create_aes_256_data_encryption_key():
+    """
+    Create an AES-256 data encryption key in AWS Payment Cryptography
+    
+    This is a legacy wrapper function that calls create_data_encryption_key with 'AES_256'
+    
+    Returns:
+        str: ARN of the created AES-256 data encryption key
+    """
+    return create_data_encryption_key('AES_256')
+
 
 def create_ecdh_key_pair_in_payment_crypto():
-    """Create an ECDH KeyPair in AWS Payment Cryptography"""
+    """
+    Create an ECDH key pair in AWS Payment Cryptography service
+    
+    Creates an ECC NIST P-521 asymmetric key pair that can be used for key agreement
+    protocols. The key is configured for deriving TR31_K1_KEY_BLOCK_PROTECTION_KEY.
+    
+    Returns:
+        str: ARN of the created ECDH key pair
+    """
     print("Creating new ECDH Key Pair in AWS Payment Cryptography")
     key_arn = controlplane_client.create_key(
         Enabled=True,
@@ -393,9 +461,21 @@ def create_ecdh_key_pair_in_payment_crypto():
     return key_arn
 
 
-def export_aes_key_under_tr31(aes_key_arn, client_cert_key_arn, server_ecdh_key_arn, shared_info, public_key_certificate):
-    """Export the AES-256 key wrapped under ECDH key using TR31 format"""
-    print("Exporting AES-256 key wrapped under ECDH key using TR31 format")
+def export_aes_key_under_tr31(aes_key_arn, client_cert_key_arn, server_ecdh_key_arn, shared_info, public_key_certificate, key_type='AES_256'):
+    """Export a key wrapped under ECDH key using TR31 format
+    
+    Args:
+        aes_key_arn (str): ARN of the key to export
+        client_cert_key_arn (str): ARN of the client certificate key
+        server_ecdh_key_arn (str): ARN of the server ECDH key
+        shared_info (bytes): Shared information for key derivation
+        public_key_certificate (str): Public key certificate
+        key_type (str): Type of key to export ('AES_256', 'TDES_2KEY', or 'TDES_3KEY')
+        
+    Returns:
+        str: TR31 key block
+    """
+    print(f"Exporting {key_type} key wrapped under ECDH key using TR31 format")
     
     # Get the shared info in the format expected by AWS Payment Cryptography
     shared_info_hex = binascii.hexlify(shared_info).decode().upper()
@@ -414,16 +494,27 @@ def export_aes_key_under_tr31(aes_key_arn, client_cert_key_arn, server_ecdh_key_
                 'KeyDerivationHashAlgorithm': 'SHA_512',
                 'PrivateKeyIdentifier': server_ecdh_key_arn,
                 'PublicKeyCertificate': base64.b64encode(public_key_certificate.encode('UTF-8')).decode('UTF-8')
-            }
+            }   
         }
     )
 
     print(f"Export response: {response}")
     return response['WrappedKey']['KeyMaterial']
 
-def import_aes_key_under_tr31(client_cert_key_arn, server_ecdh_key_arn, shared_info, public_key_certificate, tr31block):
-    """Export the AES-256 key wrapped under ECDH key using TR31 format"""
-    print("Exporting AES-256 key wrapped under ECDH key using TR31 format")
+def import_key_under_tr31_ecdh(client_cert_key_arn, server_ecdh_key_arn, shared_info, public_key_certificate, tr31block):
+    """Import a key wrapped under ECDH key using TR31 format
+    
+    Args:
+        client_cert_key_arn (str): ARN of the client certificate key
+        server_ecdh_key_arn (str): ARN of the server ECDH key
+        shared_info (bytes): Shared information for key derivation
+        public_key_certificate (str): Public key certificate
+        tr31block (str): TR31 key block
+
+    Returns:
+        str: ARN of the imported key
+    """
+    print(f"Importing key wrapped under ECDH key using TR31 format")
     
     # Get the shared info in the format expected by AWS Payment Cryptography
     shared_info_hex = binascii.hexlify(shared_info).decode().upper()
@@ -446,5 +537,5 @@ def import_aes_key_under_tr31(client_cert_key_arn, server_ecdh_key_arn, shared_i
         }
     )
 
-    print(f"Export response: {response}")
+    print(f"Import response: {response}")
     return response['Key']['KeyArn']

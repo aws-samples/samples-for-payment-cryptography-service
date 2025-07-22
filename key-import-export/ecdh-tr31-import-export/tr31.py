@@ -3,11 +3,11 @@ import binascii
 import boto3
 
 
-def construct_tr31_header(algoirhtm, export_mode, key_type, mode_of_use, version_id='B', version_number='00'):
+def construct_tr31_header(algorithm, export_mode, key_type, mode_of_use, version_id='B', version_number='00'):
     header = psec.tr31.Header(
         version_id=version_id,
         key_usage=key_type,
-        algorithm=algoirhtm,
+        algorithm=algorithm,
         mode_of_use=mode_of_use,
         version_num=version_number,
         exportability=export_mode
