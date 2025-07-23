@@ -22,6 +22,9 @@ This section contains flows such as P2PE, Pin set/verify and translation. Additi
 ### [Python Based Flows](python_sdk_example/ecdh_flows/README.md)
 This section contains ECDH flow for pin set and pin reveal functionalities
 
+### [Golang Based ECDH Use Cases](go_sdk_example/ecdh-use-cases/README.md)
+This section contains ECDH sample use cases
+
 ## Contributing
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
