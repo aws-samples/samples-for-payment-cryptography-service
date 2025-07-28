@@ -21,6 +21,8 @@ var fTargetKeyAlgorithm string
 var fTargetKeyHex string
 var fPIN string
 var fPAN string
+var fPEKIdentifier string
+var fPVKIdentifier string
 
 func main() {
 	ctx := context.Background()
@@ -31,6 +33,8 @@ func main() {
 	flag.StringVar(&fTargetKeyHex, "target-key", "", "Target key bytes in hexadecimal representation. Must match the number of bytes required by algorithm in -target-key-algorithm.")
 	flag.StringVar(&fPIN, "pin", "1234", "4-12 digit PIN")
 	flag.StringVar(&fPAN, "pan", "1234567890123456", "12-19 digit PAN")
+	flag.StringVar(&fPEKIdentifier, "pek-id", "", "The identifier for an existing PEK at APC. May be a full ARN, or an alias (complete with alias/ prefix).")
+	flag.StringVar(&fPVKIdentifier, "pvk-id", "", "The identifier for an existing PVK at APC. May be a full ARN, or an alias (complete with alias/ prefix).")
 	flag.Parse()
 
 	selectedUseCase := enums.UseCase(fUseCase)
@@ -44,7 +48,7 @@ func main() {
 	}
 
 	apcECDH := apcecdh.New(awsConf)
-	defer apcECDH.Cleanup(context.Background())
+	defer apcECDH.Cleanup(context.Background()) // Deletes all ECDH related keys after the script concludes.
 
 	var ecdhPacket *usecases.ECDHPacket
 	var useCase usecases.UseCase
@@ -81,9 +85,11 @@ func main() {
 		}
 
 		useCase, err = usecases.PINSelect(usecases.PINSelectParams{
-			AWSConfig: awsConf,
-			PIN:       fPIN,
-			PAN:       fPAN,
+			AWSConfig:            awsConf,
+			PIN:                  fPIN,
+			PAN:                  fPAN,
+			StoragePEKIdentifier: fPEKIdentifier,
+			PVKIdentifier:        fPVKIdentifier,
 		})
 		if err != nil {
 			log.Fatalln("Failed to create PINSelect use case:", err)
@@ -92,7 +98,6 @@ func main() {
 	default:
 		log.Fatalln("Use case not implemented:", selectedUseCase)
 	}
-	defer useCase.Cleanup(context.Background())
 
 	err = useCase.Execute(ctx, ecdhPacket)
 	if err != nil {

@@ -8,10 +8,6 @@ import "context"
 type UseCase interface {
 	// Execute performs the main use case flow.
 	Execute(ctx context.Context, ecdhPacket *ECDHPacket) error
-	// Cleanup performs any needed post execution cleanup, e.g. deleting generated keys
-	// from APC. This function should be deferred as soon as possible in the majority of
-	// cases.
-	Cleanup(ctx context.Context)
 }
 
 // ECDHPacket is a condensed data packet containing relevant ECDH information for the execution of use cases.

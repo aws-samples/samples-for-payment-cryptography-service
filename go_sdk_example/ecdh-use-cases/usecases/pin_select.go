@@ -29,7 +29,6 @@ type pinSelect struct {
 	apcdClient   *paymentcryptographydata.Client
 	storagePEKID string
 	pvkID        string
-	keyArns      []*string
 }
 
 func (uc *pinSelect) Execute(ctx context.Context, ecdhPacket *ECDHPacket) error {
@@ -51,7 +50,7 @@ func (uc *pinSelect) Execute(ctx context.Context, ecdhPacket *ECDHPacket) error 
 
 	storagePEKID, err := uc.getStoragePEK(ctx)
 	if err != nil {
-		return errors.Join(errors.New("faile to retrieve storage PEK"), err)
+		return errors.Join(errors.New("failed to retrieve storage PEK"), err)
 	}
 
 	translatePINBlockResp, err := uc.apcdClient.TranslatePinData(ctx, &paymentcryptographydata.TranslatePinDataInput{
@@ -87,11 +86,15 @@ func (uc *pinSelect) Execute(ctx context.Context, ecdhPacket *ECDHPacket) error 
 	if err != nil {
 		return errors.Join(errors.New("failed to translate PIN block"), err)
 	}
-	slog.Info("PIN block translated to storage PEK.", slog.String("storagePINBlock", aws.ToString(translatePINBlockResp.PinBlock)))
+	slog.Info(
+		"PIN block translated to storage PEK.",
+		slog.String("storagePINBlock", aws.ToString(translatePINBlockResp.PinBlock)),
+		slog.String("storagePEKIdentifier", storagePEKID),
+	)
 
 	pvkID, err := uc.getPVK(ctx)
 	if err != nil {
-		return errors.Join(errors.New("faile to retrieve PVK"), err)
+		return errors.Join(errors.New("failed to retrieve PVK"), err)
 	}
 
 	genPVVResp, err := uc.apcdClient.GeneratePinData(ctx, &paymentcryptographydata.GeneratePinDataInput{
@@ -113,18 +116,13 @@ func (uc *pinSelect) Execute(ctx context.Context, ecdhPacket *ECDHPacket) error 
 	if !ok {
 		return errors.New("unexpected pin generation response; PVV not generated")
 	}
-	slog.Info("PVV generated successfully.", slog.String("pvv", pvv.Value))
+	slog.Info(
+		"PVV generated successfully.",
+		slog.String("pvv", pvv.Value),
+		slog.String("pvkIdentifier", pvkID),
+	)
 
 	return nil
-}
-
-func (uc *pinSelect) Cleanup(ctx context.Context) {
-	for _, keyArn := range uc.keyArns {
-		uc.apcClient.DeleteKey(ctx, &paymentcryptography.DeleteKeyInput{
-			KeyIdentifier:   keyArn,
-			DeleteKeyInDays: aws.Int32(3),
-		})
-	}
 }
 
 // derivePEK derives a one-time use PEK from the ECDH shared
@@ -178,13 +176,13 @@ func (uc *pinSelect) genPinBlockIsoFormat0(pekTDESBlock cipher.Block) ([]byte, e
 }
 
 // getStoragePEK returns the identifier of a PEK at APC, either validating the pre-existing
-// one passed to the use case or creating a new temporary one.
+// one passed to the use case or creating a new one.
 func (uc *pinSelect) getStoragePEK(ctx context.Context) (string, error) {
-	getStoragePEKResp, err := uc.apcClient.GetKey(ctx, &paymentcryptography.GetKeyInput{
+	_, err := uc.apcClient.GetKey(ctx, &paymentcryptography.GetKeyInput{
 		KeyIdentifier: aws.String(uc.storagePEKID),
 	})
 	if err == nil {
-		return aws.ToString(getStoragePEKResp.Key.KeyArn), nil
+		return uc.storagePEKID, nil
 	}
 
 	createStoragePEKResp, err := uc.apcClient.CreateKey(context.Background(), &paymentcryptography.CreateKeyInput{
@@ -204,20 +202,19 @@ func (uc *pinSelect) getStoragePEK(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	uc.keyArns = append(uc.keyArns, createStoragePEKResp.Key.KeyArn)
-	slog.Info("Temporary PEK created.", slog.String("arn", aws.ToString(createStoragePEKResp.Key.KeyArn)), slog.String("kcv", aws.ToString(createStoragePEKResp.Key.KeyCheckValue)))
+	slog.Info("PEK created.", slog.String("arn", aws.ToString(createStoragePEKResp.Key.KeyArn)), slog.String("kcv", aws.ToString(createStoragePEKResp.Key.KeyCheckValue)))
 
 	return aws.ToString(createStoragePEKResp.Key.KeyArn), nil
 }
 
 // getPVK returns the identifier of a PVK at APC, either validating the pre-existing
-// one passed to the use case or creating a new temporary one.
+// one passed to the use case or creating a new one.
 func (uc *pinSelect) getPVK(ctx context.Context) (string, error) {
-	getPVKResp, err := uc.apcClient.GetKey(ctx, &paymentcryptography.GetKeyInput{
+	_, err := uc.apcClient.GetKey(ctx, &paymentcryptography.GetKeyInput{
 		KeyIdentifier: aws.String(uc.pvkID),
 	})
 	if err == nil {
-		return aws.ToString(getPVKResp.Key.KeyArn), nil
+		return uc.pvkID, nil
 	}
 
 	createPVKResp, err := uc.apcClient.CreateKey(context.Background(), &paymentcryptography.CreateKeyInput{
@@ -235,8 +232,7 @@ func (uc *pinSelect) getPVK(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	uc.keyArns = append(uc.keyArns, createPVKResp.Key.KeyArn)
-	slog.Info("Temporary PVK created.", slog.String("arn", aws.ToString(createPVKResp.Key.KeyArn)), slog.String("kcv", aws.ToString(createPVKResp.Key.KeyCheckValue)))
+	slog.Info("PVK created.", slog.String("arn", aws.ToString(createPVKResp.Key.KeyArn)), slog.String("kcv", aws.ToString(createPVKResp.Key.KeyCheckValue)))
 
 	return aws.ToString(createPVKResp.Key.KeyArn), nil
 }
@@ -253,16 +249,16 @@ type PINSelectParams struct {
 	PAN string
 
 	// StoragePEKIdentifier is the identifier of a pre-existing PEK which should
-	// be used as the target PEK for a PIN Select operation. If not provided, a
-	// temporary one will be created during execution.
+	// be used as the target PEK for a PIN Select operation. If not provided or
+	// invalid, a new one will be generated during execution.
 	//
 	// Default: ""
 	StoragePEKIdentifier string
 
 	// PVKIdentifier is the identifier of a pre-existing PVK which should
 	// be used to calculate the PIN Verification Value during a PIN Select
-	// operation. If not provided, a temporary one will be created during
-	// execution.
+	// operation. If not provided or invalid, a new one will be generated
+	// during execution.
 	//
 	// Default: ""
 	PVKIdentifier string
@@ -288,7 +284,6 @@ func PINSelect(params PINSelectParams) (UseCase, error) {
 	}
 
 	return &pinSelect{
-		keyArns:      make([]*string, 0),
 		pin:          params.PIN,
 		pan:          params.PAN,
 		apcClient:    paymentcryptography.NewFromConfig(params.AWSConfig),

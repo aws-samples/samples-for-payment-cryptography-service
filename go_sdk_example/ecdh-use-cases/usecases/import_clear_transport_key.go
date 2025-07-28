@@ -24,7 +24,6 @@ type importClearTransportKey struct {
 	targetKeyAlgorithm enums.KeyAlgorithm
 	targetKey          []byte
 	apcClient          *paymentcryptography.Client
-	keyArns            []*string
 
 	executed bool
 }
@@ -67,23 +66,13 @@ func (uc *importClearTransportKey) Execute(ctx context.Context, ecdhPacket *ECDH
 	if err != nil {
 		return errors.Join(errors.New("failed to import target key"), err)
 	}
-	uc.keyArns = append(uc.keyArns, keyImportResp.Key.KeyArn)
-	slog.Info("Target key imported.", slog.String("keyArn", aws.ToString(keyImportResp.Key.KeyArn)))
+	slog.Info("Target key imported as KBPK.", slog.String("arn", aws.ToString(keyImportResp.Key.KeyArn)), slog.String("kcv", aws.ToString(keyImportResp.Key.KeyCheckValue)))
 
 	if aws.ToString(keyImportResp.Key.KeyCheckValue) != targetKCV {
 		slog.Warn("KCV from APC does not match locally calculated KCV.", slog.String("apcKCV", aws.ToString(keyImportResp.Key.KeyCheckValue)), slog.String("localKCV", targetKCV))
 	}
 
 	return nil
-}
-
-func (uc *importClearTransportKey) Cleanup(ctx context.Context) {
-	for _, keyArn := range uc.keyArns {
-		uc.apcClient.DeleteKey(ctx, &paymentcryptography.DeleteKeyInput{
-			KeyIdentifier:   keyArn,
-			DeleteKeyInDays: aws.Int32(3),
-		})
-	}
 }
 
 // deriveWrappingKey derives a one-time use KBPK from the ECDH
@@ -215,7 +204,6 @@ func ImportClearTransportKey(params ImportClearTransportKeyParams) (UseCase, err
 	}
 
 	return &importClearTransportKey{
-		keyArns:            make([]*string, 0),
 		apcClient:          paymentcryptography.NewFromConfig(params.AWSConfig),
 		targetKey:          params.TargetKey,
 		targetKeyAlgorithm: params.TargetKeyAlgorithm,

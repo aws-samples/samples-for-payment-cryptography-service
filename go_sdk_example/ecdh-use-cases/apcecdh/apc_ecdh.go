@@ -138,7 +138,6 @@ func (apcECDH *AWSPaymentCryptographyECDH) Setup(ctx context.Context, curve elli
 // from APC. This function should be deferred as soon as possible in the majority of
 // cases.
 func (apcECDH *AWSPaymentCryptographyECDH) Cleanup(ctx context.Context) {
-	// Delete all ECDH-related keys
 	for _, keyArn := range apcECDH.keyArns {
 		apcECDH.apcClient.DeleteKey(ctx, &paymentcryptography.DeleteKeyInput{
 			KeyIdentifier:   keyArn,
