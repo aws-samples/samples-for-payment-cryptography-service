@@ -2,9 +2,10 @@
 **Note**: Currently supports payShield and Futurex HSMs
 
 ## Assumptions
-KDH : Key Distribution Host
-KRD : Key Receiving Device
-Futurex : HSM is configured using PMK
+* KDH : Key Distribution Host
+* KRD : Key Receiving Device
+* Futurex : HSM is configured using PMK. Tested using firmware versions [7.4, 7.6].
+* payShield: Tested using firmware versions [1.14].
 
 ## Key Exchange using TR34
 
