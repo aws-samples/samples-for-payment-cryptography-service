@@ -175,8 +175,8 @@ func (uc *pinSelect) genPinBlockIsoFormat0(pekTDESBlock cipher.Block) ([]byte, e
 	return encryptedPinBlock, nil
 }
 
-// getStoragePEK returns the identifier of a PEK at APC, either validating the pre-existing
-// one passed to the use case or creating a new one.
+// getStoragePEK returns the identifier of a PEK at AWS Payment Cryptography, either
+// validating the pre-existing one passed to the use case or creating a new one.
 func (uc *pinSelect) getStoragePEK(ctx context.Context) (string, error) {
 	_, err := uc.apcClient.GetKey(ctx, &paymentcryptography.GetKeyInput{
 		KeyIdentifier: aws.String(uc.storagePEKID),
@@ -207,8 +207,8 @@ func (uc *pinSelect) getStoragePEK(ctx context.Context) (string, error) {
 	return aws.ToString(createStoragePEKResp.Key.KeyArn), nil
 }
 
-// getPVK returns the identifier of a PVK at APC, either validating the pre-existing
-// one passed to the use case or creating a new one.
+// getPVK returns the identifier of a PVK at AWS Payment Cryptography, either validating
+// the pre-existing one passed to the use case or creating a new one.
 func (uc *pinSelect) getPVK(ctx context.Context) (string, error) {
 	_, err := uc.apcClient.GetKey(ctx, &paymentcryptography.GetKeyInput{
 		KeyIdentifier: aws.String(uc.pvkID),

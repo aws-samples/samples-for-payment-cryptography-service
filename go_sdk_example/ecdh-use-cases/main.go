@@ -33,8 +33,8 @@ func main() {
 	flag.StringVar(&fTargetKeyHex, "target-key", "", "Target key bytes in hexadecimal representation. Must match the number of bytes required by algorithm in -target-key-algorithm.")
 	flag.StringVar(&fPIN, "pin", "1234", "4-12 digit PIN")
 	flag.StringVar(&fPAN, "pan", "1234567890123456", "12-19 digit PAN")
-	flag.StringVar(&fPEKIdentifier, "pek-id", "", "The identifier for an existing PEK at APC. May be a full ARN, or an alias (complete with alias/ prefix).")
-	flag.StringVar(&fPVKIdentifier, "pvk-id", "", "The identifier for an existing PVK at APC. May be a full ARN, or an alias (complete with alias/ prefix).")
+	flag.StringVar(&fPEKIdentifier, "pek-id", "", "The identifier for an existing PEK at AWS Payment Cryptography. May be a full ARN or an alias (complete with alias/ prefix).")
+	flag.StringVar(&fPVKIdentifier, "pvk-id", "", "The identifier for an existing PVK at AWS Payment Cryptography. May be a full ARN or an alias (complete with alias/ prefix).")
 	flag.Parse()
 
 	selectedUseCase := enums.UseCase(fUseCase)

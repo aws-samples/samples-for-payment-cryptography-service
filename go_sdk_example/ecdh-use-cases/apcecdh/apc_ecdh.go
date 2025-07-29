@@ -16,17 +16,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/paymentcryptography/types"
 )
 
-// AWSPaymentCryptographyECDH performs the APC ECDH flow up to the derivation of a
-// shared secret, delegating final key derivation to the final user of generated
-// ECDHPacket instances.
+// AWSPaymentCryptographyECDH performs the AWS Payment Cryptography ECDH flow up
+// to the derivation of a shared secret, delegating final key derivation to the
+// user of generated ECDHPacket instances.
 type AWSPaymentCryptographyECDH struct {
 	keyArns    []*string
 	ecdhPacket *usecases.ECDHPacket
 	apcClient  *paymentcryptography.Client
 }
 
-// Setup performs all APC ECDH base steps, returning a condensed packet with
-// useful information for more specialized operations.
+// Setup performs all AWS Payment Cryptography ECDH base steps, returning a condensed
+// packet with useful information for specialized operations.
 func (apcECDH *AWSPaymentCryptographyECDH) Setup(ctx context.Context, curve elliptic.Curve, derivedKeyUsage types.DeriveKeyUsage) (packet *usecases.ECDHPacket, err error) {
 	if apcECDH.ecdhPacket != nil {
 		return apcECDH.ecdhPacket, nil
@@ -38,7 +38,7 @@ func (apcECDH *AWSPaymentCryptographyECDH) Setup(ctx context.Context, curve elli
 		elliptic.P521(): types.KeyAlgorithmEccNistP521,
 	}[curve]
 	if !ok {
-		return nil, errors.New("elliptic curve algorithm not supported by APC")
+		return nil, errors.New("elliptic curve algorithm not supported by AWS Payment Cryptography")
 	}
 
 	// Party U Setup
@@ -135,8 +135,8 @@ func (apcECDH *AWSPaymentCryptographyECDH) Setup(ctx context.Context, curve elli
 }
 
 // Cleanup performs any needed post execution cleanup, e.g. deleting generated keys
-// from APC. This function should be deferred as soon as possible in the majority of
-// cases.
+// from AWS Payment Cryptography. This function should be deferred as soon as possible
+// in the majority of cases.
 func (apcECDH *AWSPaymentCryptographyECDH) Cleanup(ctx context.Context) {
 	for _, keyArn := range apcECDH.keyArns {
 		apcECDH.apcClient.DeleteKey(ctx, &paymentcryptography.DeleteKeyInput{

@@ -69,7 +69,7 @@ func (uc *importClearTransportKey) Execute(ctx context.Context, ecdhPacket *ECDH
 	slog.Info("Target key imported as KBPK.", slog.String("arn", aws.ToString(keyImportResp.Key.KeyArn)), slog.String("kcv", aws.ToString(keyImportResp.Key.KeyCheckValue)))
 
 	if aws.ToString(keyImportResp.Key.KeyCheckValue) != targetKCV {
-		slog.Warn("KCV from APC does not match locally calculated KCV.", slog.String("apcKCV", aws.ToString(keyImportResp.Key.KeyCheckValue)), slog.String("localKCV", targetKCV))
+		slog.Warn("KCV from AWS Payment Cryptography does not match locally calculated KCV.", slog.String("apcKCV", aws.ToString(keyImportResp.Key.KeyCheckValue)), slog.String("localKCV", targetKCV))
 	}
 
 	return nil

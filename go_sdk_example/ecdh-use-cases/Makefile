@@ -13,8 +13,5 @@ import-clear-aes192-example:
 import-clear-aes256-example:
 	go run . -aws-profile default -use-case ImportClearTransportKey -target-key-algorithm AES256 -target-key 0000000000000000000000000000000000000000000000000000000000000000
 	
-pin-select-no-keys-example:
-	go run . -aws-profile default -use-case PINSelect -pin 2222 -pan 1122334455667788
-
 pin-select-example:
-	go run . -aws-profile default -use-case PINSelect -pin 2222 -pan 1122334455667788 -pek-id alias/storage_pek -pvk-id alias/pvv_key
+	go run . -aws-profile default -use-case PINSelect -pin 2222 -pan 1122334455667788

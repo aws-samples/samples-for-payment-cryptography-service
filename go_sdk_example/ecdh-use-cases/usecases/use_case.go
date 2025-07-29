@@ -4,7 +4,8 @@ package usecases
 
 import "context"
 
-// UseCase represents any implementation able to perform action at APC using an ECDH information packet.
+// UseCase represents any implementation able to perform actions at AWS Payment
+// Cryptography using an ECDH information packet.
 type UseCase interface {
 	// Execute performs the main use case flow.
 	Execute(ctx context.Context, ecdhPacket *ECDHPacket) error
@@ -14,10 +15,10 @@ type UseCase interface {
 type ECDHPacket struct {
 	// Secret material resulting of the ECDH operation
 	SharedSecret []byte
-	// Party U's (operation initiator) CA certificate identifier at APC
+	// Party U's (operation initiator) CA certificate identifier at AWS Payment Cryptography
 	PartyUCAArn string
 	// PEM bytes of the certificate containing Party U's ECC public key
 	PartyUCertPEM []byte
-	// Party V's (APC itself) ECC key pair identifier at APC
+	// Party V's (AWS Payment Cryptography itself) ECC key pair identifier at AWS Payment Cryptography
 	PartyVECCKeyPairArn string
 }
