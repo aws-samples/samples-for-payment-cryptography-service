@@ -21,8 +21,8 @@ func GenerateECDHKeys(curve elliptic.Curve) (privKey *ecdsa.PrivateKey, certPEM,
 	caCertTmpl := &x509.Certificate{
 		Subject: pkix.Name{
 			CommonName:         "Desktop HSM CA",
-			Organization:       []string{"Asaptech"},
-			OrganizationalUnit: []string{"Asapcard"},
+			Organization:       []string{"ExampleCorp"},
+			OrganizationalUnit: []string{"OU1"},
 		},
 		NotBefore:             time.Now().Add(-24 * time.Hour),
 		NotAfter:              time.Now().Add(90 * 24 * time.Hour),
@@ -58,8 +58,8 @@ func GenerateECDHKeys(curve elliptic.Curve) (privKey *ecdsa.PrivateKey, certPEM,
 	certTmpl := &x509.Certificate{
 		Subject: pkix.Name{
 			CommonName:         "Desktop HSM",
-			Organization:       []string{"Asaptech"},
-			OrganizationalUnit: []string{"Asapcard"},
+			Organization:       []string{"ExampleCorp"},
+			OrganizationalUnit: []string{"OU1"},
 		},
 		NotBefore: time.Now().Add(-24 * time.Hour),
 		NotAfter:  time.Now().Add(30 * 24 * time.Hour),
