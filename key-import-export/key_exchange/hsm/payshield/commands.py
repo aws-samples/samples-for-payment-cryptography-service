@@ -507,7 +507,7 @@ class KeyBlockLmkCommandBuilder:
             + ">010"
             + nonce_length
             + nonce_input
-            + "&N!D"
+            + "&N!B"
         )
         return command
 
