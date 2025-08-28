@@ -11,6 +11,14 @@ import datetime
 import os
 import uuid
 
+# Python 3.8 compatibility: datetime.UTC was introduced in Python 3.11
+try:
+    # Python 3.11+
+    UTC = datetime.UTC
+except AttributeError:
+    # Python 3.8-3.10
+    UTC = datetime.timezone.utc
+
 controlplane_client = boto3.client("payment-cryptography")
 
 # Local storage for CA information
@@ -123,7 +131,7 @@ class CryptoUtils:
         csr = x509.load_pem_x509_csr(csr_pem)
         
         # Calculate validity period
-        now = datetime.datetime.now(datetime.UTC)
+        now = datetime.datetime.now(UTC)
         if validity['Type'] == 'DAYS':
             valid_until = now + datetime.timedelta(days=validity['Value'])
         elif validity['Type'] == 'YEARS':
@@ -290,7 +298,7 @@ def create_local_ca():
     ])
     
     # Create the CA certificate
-    now = datetime.datetime.now(datetime.UTC)
+    now = datetime.datetime.now(UTC)
     
     # Generate Subject Key Identifier from the public key
     ski = x509.SubjectKeyIdentifier.from_public_key(private_key.public_key())
