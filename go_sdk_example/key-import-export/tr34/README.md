@@ -59,7 +59,7 @@ go build -o tr31-export ./cmd/tr31-export
 
 ```bash
 # Import a 3DES KEK
-./build/tr34-import --clearkey 79ADAEF3212AADCE312ACE422ACCFEFB
+./build/tr34-import --clearkey 79ADAEF3212AADCE312ACE422ACCFEFB --alias alias/my-key
 
 # Import an AES key with specific options
 ./build/tr34-import --clearkey 0123456789ABCDEF0123456789ABCDEF -a A -t B0 -m X
@@ -77,7 +77,7 @@ go build -o tr31-export ./cmd/tr31-export
 ```bash
 # Import a working key using TR-31
 ./build/tr31-import \
-  --kbpkkey_apcIdentifier arn:aws:payment-cryptography:us-east-1:123456789012:key/abc123 \
+  --kbpkkey_apcIdentifier alias/my-key \
   --kbpk_clearkey 79ADAEF3212AADCE312ACE422ACCFEFB \
   --kek_algorithm T \
   --clearkey 8A8349794C9EE9A4C2927098F249FED6 \
@@ -92,8 +92,8 @@ go build -o tr31-export ./cmd/tr31-export
 ```bash
 # Export a key in TR-31 format
 ./build/tr31-export \
-  --key arn:aws:payment-cryptography:us-east-1:123456789012:key/def456 \
-  --kek arn:aws:payment-cryptography:us-east-1:123456789012:key/abc123 \
+  --key alias/my-bdk \
+  --kek alias/my-key \
   --verbose
 ```
 
