@@ -25,6 +25,9 @@ This section contains ECDH flow for pin set and pin reveal functionalities
 ### [Golang Based ECDH Use Cases](go_sdk_example/ecdh-use-cases/README.md)
 This section contains ECDH sample use cases
 
+### [Golang Based Key Import/Export](go_sdk_example/key-import-export/tr34/README.md)
+This section contains Golang based sample code to import/export keys using TR-34 or TR-31 protocols
+
 ## Contributing
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
