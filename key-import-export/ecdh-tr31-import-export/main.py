@@ -119,8 +119,7 @@ def get_custom_key(key_type):
         questions = [
             inquirer.Text('key_hex',
                          message=message,
-                         validate=lambda _, x: len(x.strip()) == expected_length and all(c in '0123456789ABCDEFabcdef' for c in x.strip()),
-                         max_length=128
+                         validate=lambda _, x: len(x.strip()) == expected_length and all(c in '0123456789ABCDEFabcdef' for c in x.strip())
                          )
         ]
         answers = inquirer.prompt(questions)
