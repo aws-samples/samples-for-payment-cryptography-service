@@ -565,7 +565,7 @@ class VariantLmkCommandBuilder:
             + nonce_length
             + nonce_input
             + "%" + self.lmk_identifier 
-            + "&K1B00S00!D"
+            + "&K1B00S00!B"
         )
         return command
 
