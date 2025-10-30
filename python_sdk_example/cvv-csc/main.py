@@ -24,7 +24,7 @@ def validate_amex_cvv2(key, pan, expiryDate, cvv):
         response = dataplane_client.verify_card_validation_data(
             KeyIdentifier=key,
             PrimaryAccountNumber=pan,
-            VerificationAttributes={"AmexCardSecurityCodeVersion2" : {"CardExpiryDate":expiryDate, "ServiceCode":"999"}},
+            VerificationAttributes={"AmexCardSecurityCodeVersion2" : {"CardExpiryDate":expiryDate, "ServiceCode":"000"}},
             ValidationData=cvv
             )
         print("CVV %s is correct" % cvv)
