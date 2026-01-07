@@ -1,0 +1,29 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "APCLimitKeyManagement",
+            "Effect": "Deny",
+            "Action": [
+                "payment-cryptography:ExportKey",
+                "payment-cryptography:DeleteKey",
+                "payment-cryptography:CreateKey",
+                "payment-cryptography:ImportKey",
+                "payment-cryptography:RestoreKey",
+                "payment-cryptography:StopKeyUsage",
+                "payment-cryptography:StartKeyUsage",
+                "payment-cryptography:UpdateAlias",
+                "payment-cryptography:CreateAlias",
+                "payment-cryptography:DeleteAlias"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "ArnNotLike": {
+                    "aws:PrincipalARN": [
+                        "arn:aws:iam::*:role/PaymentAdminRole"
+                    ]
+                }
+            }
+        }
+    ]
+}

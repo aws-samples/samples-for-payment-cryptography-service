@@ -1,0 +1,37 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "payment-cryptography:AddKeyReplicationRegions",
+                "payment-cryptography:CreateAlias",
+                "payment-cryptography:CreateKey",
+                "payment-cryptography:DeleteAlias",
+                "payment-cryptography:DeleteKey",
+                "payment-cryptography:DisableDefaultKeyReplicationRegions",
+                "payment-cryptography:EnableDefaultKeyReplicationRegions",
+                "payment-cryptography:ExportKey",
+                "payment-cryptography:GetAlias",
+                "payment-cryptography:GetCertificateSigningRequest",
+                "payment-cryptography:GetDefaultKeyReplicationRegions",
+                "payment-cryptography:GetKey",
+                "payment-cryptography:GetParametersForExport",
+                "payment-cryptography:GetParametersForImport",
+                "payment-cryptography:GetPublicKeyCertificate",
+                "payment-cryptography:ImportKey",
+                "payment-cryptography:ListAliases",
+                "payment-cryptography:ListKeys",
+                "payment-cryptography:ListTagsForResource",
+                "payment-cryptography:RemoveKeyReplicationRegions",
+                "payment-cryptography:RestoreKey",
+                "payment-cryptography:StartKeyUsage",
+                "payment-cryptography:StopKeyUsage",
+                "payment-cryptography:TagResource",
+                "payment-cryptography:UntagResource",
+                "payment-cryptography:UpdateAlias"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
