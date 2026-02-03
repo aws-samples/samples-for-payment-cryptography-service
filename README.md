@@ -19,6 +19,10 @@ Before running the [JAVA](java_sdk_example/README.md) or [Python](python_sdk_exa
 ### [JAVA Based Flows](java_sdk_example/README.md)
 This section contains flows such as P2PE, Pin set/verify and translation. Additionally, the flows are implemented using both [synchronous](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) and [asynchronous](java_sdk_example/src/main/java/aws/sample/paymentcryptography/pin/AsyncIssuerService.java) APIs showing flexibility of AWS Payment Cryptography.
 
+**New Features:**
+- **ARPC (Authorization Response Cryptogram)** support is now available, providing cryptographic proof of issuer authorization decisions. See the [ARPC Implementation Guide](java_sdk_example/ARPC_IMPLEMENTATION.md) for details.
+- **ECDH PIN Exchange** implementation demonstrating secure PIN operations using Elliptic Curve Diffie-Hellman key agreement. See the [ECDH Implementation Guide](java_sdk_example/ECDH_README.md) for details.
+
 ### [Python Based Flows](python_sdk_example/ecdh_flows/README.md)
 This section contains ECDH flow for pin set and pin reveal functionalities
 
