@@ -23,7 +23,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.StringReader;
 import java.io.StringWriter;
 import java.math.BigInteger;
 import java.security.*;
@@ -31,6 +30,7 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
 import java.util.Date;
+import java.util.logging.Logger;
 
 /**
  * Local Certificate Authority Manager for ECDH demo.
@@ -57,16 +57,16 @@ public class LocalCAManager {
         File caCertFile = new File(CA_CERT_FILE);
         
         if (caKeyFile.exists() && caCertFile.exists()) {
-            System.out.println("Loading existing local CA...");
+            Logger.getGlobal().info("Loading existing local CA...");
             loadCA();
         } else {
-            System.out.println("Creating new local CA...");
+            Logger.getGlobal().info("Creating new local CA...");
             createCA();
             saveCA();
         }
         
-        System.out.println("Local CA initialized successfully");
-        System.out.println("  CA Subject: " + caCertificate.getSubjectX500Principal());
+        Logger.getGlobal().info("Local CA initialized successfully");
+        Logger.getGlobal().info("  CA Subject: " + caCertificate.getSubjectX500Principal());
     }
     
     /**
@@ -204,9 +204,9 @@ public class LocalCAManager {
             pemWriter.writeObject(caCertificate);
         }
         
-        System.out.println("CA saved to files:");
-        System.out.println("  Private key: " + CA_KEY_FILE);
-        System.out.println("  Certificate: " + CA_CERT_FILE);
+        Logger.getGlobal().info("CA saved to files:");
+        Logger.getGlobal().info("  Private key: " + CA_KEY_FILE);
+        Logger.getGlobal().info("  Certificate: " + CA_CERT_FILE);
     }
     
     /**
@@ -246,8 +246,8 @@ public class LocalCAManager {
             caCertificate = (X509Certificate) cf.generateCertificate(fis);
         }
         
-        System.out.println("CA loaded from files:");
-        System.out.println("  Private key: " + CA_KEY_FILE);
-        System.out.println("  Certificate: " + CA_CERT_FILE);
+        Logger.getGlobal().info("CA loaded from files:");
+        Logger.getGlobal().info("  Private key: " + CA_KEY_FILE);
+        Logger.getGlobal().info("  Certificate: " + CA_CERT_FILE);
     }
 }

@@ -9,6 +9,7 @@ import software.amazon.awssdk.services.paymentcryptographydata.model.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * ECDH Service for PIN operations using AWS Payment Cryptography.
@@ -45,7 +46,7 @@ public class ECDHService {
     }
     
     private void initializeKeys() {
-        System.out.println("Initializing ECDH keys...");
+        Logger.getGlobal().info("Initializing ECDH keys...");
         this.ecdhKeyArn = keyManager.createOrGetECDHKey();
         this.pekKeyArn = keyManager.createOrGetPEK();
         this.pgkKeyArn = keyManager.createOrGetPGK();
@@ -58,11 +59,11 @@ public class ECDHService {
             throw new RuntimeException("Failed to import CA public key", e);
         }
         
-        System.out.println("ECDH keys initialized successfully");
-        System.out.println("  ECDH Key: " + ecdhKeyArn);
-        System.out.println("  PEK Key: " + pekKeyArn);
-        System.out.println("  PGK Key: " + pgkKeyArn);
-        System.out.println("  CA Public Key: " + caPublicKeyArn);
+        Logger.getGlobal().info("ECDH keys initialized successfully");
+        Logger.getGlobal().info("  ECDH Key: " + ecdhKeyArn);
+        Logger.getGlobal().info("  PEK Key: " + pekKeyArn);
+        Logger.getGlobal().info("  PGK Key: " + pgkKeyArn);
+        Logger.getGlobal().info("  CA Public Key: " + caPublicKeyArn);
     }
     
     /**
@@ -109,14 +110,14 @@ public class ECDHService {
             @RequestParam String certificateChain) {
         
         try {
-            System.out.println("\n=== SET PIN REQUEST ===");
+            Logger.getGlobal().info("\n=== SET PIN REQUEST ===");
             
             // Sanitize inputs - remove any whitespace
             pan = pan.trim();
             encryptedPinBlock = encryptedPinBlock.trim();
             
-            System.out.println("Setting PIN for PAN: " + pan);
-            System.out.println("Received ECDH encrypted PIN block: " + encryptedPinBlock);
+            Logger.getGlobal().info("Setting PIN for PAN: " + pan);
+            Logger.getGlobal().info("Received ECDH encrypted PIN block: " + encryptedPinBlock);
             
             // Validate PAN format
             if (!pan.matches("^[0-9]+$")) {
@@ -125,13 +126,13 @@ public class ECDHService {
             
             // Sign the client's CSR with local CA
             String actualSignedCertificate = caManager.signCSR(csr);
-            System.out.println("Signed client certificate with local CA");
+            Logger.getGlobal().info("Signed client certificate with local CA");
             
             // Build wrapped key for ECDH
             WrappedKeyMaterial wrappedKeyMaterial = buildWrappedKeyMaterial(actualSignedCertificate, sharedInfo);
             
             // Translate PIN from ECDH encryption to PEK encryption
-            System.out.println("Translating PIN: ECDH (ISO Format 4) → PEK (ISO Format 0)...");
+            Logger.getGlobal().info("Translating PIN: ECDH (ISO Format 4) → PEK (ISO Format 0)...");
             TranslatePinDataResponse translateResponse = dataPlaneClient.translatePinData(
                 TranslatePinDataRequest.builder()
                     .encryptedPinBlock(encryptedPinBlock)
@@ -164,10 +165,10 @@ public class ECDHService {
             );
             
             String pekEncryptedPinBlock = translateResponse.pinBlock();
-            System.out.println("PEK encrypted PIN block: " + pekEncryptedPinBlock);
+            Logger.getGlobal().info("PEK encrypted PIN block: " + pekEncryptedPinBlock);
             
             // Generate PIN verification value for the translated PIN
-            System.out.println("Generating PVV for the PIN...");
+            Logger.getGlobal().info("Generating PVV for the PIN...");
             GeneratePinDataResponse pinDataResponse = dataPlaneClient.generatePinData(
                 GeneratePinDataRequest.builder()
                     .generationKeyIdentifier(pgkKeyArn)
@@ -188,7 +189,7 @@ public class ECDHService {
             );
             
             String pvv = pinDataResponse.pinData().verificationValue();
-            System.out.println("Generated PVV: " + pvv);
+            Logger.getGlobal().info("Generated PVV: " + pvv);
             
             JSONObject response = new JSONObject();
             response.put("status", "success");
@@ -196,8 +197,8 @@ public class ECDHService {
             response.put("pvv", pvv);
             response.put("pekEncryptedPinBlock", pekEncryptedPinBlock);
             
-            System.out.println("✓ PIN set successfully for PAN: " + pan);
-            System.out.println("=== SET PIN COMPLETE ===\n");
+            Logger.getGlobal().info("✓ PIN set successfully for PAN: " + pan);
+            Logger.getGlobal().info("=== SET PIN COMPLETE ===\n");
             return response.toString();
             
         } catch (Exception e) {
@@ -235,14 +236,14 @@ public class ECDHService {
             @RequestParam String certificateChain) {
         
         try {
-            System.out.println("\n=== REVEAL PIN REQUEST ===");
+            Logger.getGlobal().info("\n=== REVEAL PIN REQUEST ===");
             
             // Sanitize inputs - remove any whitespace
             pan = pan.trim();
             pekEncryptedPinBlock = pekEncryptedPinBlock.trim();
             
-            System.out.println("Revealing PIN for PAN: " + pan);
-            System.out.println("Received PEK encrypted PIN block: " + pekEncryptedPinBlock);
+            Logger.getGlobal().info("Revealing PIN for PAN: " + pan);
+            Logger.getGlobal().info("Received PEK encrypted PIN block: " + pekEncryptedPinBlock);
             
             // Validate PAN format
             if (!pan.matches("^[0-9]+$")) {
@@ -251,13 +252,13 @@ public class ECDHService {
             
             // Sign the client's CSR with local CA
             String actualSignedCertificate = caManager.signCSR(csr);
-            System.out.println("Signed client certificate with local CA");
+            Logger.getGlobal().info("Signed client certificate with local CA");
             
             // Build wrapped key for ECDH
             WrappedKeyMaterial wrappedKeyMaterial = buildWrappedKeyMaterial(actualSignedCertificate, sharedInfo);
             
             // Translate PIN from PEK encryption to ECDH encryption
-            System.out.println("Translating PIN: PEK (ISO Format 0) → ECDH (ISO Format 4)...");
+            Logger.getGlobal().info("Translating PIN: PEK (ISO Format 0) → ECDH (ISO Format 4)...");
             TranslatePinDataResponse translateResponse = dataPlaneClient.translatePinData(
                 TranslatePinDataRequest.builder()
                     .encryptedPinBlock(pekEncryptedPinBlock)
@@ -290,14 +291,14 @@ public class ECDHService {
             );
             
             String ecdhEncryptedPinBlock = translateResponse.pinBlock();
-            System.out.println("ECDH encrypted PIN block: " + ecdhEncryptedPinBlock);
+            Logger.getGlobal().info("ECDH encrypted PIN block: " + ecdhEncryptedPinBlock);
             
             JSONObject response = new JSONObject();
             response.put("status", "success");
             response.put("ecdhEncryptedPinBlock", ecdhEncryptedPinBlock);
             
-            System.out.println("✓ PIN revealed successfully for PAN: " + pan);
-            System.out.println("=== REVEAL PIN COMPLETE ===\n");
+            Logger.getGlobal().info("✓ PIN revealed successfully for PAN: " + pan);
+            Logger.getGlobal().info("=== REVEAL PIN COMPLETE ===\n");
             return response.toString();
             
         } catch (Exception e) {
@@ -321,13 +322,13 @@ public class ECDHService {
             @RequestParam String certificateChain) {
         
         try {
-            System.out.println("\n=== RESET PIN REQUEST ===");
+            Logger.getGlobal().info("\n=== RESET PIN REQUEST ===");
             
             // Sanitize inputs - remove any whitespace
             pan = pan.trim();
             
-            System.out.println("Resetting PIN for PAN: " + pan);
-            System.out.println("Note: New PIN will be generated by AWS Payment Cryptography Service");
+            Logger.getGlobal().info("Resetting PIN for PAN: " + pan);
+            Logger.getGlobal().info("Note: New PIN will be generated by AWS Payment Cryptography Service");
             
             // Validate PAN format
             if (!pan.matches("^[0-9]+$")) {
@@ -335,7 +336,7 @@ public class ECDHService {
             }
             
             // Generate new random PIN with PVV encrypted with PEK
-            System.out.println("Requesting AWS Payment Cryptography to generate random 4-digit PIN...");
+            Logger.getGlobal().info("Requesting AWS Payment Cryptography to generate random 4-digit PIN...");
             GeneratePinDataResponse pinDataResponse = dataPlaneClient.generatePinData(
                 GeneratePinDataRequest.builder()
                     .generationKeyIdentifier(pgkKeyArn)
@@ -357,19 +358,19 @@ public class ECDHService {
             
             String pekEncryptedPinBlock = pinDataResponse.encryptedPinBlock();
             String pvv = pinDataResponse.pinData().verificationValue();
-            System.out.println("AWS Payment Cryptography generated random PIN");
-            System.out.println("PEK encrypted PIN block: " + pekEncryptedPinBlock);
-            System.out.println("Generated PVV: " + pvv);
+            Logger.getGlobal().info("AWS Payment Cryptography generated random PIN");
+            Logger.getGlobal().info("PEK encrypted PIN block: " + pekEncryptedPinBlock);
+            Logger.getGlobal().info("Generated PVV: " + pvv);
             
             // Sign the client's CSR with local CA
             String actualSignedCertificate = caManager.signCSR(csr);
-            System.out.println("Signed client certificate with local CA");
+            Logger.getGlobal().info("Signed client certificate with local CA");
             
             // Build wrapped key for ECDH
             WrappedKeyMaterial wrappedKeyMaterial = buildWrappedKeyMaterial(actualSignedCertificate, sharedInfo);
             
             // Translate PIN from PEK encryption to ECDH encryption
-            System.out.println("Translating PIN: PEK (ISO Format 0) → ECDH (ISO Format 4)...");
+            Logger.getGlobal().info("Translating PIN: PEK (ISO Format 0) → ECDH (ISO Format 4)...");
             TranslatePinDataResponse translateResponse = dataPlaneClient.translatePinData(
                 TranslatePinDataRequest.builder()
                     .encryptedPinBlock(pekEncryptedPinBlock)
@@ -402,7 +403,7 @@ public class ECDHService {
             );
             
             String ecdhEncryptedPinBlock = translateResponse.pinBlock();
-            System.out.println("ECDH encrypted PIN block: " + ecdhEncryptedPinBlock);
+            Logger.getGlobal().info("ECDH encrypted PIN block: " + ecdhEncryptedPinBlock);
             
             JSONObject response = new JSONObject();
             response.put("status", "success");
@@ -410,8 +411,8 @@ public class ECDHService {
             response.put("pekEncryptedPinBlock", pekEncryptedPinBlock);
             response.put("pvv", pvv);
             
-            System.out.println("✓ PIN reset successfully for PAN: " + pan);
-            System.out.println("=== RESET PIN COMPLETE ===\n");
+            Logger.getGlobal().info("✓ PIN reset successfully for PAN: " + pan);
+            Logger.getGlobal().info("=== RESET PIN COMPLETE ===\n");
             return response.toString();
             
         } catch (Exception e) {

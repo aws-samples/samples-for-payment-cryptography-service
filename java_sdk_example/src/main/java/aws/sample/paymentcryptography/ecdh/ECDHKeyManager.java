@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * Manages ECDH keys in AWS Payment Cryptography Service.
@@ -28,12 +29,12 @@ public class ECDHKeyManager {
             // Try to get existing key by alias
             String keyArn = getKeyByAlias(ECDHConstants.ECDH_KEY_ALIAS);
             if (keyArn != null) {
-                System.out.println("Using existing ECDH key: " + keyArn);
+                Logger.getGlobal().info("Using existing ECDH key: " + keyArn);
                 return keyArn;
             }
             
             // Create new ECDH key
-            System.out.println("Creating new ECDH key...");
+            Logger.getGlobal().info("Creating new ECDH key...");
             
             KeyModesOfUse keyModesOfUse = KeyModesOfUse.builder()
                 .deriveKey(true)
@@ -59,7 +60,7 @@ public class ECDHKeyManager {
             // Create alias
             createAlias(ECDHConstants.ECDH_KEY_ALIAS, keyArn);
             
-            System.out.println("Created ECDH key: " + keyArn);
+            Logger.getGlobal().info("Created ECDH key: " + keyArn);
             return keyArn;
             
         } catch (Exception e) {
@@ -74,11 +75,11 @@ public class ECDHKeyManager {
         try {
             String keyArn = getKeyByAlias(ECDHConstants.PEK_ALIAS);
             if (keyArn != null) {
-                System.out.println("Using existing PEK: " + keyArn);
+                Logger.getGlobal().info("Using existing PEK: " + keyArn);
                 return keyArn;
             }
             
-            System.out.println("Creating new PEK...");
+            Logger.getGlobal().info("Creating new PEK...");
             
             KeyModesOfUse keyModesOfUse = KeyModesOfUse.builder()
                 .encrypt(true)
@@ -105,7 +106,7 @@ public class ECDHKeyManager {
             keyArn = response.key().keyArn();
             createAlias(ECDHConstants.PEK_ALIAS, keyArn);
             
-            System.out.println("Created PEK: " + keyArn);
+            Logger.getGlobal().info("Created PEK: " + keyArn);
             return keyArn;
             
         } catch (Exception e) {
@@ -121,11 +122,11 @@ public class ECDHKeyManager {
         try {
             String keyArn = getKeyByAlias(ECDHConstants.PGK_ALIAS);
             if (keyArn != null) {
-                System.out.println("Using existing PGK: " + keyArn);
+                Logger.getGlobal().info("Using existing PGK: " + keyArn);
                 return keyArn;
             }
             
-            System.out.println("Creating new PGK...");
+            Logger.getGlobal().info("Creating new PGK...");
             
             KeyModesOfUse keyModesOfUse = KeyModesOfUse.builder()
                 .generate(true)
@@ -150,7 +151,7 @@ public class ECDHKeyManager {
             keyArn = response.key().keyArn();
             updateAlias(ECDHConstants.PGK_ALIAS, keyArn);
             
-            System.out.println("Created PGK: " + keyArn);
+            Logger.getGlobal().info("Created PGK: " + keyArn);
             return keyArn;
             
         } catch (Exception e) {
@@ -189,8 +190,8 @@ public class ECDHKeyManager {
             // Check if CA key already exists
             String existingKeyArn = getKeyByAlias(ECDHConstants.CA_KEY_ALIAS);
             if (existingKeyArn != null) {
-                System.out.println("Found existing CA public key: " + existingKeyArn);
-                System.out.println("Deleting old CA key to ensure consistency with local CA...");
+                Logger.getGlobal().info("Found existing CA public key: " + existingKeyArn);
+                Logger.getGlobal().info("Deleting old CA key to ensure consistency with local CA...");
                 
                 try {
                     // Delete the alias first
@@ -208,13 +209,13 @@ public class ECDHKeyManager {
                             .build()
                     );
                     
-                    System.out.println("Old CA key scheduled for deletion");
+                    Logger.getGlobal().info("Old CA key scheduled for deletion");
                 } catch (Exception e) {
-                    System.out.println("Warning: Could not delete old CA key: " + e.getMessage());
+                    Logger.getGlobal().warning("Could not delete old CA key: " + e.getMessage());
                 }
             }
             
-            System.out.println("Importing CA public key to AWS Payment Cryptography...");
+            Logger.getGlobal().info("Importing CA public key to AWS Payment Cryptography...");
             
             // Base64 encode the PEM certificate
             String base64Cert = Base64.getEncoder().encodeToString(
@@ -251,7 +252,7 @@ public class ECDHKeyManager {
             String keyArn = response.key().keyArn();
             createAlias(ECDHConstants.CA_KEY_ALIAS, keyArn);
             
-            System.out.println("Imported CA public key: " + keyArn);
+            Logger.getGlobal().info("Imported CA public key: " + keyArn);
             return keyArn;
             
         } catch (Exception e) {
@@ -280,7 +281,7 @@ public class ECDHKeyManager {
             );
             
             if (keyResponse.key().keyState() == KeyState.DELETE_PENDING) {
-                System.out.println("Key " + keyArn + " is in DELETE_PENDING state, will create new key");
+                Logger.getGlobal().info("Key " + keyArn + " is in DELETE_PENDING state, will create new key");
                 return null;
             }
             
@@ -302,7 +303,7 @@ public class ECDHKeyManager {
                     .build()
             );
         } catch (Exception e) {
-            System.out.println("Warning: Could not create alias " + aliasName + ": " + e.getMessage());
+            Logger.getGlobal().warning("Could not create alias " + aliasName + ": " + e.getMessage());
         }
     }
     
@@ -317,12 +318,12 @@ public class ECDHKeyManager {
                     .keyArn(keyArn)
                     .build()
             );
-            System.out.println("Updated alias " + aliasName + " to point to " + keyArn);
+            Logger.getGlobal().info("Updated alias " + aliasName + " to point to " + keyArn);
         } catch (ResourceNotFoundException e) {
             // Alias doesn't exist, create it
             createAlias(aliasName, keyArn);
         } catch (Exception e) {
-            System.out.println("Warning: Could not update alias " + aliasName + ": " + e.getMessage());
+            Logger.getGlobal().warning("Could not update alias " + aliasName + ": " + e.getMessage());
         }
     }
 }
