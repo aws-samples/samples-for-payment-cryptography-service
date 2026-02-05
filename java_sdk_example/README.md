@@ -83,7 +83,7 @@ Following diagram illustrates the flow -
 
 #### PinTerminals
 
-There are 2 variations of Pin terminals. Both of these create the encrypted PIN block for pin authorization flow.
+There are 2 variations of Pin terminals. Both of these create the encrypted PIN block along with [ARQC cryptogram](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/data-operations.verifyauthrequestcryptogram.html) for pin authorization flow.
 
 - [PinTerminal using ISO 0 Format for Pin Encryption](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_0_Format.java)
 
@@ -94,13 +94,15 @@ There are 2 variations of Pin terminals. Both of these create the encrypted PIN 
   This class simulates terminal encrypting a plain text PIN using [ISO 4 Format](https://listings.pcisecuritystandards.org/documents/Implementing_ISO_Format_4_PIN_Blocks_Information_Supplement.pdf) for PIN encryption.
   
      
-Both classes above are a simulation of a terminal that accepts PIN and transaction and sends it for authorization. It uses pre setup PIN data to create an encoded PIN block and encrypts that block using pre setup keys in [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json) and [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json). 
+Both classes above are a simulation of a terminal that accepts PIN and transaction and sends it for authorization. It uses pre setup PIN data to create an encoded PIN block and encrypts that block using pre setup keys in [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json), [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json) and [ARQC key and transaction data](/java_sdk_example/test-data/sample-pan-arqc-key.json).  
 
 The DUKPT encrytion keys in [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json) and [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json) are derived off of the BDK defined in [apc_demo_keysetup.py](../key-import-export/tr34/import_app/apc_demo_keysetup.py) BDK variable.
 
-***Note:** Derivation of DUKPT keys used in the terminals are out of scope for provided samples. You can refer to [Payment Card Tools](https://paymentcardtools.com/) for reference.*
+The ARQC UDK (Unique Derived Key) is derived from the MDK (Master Derivation Key) defined in [apc_demo_keysetup.py](../key-import-export/tr34/import_app/apc_demo_keysetup.py) ARQC variable, PAN and Pan Sequence Number (PSN) with value `00`. If PSN hasn't been set, the default is typically 00. ARQC is generated using Amex CVN01 which uses EMV Derivation Method A.
 
-The classes are setup for 2 flows 1/new pin setup, 2/ pin authorization. The encrypted data is sent to [PIN translating service](src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) which translates the encrypted pin blocks according to the incoming and outgoing ISO formats then invokes [Synchronous Issuer Service](src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) or [Asynchronous Issuer Service](src/main/java/aws/sample/paymentcryptography/pin/AsyncIssuerService.java) to verify the PIN.
+***Note:** Derivation of DUKPT and ARQC keys used in the terminals are out of scope for provided samples. You can refer to [Payment Card Tools](https://paymentcardtools.com/) for reference.*
+
+The classes are setup for 2 flows 1/new pin setup, 2/ pin authorization. The encrypted data is sent to [PIN translating service](src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) which translates the encrypted pin blocks according to the incoming and outgoing ISO formats then invokes [Synchronous Issuer Service](src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) or [Asynchronous Issuer Service](src/main/java/aws/sample/paymentcryptography/pin/AsyncIssuerService.java) to verify the passed ARQC payload and PIN.
 
 To run - 
 
