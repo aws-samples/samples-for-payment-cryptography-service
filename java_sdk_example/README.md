@@ -83,7 +83,7 @@ Following diagram illustrates the flow -
 
 #### PinTerminals
 
-There are 2 variations of Pin terminals. Both of these create the encrypted PIN block along with [ARQC cryptogram](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/data-operations.verifyauthrequestcryptogram.html) for pin authorization flow.
+There are 2 variations of Pin terminals. Both of these create the encrypted PIN block for pin authorization flow.
 
 - [PinTerminal using ISO 0 Format for Pin Encryption](src/main/java/aws/sample/paymentcryptography/terminal/PinTerminal_ISO_0_Format.java)
 
@@ -94,15 +94,13 @@ There are 2 variations of Pin terminals. Both of these create the encrypted PIN 
   This class simulates terminal encrypting a plain text PIN using [ISO 4 Format](https://listings.pcisecuritystandards.org/documents/Implementing_ISO_Format_4_PIN_Blocks_Information_Supplement.pdf) for PIN encryption.
   
      
-Both classes above are a simulation of a terminal that accepts PIN and transaction and sends it for authorization. It uses pre setup PIN data to create an encoded PIN block and encrypts that block using pre setup keys in [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json), [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json) and [ARQC key and transaction data](/java_sdk_example/test-data/sample-pan-arqc-key.json). 
+Both classes above are a simulation of a terminal that accepts PIN and transaction and sends it for authorization. It uses pre setup PIN data to create an encoded PIN block and encrypts that block using pre setup keys in [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json) and [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json). 
 
 The DUKPT encrytion keys in [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json) and [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json) are derived off of the BDK defined in [apc_demo_keysetup.py](../key-import-export/tr34/import_app/apc_demo_keysetup.py) BDK variable.
 
-The ARQC UDK (Unique Derived Key) is derived from the MDK (Master Derivation Key) defined in [apc_demo_keysetup.py](../key-import-export/tr34/import_app/apc_demo_keysetup.py) ARQC variable, PAN and Pan Sequence Number (PSN) with value `00`. If PSN hasn't been set, the default is typically 00. ARQC is generated using Amex CVN01 which uses EMV Derivation Method A.
+***Note:** Derivation of DUKPT keys used in the terminals are out of scope for provided samples. You can refer to [Payment Card Tools](https://paymentcardtools.com/) for reference.*
 
-***Note:** Derivation of DUKPT and ARQC keys used in the terminals are out of scope for provided samples. You can refer to [Payment Card Tools](https://paymentcardtools.com/) for reference.*
-
-The classes are setup for 2 flows 1/new pin setup, 2/ pin authorization. The encrypted data is sent to [PIN translating service](src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) which translates the encrypted pin blocks according to the incoming and outgoing ISO formats then invokes [Synchronous Issuer Service](src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) or [Asynchronous Issuer Service](src/main/java/aws/sample/paymentcryptography/pin/AsyncIssuerService.java) to verify the passed ARQC payload and PIN.
+The classes are setup for 2 flows 1/new pin setup, 2/ pin authorization. The encrypted data is sent to [PIN translating service](src/main/java/aws/sample/paymentcryptography/pin/PaymentProcessorPinTranslateService.java) which translates the encrypted pin blocks according to the incoming and outgoing ISO formats then invokes [Synchronous Issuer Service](src/main/java/aws/sample/paymentcryptography/pin/IssuerService.java) or [Asynchronous Issuer Service](src/main/java/aws/sample/paymentcryptography/pin/AsyncIssuerService.java) to verify the PIN.
 
 To run - 
 
@@ -151,79 +149,6 @@ cd samples-for-payment-cryptography-service/java_sdk_example
 ```
 
 For detailed documentation, see [ECDH Implementation Guide](ECDH_README.md).
-
-## ARPC (Authorization Response Cryptogram) Support
-
-The Java SDK examples now include support for generating Authorization Response Cryptograms (ARPC) as part of the authorization response flow. This feature provides cryptographic proof of the issuer's authorization decision back to the payment terminal, ensuring complete EMV transaction flow compliance.
-
-### ARPC Components
-
-#### AuthorizationDecision Enum
-The `AuthorizationDecision` enum represents different authorization outcomes:
-- `APPROVED` - Transaction approved
-- `DECLINED` - Transaction declined  
-- `INSUFFICIENT_FUNDS` - Transaction declined due to insufficient funds
-
-Each decision provides methods to convert to AWS Payment Cryptography Service formats:
-- `getAuthResponseCode()` - Returns 4-character hex string for ARPC Method 1
-- `getCardStatusUpdate()` - Returns 8-character hex string for ARPC Method 2
-
-#### ARPCMethod Enum
-The `ARPCMethod` enum defines the two ARPC generation methods:
-- `METHOD1` - Uses AuthResponseCode for ARPC generation
-- `METHOD2` - Uses CardStatusUpdate for ARPC generation
-
-### Usage Example
-
-```java
-// Determine authorization decision
-AuthorizationDecision decision = AuthorizationDecision.fromStatus("APPROVED");
-
-// Get ARPC Method 1 response code
-String authCode = decision.getAuthResponseCode(); // Returns "3030" for approved
-
-// Get ARPC Method 2 card status update  
-String cardStatus = decision.getCardStatusUpdate(); // Returns "00000000" for approved
-
-// Check decision type
-boolean isApproved = decision.isApproved(); // Returns true for APPROVED
-```
-
-### EMV Compliance
-
-The ARPC implementation follows EMV specifications:
-- **Method 1**: Uses ASCII-encoded authorization response codes (e.g., "3030" for ASCII "00")
-- **Method 2**: Uses 8-byte hex card status update values
-- **Session Key Derivation**: Maintains consistency between ARQC verification and ARPC generation
-
-### Testing
-
-Comprehensive unit tests are provided for both enums:
-- `AuthorizationDecisionTest.java` - Tests all decision types and conversion methods
-- `ARPCMethodTest.java` - Tests ARPC method enum functionality
-
-Run the tests with:
-```bash
-mvn test -Dtest=AuthorizationDecisionTest
-mvn test -Dtest=ARPCMethodTest
-```
-
-### ARPC Example
-
-To see the ARPC functionality in action, run the example class:
-
-```bash
-cd samples-for-payment-cryptography-service/java_sdk_example
-./run_example.sh aws.sample.paymentcryptography.examples.ARPCExample
-```
-
-This example demonstrates:
-- Authorization decision handling and conversion
-- ARPC value generation for both Method 1 and Method 2
-- EMV compliance validation
-- Simulated authorization flows with ARPC generation
-
-**Note**: ARPC integration with the existing authorization flows is currently in development. The core data models and enums are complete and ready for integration.
 
 ## Helper classes
 Following are additional helper classes for reference only.
