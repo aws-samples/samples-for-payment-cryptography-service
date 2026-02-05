@@ -15,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.cert.X509Certificate;
 import java.util.Scanner;
-import java.util.logging.Logger;
 
 /**
  * Simulated terminal for ECDH PIN operations.
@@ -27,23 +26,23 @@ public class ECDHPinTests extends AbstractTerminal {
     
     public static void main(String[] args) {
         try {
-            Logger.getGlobal().info("=== ECDH Terminal Simulation ===\n");
+            System.out.println("=== ECDH Terminal Simulation ===\n");
             
             Scanner scanner = new Scanner(System.in);
             
             while (true) {
-                Logger.getGlobal().info("\nSelect operation:");
-                Logger.getGlobal().info("1. Set PIN");
-                Logger.getGlobal().info("2. Reveal PIN");
-                Logger.getGlobal().info("3. Reset PIN");
-                Logger.getGlobal().info("4. Exit");
-                System.out.print("Choice: ");
+                System.out.println("\nSelect operation:");
+                System.out.println("1. Set PIN");
+                System.out.println("2. Reveal PIN");
+                System.out.println("3. Reset PIN");
+                System.out.println("4. Exit");
+                System.out.println("Choice: ");
                 
                 int choice = scanner.nextInt();
                 scanner.nextLine(); // Consume newline
                 
                 if (choice == 4) {
-                    Logger.getGlobal().info("Exiting...");
+                    System.out.println("Exiting...");
                     break;
                 }
                 
@@ -52,7 +51,7 @@ public class ECDHPinTests extends AbstractTerminal {
                 
                 // Validate PAN format
                 if (!pan.matches("^[0-9]+$")) {
-                    Logger.getGlobal().warning("✗ Error: Invalid PAN format. PAN must contain only digits.");
+                    System.out.println("✗ Error: Invalid PAN format. PAN must contain only digits.");
                     continue;
                 }
                 
@@ -61,7 +60,7 @@ public class ECDHPinTests extends AbstractTerminal {
                         System.out.print("Enter PIN (4-6 digits): ");
                         String pin = scanner.nextLine().trim();
                         if (!pin.matches("^[0-9]{4,6}$")) {
-                            Logger.getGlobal().warning("✗ Error: Invalid PIN format. PIN must be 4-6 digits.");
+                            System.out.println("✗ Error: Invalid PIN format. PIN must be 4-6 digits.");
                             break;
                         }
                         setPinFlowFormat4(pan, pin);
@@ -70,7 +69,7 @@ public class ECDHPinTests extends AbstractTerminal {
                         System.out.print("Enter PEK-encrypted PIN block: ");
                         String pekPinBlock = scanner.nextLine().trim();
                         if (pekPinBlock.isEmpty()) {
-                            Logger.getGlobal().warning("✗ Error: PIN block cannot be empty.");
+                            System.out.println("✗ Error: PIN block cannot be empty.");
                             break;
                         }
                         revealPinFlowFormat4(pan, pekPinBlock);
@@ -79,7 +78,7 @@ public class ECDHPinTests extends AbstractTerminal {
                         resetPinFlow(pan);
                         break;
                     default:
-                        Logger.getGlobal().warning("Invalid choice");
+                        System.out.println("Invalid choice");
                 }
                 
                 Thread.sleep(sleepTimeInMs);
@@ -96,30 +95,30 @@ public class ECDHPinTests extends AbstractTerminal {
      * PIN Set Flow using ECDH with ISO Format 4.
      */
     private static void setPinFlowFormat4(String pan, String pin) throws Exception {
-        Logger.getGlobal().info("\n--- PIN Set Flow (ECDH - ISO Format 4) ---");
+        System.out.println("\n--- PIN Set Flow (ECDH - ISO Format 4) ---");
         
         // Step 1: Generate ECDH key pair
-        Logger.getGlobal().info("1. Generating ECDH key pair...");
+        System.out.println("1. Generating ECDH key pair...");
         KeyPair keyPair = ECDHCryptoUtils.generateECDHKeyPair();
         
         // Step 2: Generate shared info
-        Logger.getGlobal().info("2. Generating shared info...");
+        System.out.println("2. Generating shared info...");
         String sharedInfo = ECDHCryptoUtils.generateSharedInfo();
         
         // Step 3: Get AWS Payment Cryptography certificates
-        Logger.getGlobal().info("3. Fetching AWS Payment Cryptography certificates...");
+        System.out.println("3. Fetching AWS Payment Cryptography certificates...");
         JSONObject certificates = getCertificates();
         
         // Debug: Check response
         if (!certificates.has("status") || !certificates.getString("status").equals("success")) {
-            Logger.getGlobal().warning("\n✗ Error: Failed to get certificates");
-            Logger.getGlobal().warning("Response: " + certificates.toString());
+            System.out.println("\n✗ Error: Failed to get certificates");
+            System.out.println("Response: " + certificates.toString());
             return;
         }
         
         if (!certificates.has("certificate") || certificates.getString("certificate").isEmpty()) {
-            Logger.getGlobal().warning("\n✗ Error: Certificate not found in response");
-            Logger.getGlobal().warning("Response: " + certificates.toString());
+            System.out.println("\n✗ Error: Certificate not found in response");
+            System.out.println("Response: " + certificates.toString());
             return;
         }
         
@@ -130,10 +129,10 @@ public class ECDHPinTests extends AbstractTerminal {
         String apcCertificate = new String(java.util.Base64.getDecoder().decode(apcCertificateBase64), StandardCharsets.UTF_8);
         String apcCertificateChain = new String(java.util.Base64.getDecoder().decode(apcCertificateChainBase64), StandardCharsets.UTF_8);
         
-        Logger.getGlobal().info("   Certificate length: " + apcCertificate.length() + " characters");
+        System.out.println("   Certificate length: " + apcCertificate.length() + " characters");
         
         // Step 4: Derive symmetric key using ECDH
-        Logger.getGlobal().info("4. Deriving symmetric key using ECDH...");
+        System.out.println("4. Deriving symmetric key using ECDH...");
         X509Certificate peerCert = ECDHCryptoUtils.parseCertificate(apcCertificate);
         SecretKeySpec derivedKey = ECDHCryptoUtils.deriveSymmetricKey(
             keyPair.getPrivate(), 
@@ -142,15 +141,15 @@ public class ECDHPinTests extends AbstractTerminal {
         );
         
         // Step 5: Encode PIN block (ISO Format 4) - requires double encryption
-        Logger.getGlobal().info("5. Encoding PIN block (ISO Format 4)...");
+        System.out.println("5. Encoding PIN block (ISO Format 4)...");
         
         // 5a. Prepare clear PIN block (without PAN XOR yet)
         String clearPinBlock = getISO4FormatClearPINBlock(pin);
-        Logger.getGlobal().info("   Clear PIN block (hex): " + clearPinBlock);
+        System.out.println("   Clear PIN block (hex): " + clearPinBlock);
         
         // 5b. First encryption: Encrypt PIN block → Intermediate Block A
         String intermediateBlockA = ECDHCryptoUtils.encrypt(clearPinBlock, derivedKey);
-        Logger.getGlobal().info("   Intermediate Block A (encrypted): " + intermediateBlockA);
+        System.out.println("   Intermediate Block A (encrypted): " + intermediateBlockA);
         
         // 5c. XOR with PAN block → Intermediate Block B
         String panBlock = getISO4FormatPANBlock(pan);
@@ -161,21 +160,21 @@ public class ECDHPinTests extends AbstractTerminal {
             intermediateBBytes[i] = (byte) (intermediateABytes[i] ^ panBytes[i]);
         }
         String intermediateBlockB = bytesToHex(intermediateBBytes);
-        Logger.getGlobal().info("   Intermediate Block B (XOR with PAN): " + intermediateBlockB);
+        System.out.println("   Intermediate Block B (XOR with PAN): " + intermediateBlockB);
         
         // 5d. Second encryption: Encrypt Intermediate Block B → Final encrypted PIN block
         String encryptedPinBlock = ECDHCryptoUtils.encrypt(intermediateBlockB, derivedKey);
-        Logger.getGlobal().info("   Final encrypted PIN block: " + encryptedPinBlock);
-        Logger.getGlobal().info("   Encrypted length: " + encryptedPinBlock.length() + " characters (" + (encryptedPinBlock.length()/2) + " bytes)");
+        System.out.println("   Final encrypted PIN block: " + encryptedPinBlock);
+        System.out.println("   Encrypted length: " + encryptedPinBlock.length() + " characters (" + (encryptedPinBlock.length()/2) + " bytes)");
         
         // Step 6: Generate CSR
-        Logger.getGlobal().info("6. Generating Certificate Signing Request...");
+        System.out.println("6. Generating Certificate Signing Request...");
         String csr = ECDHCryptoUtils.generateCSR(keyPair);
         
         // Step 7: Send to ECDH service
-        Logger.getGlobal().info("7. Sending PIN to ECDH service...");
-        Logger.getGlobal().info("   Sending encrypted PIN block: " + encryptedPinBlock);
-        Logger.getGlobal().info("   PAN: " + pan);
+        System.out.println("7. Sending PIN to ECDH service...");
+        System.out.println("   Sending encrypted PIN block: " + encryptedPinBlock);
+        System.out.println("   PAN: " + pan);
         
         // For this simulation, we'll use the APC certificate as signed certificate
         // In production, the CSR would be sent to CA for signing
@@ -188,18 +187,18 @@ public class ECDHPinTests extends AbstractTerminal {
             apcCertificateChain
         );
         
-        Logger.getGlobal().info("\n✓ PIN Set Response:");
-        Logger.getGlobal().info("  Status: " + response.getString("status"));
+        System.out.println("\n✓ PIN Set Response:");
+        System.out.println("  Status: " + response.getString("status"));
         if (response.getString("status").equals("success")) {
-            Logger.getGlobal().info("  Message: " + response.getString("message"));
-            Logger.getGlobal().info("  PVV: " + response.getString("pvv"));
+            System.out.println("  Message: " + response.getString("message"));
+            System.out.println("  PVV: " + response.getString("pvv"));
             if (response.has("pekEncryptedPinBlock")) {
-                Logger.getGlobal().info("  PEK Encrypted PIN Block: " + response.getString("pekEncryptedPinBlock"));
+                System.out.println("  PEK Encrypted PIN Block: " + response.getString("pekEncryptedPinBlock"));
             }
         } else {
-            Logger.getGlobal().warning("  Message: " + response.getString("message"));
+            System.out.println("  Message: " + response.getString("message"));
             if (response.has("workaround")) {
-                Logger.getGlobal().warning("  Workaround: " + response.getString("workaround"));
+                System.out.println("  Workaround: " + response.getString("workaround"));
             }
         }
     }
@@ -208,18 +207,18 @@ public class ECDHPinTests extends AbstractTerminal {
      * PIN Reveal Flow using ECDH with ISO Format 4.
      */
     private static void revealPinFlowFormat4(String pan, String pekEncryptedPinBlock) throws Exception {
-        Logger.getGlobal().info("\n--- PIN Reveal Flow (ECDH - ISO Format 4) ---");
+        System.out.println("\n--- PIN Reveal Flow (ECDH - ISO Format 4) ---");
         
         // Step 1: Generate ECDH key pair
-        Logger.getGlobal().info("1. Generating ECDH key pair...");
+        System.out.println("1. Generating ECDH key pair...");
         KeyPair keyPair = ECDHCryptoUtils.generateECDHKeyPair();
         
         // Step 2: Generate shared info
-        Logger.getGlobal().info("2. Generating shared info...");
+        System.out.println("2. Generating shared info...");
         String sharedInfo = ECDHCryptoUtils.generateSharedInfo();
         
         // Step 3: Get AWS Payment Cryptography certificates
-        Logger.getGlobal().info("3. Fetching AWS Payment Cryptography certificates...");
+        System.out.println("3. Fetching AWS Payment Cryptography certificates...");
         JSONObject certificates = getCertificates();
         
         // Decode base64-encoded certificates
@@ -230,7 +229,7 @@ public class ECDHPinTests extends AbstractTerminal {
         String apcCertificateChain = new String(java.util.Base64.getDecoder().decode(apcCertificateChainBase64), StandardCharsets.UTF_8);
         
         // Step 4: Derive symmetric key using ECDH
-        Logger.getGlobal().info("4. Deriving symmetric key using ECDH...");
+        System.out.println("4. Deriving symmetric key using ECDH...");
         X509Certificate peerCert = ECDHCryptoUtils.parseCertificate(apcCertificate);
         SecretKeySpec derivedKey = ECDHCryptoUtils.deriveSymmetricKey(
             keyPair.getPrivate(), 
@@ -239,11 +238,11 @@ public class ECDHPinTests extends AbstractTerminal {
         );
         
         // Step 5: Generate CSR
-        Logger.getGlobal().info("5. Generating Certificate Signing Request...");
+        System.out.println("5. Generating Certificate Signing Request...");
         String csr = ECDHCryptoUtils.generateCSR(keyPair);
         
         // Step 6: Call reveal PIN service
-        Logger.getGlobal().info("6. Requesting PIN reveal from ECDH service...");
+        System.out.println("6. Requesting PIN reveal from ECDH service...");
         JSONObject response = callRevealPinService(
             pekEncryptedPinBlock,
             pan,
@@ -257,11 +256,11 @@ public class ECDHPinTests extends AbstractTerminal {
             String ecdhEncryptedPinBlock = response.getString("ecdhEncryptedPinBlock");
             
             // Step 7: Decrypt PIN block with derived key (ISO Format 4 double decryption)
-            Logger.getGlobal().info("7. Decrypting PIN block with derived key (ISO Format 4)...");
+            System.out.println("7. Decrypting PIN block with derived key (ISO Format 4)...");
             
             // 7a. First decryption: Decrypt encrypted PIN block → Intermediate Block B
             String intermediateBlockB = ECDHCryptoUtils.decrypt(ecdhEncryptedPinBlock, derivedKey);
-            Logger.getGlobal().info("   Intermediate Block B (after first decrypt): " + intermediateBlockB);
+            System.out.println("   Intermediate Block B (after first decrypt): " + intermediateBlockB);
             
             // 7b. XOR with PAN block → Intermediate Block A
             String panBlock = getISO4FormatPANBlock(pan);
@@ -272,22 +271,22 @@ public class ECDHPinTests extends AbstractTerminal {
                 intermediateABytes[i] = (byte) (intermediateBBytes[i] ^ panBytes[i]);
             }
             String intermediateBlockA = bytesToHex(intermediateABytes);
-            Logger.getGlobal().info("   Intermediate Block A (after XOR with PAN): " + intermediateBlockA);
+            System.out.println("   Intermediate Block A (after XOR with PAN): " + intermediateBlockA);
             
             // 7c. Second decryption: Decrypt Intermediate Block A → Clear PIN block
             String clearPinBlock = ECDHCryptoUtils.decrypt(intermediateBlockA, derivedKey);
-            Logger.getGlobal().info("   Clear PIN block: " + clearPinBlock);
+            System.out.println("   Clear PIN block: " + clearPinBlock);
             
             // 7d. Extract PIN from clear PIN block
             // ISO Format 4 clear PIN block format: 0L[PIN][F padding]
             // where L is the PIN length (1 digit), PIN is the actual PIN digits
             String pin = extractPinFromClearBlock(clearPinBlock);
             
-            Logger.getGlobal().info("\n✓ PIN Revealed:");
-            Logger.getGlobal().info("  Clear PIN Block: " + clearPinBlock);
-            Logger.getGlobal().info("  Actual PIN: " + pin);
+            System.out.println("\n✓ PIN Revealed:");
+            System.out.println("  Clear PIN Block: " + clearPinBlock);
+            System.out.println("  Actual PIN: " + pin);
         } else {
-            Logger.getGlobal().warning("\n✗ Error: " + response.getString("message"));
+            System.out.println("\n✗ Error: " + response.getString("message"));
         }
     }
     
@@ -295,18 +294,18 @@ public class ECDHPinTests extends AbstractTerminal {
      * PIN Reset Flow using ECDH.
      */
     private static void resetPinFlow(String pan) throws Exception {
-        Logger.getGlobal().info("\n--- PIN Reset Flow (ECDH) ---");
+        System.out.println("\n--- PIN Reset Flow (ECDH) ---");
         
         // Step 1: Generate ECDH key pair
-        Logger.getGlobal().info("1. Generating ECDH key pair...");
+        System.out.println("1. Generating ECDH key pair...");
         KeyPair keyPair = ECDHCryptoUtils.generateECDHKeyPair();
         
         // Step 2: Generate shared info
-        Logger.getGlobal().info("2. Generating shared info...");
+        System.out.println("2. Generating shared info...");
         String sharedInfo = ECDHCryptoUtils.generateSharedInfo();
         
         // Step 3: Get AWS Payment Cryptography certificates
-        Logger.getGlobal().info("3. Fetching AWS Payment Cryptography certificates...");
+        System.out.println("3. Fetching AWS Payment Cryptography certificates...");
         JSONObject certificates = getCertificates();
         
         // Decode base64-encoded certificates
@@ -317,7 +316,7 @@ public class ECDHPinTests extends AbstractTerminal {
         String apcCertificateChain = new String(java.util.Base64.getDecoder().decode(apcCertificateChainBase64), StandardCharsets.UTF_8);
         
         // Step 4: Derive symmetric key using ECDH
-        Logger.getGlobal().info("4. Deriving symmetric key using ECDH...");
+        System.out.println("4. Deriving symmetric key using ECDH...");
         X509Certificate peerCert = ECDHCryptoUtils.parseCertificate(apcCertificate);
         SecretKeySpec derivedKey = ECDHCryptoUtils.deriveSymmetricKey(
             keyPair.getPrivate(), 
@@ -326,11 +325,11 @@ public class ECDHPinTests extends AbstractTerminal {
         );
         
         // Step 5: Generate CSR
-        Logger.getGlobal().info("5. Generating Certificate Signing Request...");
+        System.out.println("5. Generating Certificate Signing Request...");
         String csr = ECDHCryptoUtils.generateCSR(keyPair);
         
         // Step 6: Call reset PIN service
-        Logger.getGlobal().info("6. Requesting PIN reset from ECDH service...");
+        System.out.println("6. Requesting PIN reset from ECDH service...");
         JSONObject response = callResetPinService(
             pan,
             csr,
@@ -344,19 +343,19 @@ public class ECDHPinTests extends AbstractTerminal {
             String pekEncryptedPinBlock = response.getString("pekEncryptedPinBlock");
             String pvv = response.getString("pvv");
             
-            Logger.getGlobal().info("\n--- Received from Backend ---");
-            Logger.getGlobal().info("  ECDH Encrypted PIN Block: " + ecdhEncryptedPinBlock);
-            Logger.getGlobal().info("  PEK Encrypted PIN Block: " + pekEncryptedPinBlock);
-            Logger.getGlobal().info("  PVV: " + pvv);
-            Logger.getGlobal().info("  Note: This PIN was generated by AWS Payment Cryptography Service");
-            Logger.getGlobal().info("  Note: Save the PEK Encrypted PIN Block for future reveal operations");
+            System.out.println("\n--- Received from Backend ---");
+            System.out.println("  ECDH Encrypted PIN Block: " + ecdhEncryptedPinBlock);
+            System.out.println("  PEK Encrypted PIN Block: " + pekEncryptedPinBlock);
+            System.out.println("  PVV: " + pvv);
+            System.out.println("  Note: This PIN was generated by AWS Payment Cryptography Service");
+            System.out.println("  Note: Save the PEK Encrypted PIN Block for future reveal operations");
             
             // Step 7: Decrypt PIN block with derived key (ISO Format 4 double decryption)
-            Logger.getGlobal().info("\n7. Decrypting PIN block with derived key (ISO Format 4)...");
+            System.out.println("\n7. Decrypting PIN block with derived key (ISO Format 4)...");
             
             // 7a. First decryption: Decrypt encrypted PIN block → Intermediate Block B
             String intermediateBlockB = ECDHCryptoUtils.decrypt(ecdhEncryptedPinBlock, derivedKey);
-            Logger.getGlobal().info("   Intermediate Block B (after first decrypt): " + intermediateBlockB);
+            System.out.println("   Intermediate Block B (after first decrypt): " + intermediateBlockB);
             
             // 7b. XOR with PAN block → Intermediate Block A
             String panBlock = getISO4FormatPANBlock(pan);
@@ -367,21 +366,21 @@ public class ECDHPinTests extends AbstractTerminal {
                 intermediateABytes[i] = (byte) (intermediateBBytes[i] ^ panBytes[i]);
             }
             String intermediateBlockA = bytesToHex(intermediateABytes);
-            Logger.getGlobal().info("   Intermediate Block A (after XOR with PAN): " + intermediateBlockA);
+            System.out.println("   Intermediate Block A (after XOR with PAN): " + intermediateBlockA);
             
             // 7c. Second decryption: Decrypt Intermediate Block A → Clear PIN block
             String clearPinBlock = ECDHCryptoUtils.decrypt(intermediateBlockA, derivedKey);
-            Logger.getGlobal().info("   Clear PIN block: " + clearPinBlock);
+            System.out.println("   Clear PIN block: " + clearPinBlock);
             
             // 7d. Extract PIN from clear PIN block
             String pin = extractPinFromClearBlock(clearPinBlock);
             
-            Logger.getGlobal().info("\n✓ PIN Reset Successfully:");
-            Logger.getGlobal().info("  New PIN: " + pin);
-            Logger.getGlobal().info("  PVV: " + pvv);
-            Logger.getGlobal().info("  PEK Encrypted PIN Block (for storage): " + pekEncryptedPinBlock);
+            System.out.println("\n✓ PIN Reset Successfully:");
+            System.out.println("  New PIN: " + pin);
+            System.out.println("  PVV: " + pvv);
+            System.out.println("  PEK Encrypted PIN Block (for storage): " + pekEncryptedPinBlock);
         } else {
-            Logger.getGlobal().warning("\n✗ Error: " + response.getString("message"));
+            System.out.println("\n✗ Error: " + response.getString("message"));
         }
     }
     
