@@ -44,18 +44,26 @@ The script automates a complex manual key ceremony. Here is the step-by-step wor
 Run the script from the command line passing the AWS Region, AWS CLI Profile, and the cleartext key you wish to import (in Hexadecimal format).
 
 ```bash
-python import_kek_ecdh.py --region <region> --profile <profile_name> --kek <32_byte_hex_key>
+python import_raw_kek.py --region <region> --profile <profile_name> --kek <hex_key> \
+                         [--export-mode <E|S|N>] \
+                         [--key-type <K0|B0|D0|P0|D1>] \
+                         [--mode-of-use <B|X|N|E|D|G|C|V>] \
+                         [--algorithm <A|T|R>]
 ```
 
 ### Example
 
-To import a dummy AES-256 key (`0000...`):
+To import a dummy AES-256 key (`0000...`) as a K0 key (Key Encryption Key):
 
 ```bash
-python import_kek_ecdh.py \
+python import_raw_kek.py \
     --region us-east-1 \
     --profile default \
-    --kek 1111222233334444555566667777888811112222333344445555666677778888
+    --kek 1111222233334444555566667777888811112222333344445555666677778888 \
+    --key-type K0 \
+    --algorithm A \
+    --mode-of-use B \
+    --export-mode E
 ```
 
 ## Resources Created
@@ -77,12 +85,12 @@ The script creates (or updates) the following Aliases and underlying Keys:
 ## Technical Details
 
 ### TR-31 Header
-The script hardcodes the TR-31 header to **`D0000K0AB00E0000`**. This signifies:
-*   **D:** Version D (AES Key Derivation Binding Method).
-*   **K0:** Key Usage is Key Encryption or Wrapping.
-*   **A:** Algorithm is AES.
-*   **B:** Mode of Use is Both (Encrypt and Decrypt).
-*   **E:** Exportable.
+The script generates the TR-31 header dynamically based on the command-line arguments provided.
+*   **Version ID:** Always set to 'D' (AES Key Derivation Binding Method) in this script because the derived wrapping key (KEK) is always AES-256, regardless of whether the payload key is AES or TDES.
+*   **Key Usage:** Determined by `--key-type` (e.g., K0 for Key Encryption/Wrapping, B0 for BDK, etc.).
+*   **Algorithm:** Determined by `--algorithm` (A for AES, T for TDES).
+*   **Mode of Use:** Determined by `--mode-of-use` (e.g., B for Both Encrypt/Decrypt).
+*   **Exportability:** Determined by `--export-mode` (e.g., E for Exportable).
 
 ### Shared Information
 The Key Derivation Function (KDF) uses a static shared info string `0123456789` (hex). This matches the `SharedInformation` parameter sent to the AWS `ImportKey` API to ensure the cloud service derives the exact same wrapping key.
