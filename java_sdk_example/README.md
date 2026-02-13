@@ -94,7 +94,7 @@ There are 2 variations of Pin terminals. Both of these create the encrypted PIN 
   This class simulates terminal encrypting a plain text PIN using [ISO 4 Format](https://listings.pcisecuritystandards.org/documents/Implementing_ISO_Format_4_PIN_Blocks_Information_Supplement.pdf) for PIN encryption.
   
      
-Both classes above are a simulation of a terminal that accepts PIN and transaction and sends it for authorization. It uses pre setup PIN data to create an encoded PIN block and encrypts that block using pre setup keys in [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json), [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json) and [ARQC key and transaction data](/java_sdk_example/test-data/sample-pan-arqc-key.json). 
+Both classes above are a simulation of a terminal that accepts PIN and transaction and sends it for authorization. It uses pre setup PIN data to create an encoded PIN block and encrypts that block using pre setup keys in [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json), [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json) and [ARQC key and transaction data](/java_sdk_example/test-data/sample-pan-arqc-key.json).  
 
 The DUKPT encrytion keys in [PEK data for ISO Format 0 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-0-format.json) and [PEK data for ISO Format 4 ](/java_sdk_example/test-data/sample-pek-ksn-data-iso-4-format.json) are derived off of the BDK defined in [apc_demo_keysetup.py](../key-import-export/tr34/import_app/apc_demo_keysetup.py) BDK variable.
 
@@ -121,6 +121,36 @@ cd samples-for-payment-cryptography-service/java_sdk_example
 Following diagrams illustrate the flow - 
 ![Verify PIN Flow - DUKPT](../flows/PaymentCryptographyServiceFlows-Pin%20Terminal%20Pin%20Verification%20Flow%20(DUKPT).jpg)
 
+#### [ECDHPinTests](src/main/java/aws/sample/paymentcryptography/terminal/ECDHPinTests.java)
+
+This class simulates a terminal that performs PIN operations using ECDH (Elliptic Curve Diffie-Hellman) key exchange with AWS Payment Cryptography. It demonstrates three flows:
+
+1. **PIN Set**: User enters PIN, terminal encrypts it using ECDH-derived key (ISO Format 4 with double encryption) and sends to service
+2. **PIN Reveal**: Decrypts PEK-encrypted PIN using ECDH key exchange (ISO Format 4 with double decryption)
+3. **PIN Reset**: Generates new random PIN encrypted with ECDH (AWS Payment Cryptography generates the PIN)
+
+The ECDH implementation uses:
+- SECP256R1 (NIST P-256) elliptic curve
+- Concat KDF (NIST SP 800-56A) for key derivation
+- AES-128-ECB encryption (no padding)
+- ISO Format 4 PIN blocks (required by AWS Payment Cryptography for ECDH)
+- Local CA for certificate signing (ca-certificate.pem and ca-private-key.pem)
+
+**Important Notes:**
+- AWS Payment Cryptography **always expects ISO Format 4** for ECDH encryption
+- ISO Format 4 requires **double encryption** with PAN XOR in the middle for PIN set
+- ISO Format 4 requires **double decryption** with PAN XOR in the middle for PIN reveal/reset
+- The service internally translates between ISO Format 4 (ECDH) and ISO Format 0 (PEK storage)
+- ISO Format 0 only uses the rightmost 12 digits of PAN (excluding check digit) - this is expected behavior per ISO 9564-1
+
+To run - 
+
+```
+cd samples-for-payment-cryptography-service/java_sdk_example
+./run_example.sh aws.sample.paymentcryptography.terminal.ECDHPinTests
+```
+
+For detailed documentation, see [ECDH Implementation Guide](ECDH_README.md).
 
 ## Helper classes
 Following are additional helper classes for reference only.
