@@ -17,6 +17,19 @@ IMPORTED_KEK_ALIAS = "alias/import-kek-ecdh-result"
 SENDER_KEY_FILE = "certs/sender_key.pem"
 SENDER_CERT_FILE = "certs/sender_cert.pem"
 
+
+def construct_tr31_header(algo, export_mode, key_type, mode_of_use, version_id):
+    header = psec.tr31.Header(
+        version_id=version_id,
+        key_usage=key_type,
+        algorithm=algo,
+        mode_of_use=mode_of_use,
+        version_num="00",
+        exportability=export_mode,
+    )
+    return header
+
+
 def prepare_for_key_creation(client, alias_name):
     """
     Checks if an alias exists. If it does not, it creates it.
@@ -139,6 +152,22 @@ def main():
 
     args = parser.parse_args()
 
+    # Validate KEK input
+    try:
+        kek_bytes = bytes.fromhex(args.kek)
+    except ValueError:
+        parser.error("KEK must be a valid hex string.")
+
+    if len(args.kek) % 2 != 0:
+        parser.error("KEK hex string must have an even length.")
+
+    # Check for common key lengths (16, 24, 32 bytes for AES/TDES)
+    valid_lengths = [16, 24, 32]
+    if len(kek_bytes) not in valid_lengths:
+        parser.error(
+            f"KEK length ({len(kek_bytes)} bytes) is not standard (16, 24, or 32 bytes)."
+        )
+
     session = boto3.Session(profile_name=args.profile, region_name=args.region)
     client = session.client("payment-cryptography")
 
@@ -225,8 +254,8 @@ def main():
     shared_secret = sender_key.exchange(ec.ECDH(), receiver_cert.public_key())
 
     # KDF (NIST SP 800-56A Concatenation KDF)
-    # We use a fixed SharedInformation here. It must match what is passed to ImportKey.
-    shared_info_hex = "0123456789"
+    # We use a random SharedInformation here. It must match what is passed to ImportKey.
+    shared_info_hex = os.urandom(16).hex()
     shared_info = bytes.fromhex(shared_info_hex)
 
     kdf = ConcatKDFHash(

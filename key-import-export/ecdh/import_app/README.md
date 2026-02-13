@@ -44,22 +44,54 @@ The script automates a complex manual key ceremony. Here is the step-by-step wor
 Run the script from the command line passing the AWS Region, AWS CLI Profile, and the cleartext key you wish to import (in Hexadecimal format).
 
 ```bash
-python import_raw_kek.py --region <region> --profile <profile_name> --kek <hex_key> \
+python import_raw_key.py --region <region> --profile <profile_name> --kek <hex_key> \
                          [--export-mode <E|S|N>] \
                          [--key-type <K0|B0|D0|P0|D1>] \
                          [--mode-of-use <B|X|N|E|D|G|C|V>] \
                          [--algorithm <A|T|R>]
 ```
 
-### Example
+### Examples
 
-To import a dummy AES-256 key (`0000...`) as a K0 key (Key Encryption Key):
+#### Example 1: AES-256 Key
+
+To import a dummy AES-256 key as a K0 key (Key Encryption Key):
 
 ```bash
-python import_raw_kek.py \
+python import_raw_key.py \
     --region us-east-1 \
     --profile default \
     --kek 1111222233334444555566667777888811112222333344445555666677778888 \
+    --key-type K0 \
+    --algorithm A \
+    --mode-of-use B \
+    --export-mode E
+```
+
+#### Example 2: TDES Triple Length Key
+
+To import a dummy TDES Triple Length key as a K0 key:
+
+```bash
+python import_raw_key.py \
+    --region us-east-1 \
+    --profile default \
+    --kek 222233334444555566667777888899992222333344445555 \
+    --key-type K0 \
+    --algorithm T \
+    --mode-of-use B \
+    --export-mode E
+```
+
+#### Example 3: AES-192 Key
+
+To import a dummy AES-192 key as a K0 key:
+
+```bash
+python import_raw_key.py \
+    --region us-east-1 \
+    --profile default \
+    --kek AAAABBBBCCCCDDDDEEEEFFFF11112222AAAABBBBCCCCDDDD \
     --key-type K0 \
     --algorithm A \
     --mode-of-use B \
@@ -93,7 +125,7 @@ The script generates the TR-31 header dynamically based on the command-line argu
 *   **Exportability:** Determined by `--export-mode` (e.g., E for Exportable).
 
 ### Shared Information
-The Key Derivation Function (KDF) uses a static shared info string `0123456789` (hex). This matches the `SharedInformation` parameter sent to the AWS `ImportKey` API to ensure the cloud service derives the exact same wrapping key.
+The Key Derivation Function (KDF) uses a randomly-generated shared info hex string. This matches the `SharedInformation` parameter sent to the AWS `ImportKey` API to ensure the cloud service derives the exact same wrapping key.
 
 ## Cleanup
 
