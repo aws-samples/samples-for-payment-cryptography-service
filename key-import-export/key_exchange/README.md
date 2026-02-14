@@ -7,6 +7,14 @@
 * Futurex : HSM is configured using PMK. Tested using firmware versions [7.4, 7.6].
 * payShield: Tested using firmware versions [1.14].
 
+## Configure AWS credentials
+AWS credentials needed for the scripts can be configured in 2 ways :
+* Configure environment variables for credentials : https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-envvars.html
+** To do this, leave 'assume_role' key in input_config.json file empty for 'apc' in either 'krd' or 'kdh' section.
+* Use an IAM role to assume.
+** To do this, add the IAM role arn to assume in 'assume_role' key in input_config.json file for 'apc' in either 'krd' or 'kdh' section.
+** Configure environment variables for credentials for the account which will be used to assume this role. Make sure to add the calling account in the trust relationship of the assuming account.
+
 ## Key Exchange using TR34
 
 The script will establish a KEK (Key Encryption Key) between the chosen KDH and KRD. A set of options are supported for KDH and KRD type.
@@ -51,3 +59,9 @@ Using this path, you can import/export upto AES-256 keys.
 ```
 python3 import_export_ecdh.py --kdh <Options: "futurex | payshield | apc"> --krd <Options: "apc">
 ```
+
+To transport a key from 1 APC account to another APC account, add 'assume_role' of Account1 in 'apc' section of 'kdh' and 'assume_role' of Account2 in 'apc' section of 'krd'.
+Configure environment variables for credentials of the central account with trust relationships added both in Account1 and Account2.
+Central account credentials will be used to assume roles in Account1 and Account2.
+
+
