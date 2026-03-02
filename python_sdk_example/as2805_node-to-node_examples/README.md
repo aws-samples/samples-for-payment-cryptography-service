@@ -1,6 +1,6 @@
 # AWS Payment Cryptography Samples for AS2805
 
-This sub-section of the repo includes examples for node-to-node communications using the Australian Standard AS2805, Section 6 methods available in AWS Payment Cryptography. One HSM is implemented in code, where we show manual construction of the keys, MACs and data protection measures used in this standard. The other HSM is AWS Payment Cryptography. These scripts are designed to be run sequentially to complete the entire node-to-node flow. Currently, at Steps 3 and 4, we only handle PINs in the example. We might expand that in the future. So currently, even though we only implement the PIN encryption and authentication 
+This sub-section of the repo includes examples for node-to-node communications using the Australian Standard AS2805, Section 6 methods available in AWS Payment Cryptography. One HSM is implemented in code, where we show manual construction of the keys, MACs and data protection measures used in this standard. The other HSM is AWS Payment Cryptography. These scripts are designed to be run sequentially to complete the entire node-to-node flow. Currently, at Steps 3 and 4, we only handle PINs in the example. We might expand that in the future. So currently, we implement the PIN encryption (with a zone pin key, or ZPK) and message authentication (with a zone authentication key, or ZAK), but don't provide an example protecting a primary account number (PAN) with a zone encryption key, or ZEK.
 
 Note that these scripts should be taken collectively as enabling a basic working examples of:
 1. Key Encipherment Key (KEK) creation
@@ -14,6 +14,44 @@ Note that these scripts should be taken collectively as enabling a basic working
 6. PIN block calculation and encryption
 7. PIN translation
 8. MAC derivation and integrity check for the encrypted PIN block
+
+## Instructions
+
+### Install Prerequisites
+These scripts are written in Python, and have the minimum following prerequisites (additional Python modules may be needed, depending on your current configuration).
+1. Python (3.1x or later)
+2. pip
+3. boto3
+4. botocore
+5. cryptography (41 or later)
+
+All are available via pip:
+
+```
+python -m pip install --upgrade pip
+python -m pip install boto3 botocore cryptography
+```
+
+The scripts are executed using the Python runtime, simply like so:
+
+```
+python ~/path_to_files/samples-for-aws-payment-cryptography-service/python-sdk-example/as2805_node-to-node_examples/as2805_1_1_KEK_and_keystore_setup_both_nodes.py
+```
+
+### Set up credentials
+As the scripts call AWS APIs (the AWS Payment Cryptography [data plane](https://docs.aws.amazon.com/payment-cryptography/latest/DataAPIReference/Welcome.html) and [control plane](https://docs.aws.amazon.com/payment-cryptography/latest/APIReference/Welcome.html) APIs), ensure you have an IAM entity set up with permissions to use the service. At a minimum, your IAM entity will need permission to call the following APIs:
+
+1. [CreateKey](https://docs.aws.amazon.com/payment-cryptography/latest/APIReference/API_CreateKey.html)
+2. [GetParametersForImport](https://docs.aws.amazon.com/payment-cryptography/latest/APIReference/API_GetParametersForImport.html)
+3. [ImportKey](https://docs.aws.amazon.com/payment-cryptography/latest/APIReference/API_ImportKey.html)
+4. [ExportKey](https://docs.aws.amazon.com/payment-cryptography/latest/APIReference/API_ExportKey.html)
+5. [GetKey](https://docs.aws.amazon.com/payment-cryptography/latest/APIReference/API_GetKey.html)
+6. [GenerateAs2805KekValidation](https://docs.aws.amazon.com/payment-cryptography/latest/DataAPIReference/API_GenerateAs2805KekValidation.html)
+7. [TranslatePinData](https://docs.aws.amazon.com/payment-cryptography/latest/DataAPIReference/API_TranslatePinData.html)
+8. [GenerateMac](https://docs.aws.amazon.com/payment-cryptography/latest/DataAPIReference/API_GenerateMac.html)
+9. [VerifyMac](https://docs.aws.amazon.com/payment-cryptography/latest/DataAPIReference/API_VerifyMac.html)
+
+Each script that requires AWS credentials will do a check to confirm it has credentials, if it does not, you'll receive a message to set them up. The script uses the [boto3.sesssion() credential helper](https://docs.aws.amazon.com/boto3/latest/reference/core/session.html) at the [standard locations](https://docs.aws.amazon.com/boto3/latest/guide/credentials.html).
 
 ## Samples
 
