@@ -2,7 +2,7 @@
 This folder contains samples of IAM Policies and Service Control Policies related to AWS Payment Cryptography.
 
 ## Sample Service Control Policies
-1. [Lock AWS Payment Cryptogprahy so it's only used from VPC Endpoints (Prohibit direct internet access)](scp-vpc-endpoint.json)
+1. [Lock AWS Payment Cryptography so it's only used from VPC Endpoints (Prohibit direct internet access)](scp-vpc-endpoint.json)
 1. [Lock down the management activities to a specific IAM Role](scp-lock-roles.json)
 1. [Lock down the roles that are allowed to use AWS Payment Cryptography](scp-lock-management.json)
 
