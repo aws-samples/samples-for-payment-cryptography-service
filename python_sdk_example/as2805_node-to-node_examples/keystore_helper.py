@@ -12,14 +12,16 @@ import sys
 
 
 def _keyring_available():
-    """Check if a usable keyring backend is available."""
+    """Check if a usable keyring backend is available by doing a real probe."""
     try:
         import keyring
         backend = keyring.get_keyring()
-        # The fail backend means no real backend was found
         name = type(backend).__name__
         if "Fail" in name or "fail" in name:
             return False
+        # Actually try a read — some backends (e.g. SecretService) look valid
+        # but fail at runtime when no D-Bus / secret service daemon is running.
+        keyring.get_password("__keyring_probe__", "__probe__")
         return True
     except Exception:
         return False
