@@ -40,7 +40,7 @@ import base64
 import json
 import os
 import sys
-import keyring
+import keystore_helper
 
 script_dir = Path(__file__).parent
 output_dir = script_dir / "output"
@@ -240,10 +240,11 @@ if not keystore_path.exists():
 
 try:
     # Get keystore password
-    keystore_password = keyring.get_password("node1_keystore", "workshop_user")
+    keystore_password = keystore_helper.get_password("node1_keystore", "workshop_user")
 
     if keystore_password is None:
-        print("✗ Keystore password not found in keyring")
+        print("✗ Keystore password not found")
+        print("  Please run as2805_1_1 first, or set KEYSTORE_PASSWORD env var")
         sys.exit(1)
 
     # Decrypt keystore
