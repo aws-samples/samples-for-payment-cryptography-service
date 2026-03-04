@@ -87,11 +87,7 @@ if not keystore_path.exists():
     sys.exit(1)
 
 try:
-    keystore_password = keystore_helper.get_password("node1_keystore", "workshop_user")
-    if keystore_password is None:
-        print("✗ Keystore password not found")
-        print("  Please run as2805_1_1 first, or set KEYSTORE_PASSWORD env var")
-        sys.exit(1)
+    keystore_password = keystore_helper.get_or_prompt_password("node1_keystore", "workshop_user")
 
     salt = b'node1_keystore_salt_v1'
     kdf = PBKDF2HMAC(

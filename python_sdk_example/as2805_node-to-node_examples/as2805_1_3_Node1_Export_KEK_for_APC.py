@@ -98,12 +98,7 @@ if not keystore_path.exists():
 
 try:
     # Get keystore password
-    keystore_password = keystore_helper.get_password("node1_keystore", "workshop_user")
-
-    if keystore_password is None:
-        print("✗ Keystore password not found")
-        print("  Please run as2805_1_1 first, or set KEYSTORE_PASSWORD env var")
-        exit(1)
+    keystore_password = keystore_helper.get_or_prompt_password("node1_keystore", "workshop_user")
 
     # Decrypt keystore
     salt = b'node1_keystore_salt_v1'
