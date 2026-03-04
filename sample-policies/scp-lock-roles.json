@@ -1,0 +1,21 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "APCLimitToRoles",
+            "Effect": "Deny",
+            "Action": [
+                "payment-cryptography:*"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "ArnNotLike": {
+                    "aws:PrincipalARN": [
+                        "arn:aws:iam::*:role/PaymentAdminRole",
+                        "arn:aws:iam::*:role/PaymentServiceRole"
+                    ]
+                }
+            }
+        }
+    ]
+}
