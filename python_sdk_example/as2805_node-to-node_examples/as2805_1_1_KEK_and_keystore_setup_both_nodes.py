@@ -30,9 +30,8 @@ from cryptography.fernet import Fernet
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives.serialization import load_der_private_key
-import keyring
-import getpass
 import pathlib
+import keystore_helper
 import os
 import base64
 import binascii
@@ -69,16 +68,9 @@ keystore_username = "workshop_user"
 print("\n[STEP 1.1] Setting up keystore password...")
 
 try:
-    keystore_password = keyring.get_password(keystore_service, keystore_username)
-    if keystore_password is None:
-        # First time setup - prompt for password and store in keyring
-        keystore_password = getpass.getpass("Enter keystore password: ")
-        keyring.set_password(keystore_service, keystore_username, keystore_password)
-        print("✓ Password stored securely in system keyring")
-    else:
-        print("✓ Retrieved existing password from system keyring")
+    keystore_password = keystore_helper.get_or_prompt_password(keystore_service, keystore_username)
 except Exception as e:
-    print(f"✗ Error accessing keyring: {e}")
+    print(f"✗ Error accessing keystore password: {e}")
     sys.exit(1)
 
 # ============================================================================

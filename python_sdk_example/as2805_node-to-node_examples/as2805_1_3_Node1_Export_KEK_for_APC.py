@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography import x509
 import base64
 import json
-import keyring
+import keystore_helper
 
 script_dir = Path(__file__).parent
 output_dir = script_dir / "output"
@@ -97,13 +97,8 @@ if not keystore_path.exists():
     exit(1)
 
 try:
-    # Get keystore password from system keyring
-    keystore_password = keyring.get_password("node1_keystore", "workshop_user")
-
-    if keystore_password is None:
-        print("✗ Keystore password not found in keyring")
-        print("  Please run Mod_1_1_KEK_and_keystore_setup_both_nodes.py first to set up the keystore!")
-        exit(1)
+    # Get keystore password
+    keystore_password = keystore_helper.get_or_prompt_password("node1_keystore", "workshop_user")
 
     # Decrypt keystore
     salt = b'node1_keystore_salt_v1'

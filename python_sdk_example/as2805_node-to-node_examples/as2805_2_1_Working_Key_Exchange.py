@@ -32,7 +32,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.fernet import Fernet
-import keyring
+import keystore_helper
 import pathlib
 import base64
 import binascii
@@ -87,10 +87,7 @@ if not keystore_path.exists():
     sys.exit(1)
 
 try:
-    keystore_password = keyring.get_password("node1_keystore", "workshop_user")
-    if keystore_password is None:
-        print("✗ Keystore password not found in keyring")
-        sys.exit(1)
+    keystore_password = keystore_helper.get_or_prompt_password("node1_keystore", "workshop_user")
 
     salt = b'node1_keystore_salt_v1'
     kdf = PBKDF2HMAC(
