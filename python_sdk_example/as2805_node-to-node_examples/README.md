@@ -18,18 +18,28 @@ Note that these scripts should be taken collectively as enabling a basic working
 ## Instructions
 
 ### Install Prerequisites
+
+#### Virtual Environments
+If you want to run these scripts (and install the dependencies) in a virtual environment, you can do so with:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
 These scripts are written in Python, and have the minimum following prerequisites (additional Python modules may be needed, depending on your current configuration).
 1. Python (3.1x or later)
 2. pip
 3. boto3
 4. botocore
 5. cryptography (41 or later)
+6. keyring
 
-All are available via pip:
+All are available via pip, and we've created a `requirements.txt` file containing all dependencies:
 
-```
+```bash
 python -m pip install --upgrade pip
-python -m pip install boto3 botocore cryptography
+python -m pip install -r requirements.txt
 ```
 
 The scripts are executed using the Python runtime, simply like so:
