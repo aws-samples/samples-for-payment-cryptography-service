@@ -2,23 +2,23 @@
 AS2805 KEK Validation
 
 This script demonstrates the AS2805 KEK validation process between two nodes.
-Node 1 (the "sending" node) uses AWS Payment Cryptography.
-Node 2 is the partner's trusted application (simulated locally).
+Node 1 is the local software HSM (simulated locally).
+Node 2 (the "sending" node) uses AWS Payment Cryptography.
 
 Key Mapping:
-  Node 1's KEKs = apc_imported_kek in keystore (KCV: 054277) = AWS Created KEK
-  Node 1's KEKr = node1_kek in keystore (KCV: 6D9005) = AWS Imported KEK
+  Node 2's KEKs = apc_imported_kek in keystore (KCV: 054277) = AWS Created KEK
+  Node 2's KEKr = node1_kek in keystore (KCV: 6D9005) = AWS Imported KEK
 
 Validation Process:
-1. Node 1 calls GenerateAs2805KekValidation API with its KEKs
+1. Node 2 calls GenerateAs2805KekValidation API with its KEKs
 2. API returns RandomKeySend (encrypted with request variant of KEKs)
    and RandomKeyReceive (encrypted with response variant of KEKr)
-3. Node 1 stores RandomKeyReceive and sends RandomKeySend to Node 2
-4. Node 2 decrypts RandomKeySend using request variant (0x82) of its KEK
-5. Node 2 computes ~RNDs (bitwise NOT with parity adjustment)
-6. Node 2 encrypts ~RNDs using response variant (0x84) of its KEK
-7. Node 2 sends the result back to Node 1
-8. Node 1 compares the received value with stored RandomKeyReceive
+3. Node 2 stores RandomKeyReceive and sends RandomKeySend to Node 1
+4. Node 1 decrypts RandomKeySend using request variant (0x82) of its KEK
+5. Node 1 computes ~RNDs (bitwise NOT with parity adjustment)
+6. Node 1 encrypts ~RNDs using response variant (0x84) of its KEK
+7. Node 1 sends the result back to Node 2
+8. Node 2 compares the received value with stored RandomKeyReceive
 
 AS2805 Algorithm Details:
   - Variant masks are 16-byte constants (0x82... for request, 0x84... for response)
@@ -49,19 +49,19 @@ output_dir.mkdir(exist_ok=True)
 print("=" * 70)
 print("AS2805 KEK Validation")
 print("=" * 70)
-print("\nThis script demonstrates KEK validation between Node 1 (AWS) and Node 2")
+print("\nThis script demonstrates KEK validation between Node 2 (AWS) and Node 1")
 print("=" * 70)
 
 # ============================================================================
-# STEP 1: Load KEKs ARN from Mod_1_1
+# STEP 1: Load KEKs ARN from as2805_1_1
 # ============================================================================
-print("\n[STEP 1] Loading KEKs ARN from Mod_1_1...")
+print("\n[STEP 1] Loading KEKs ARN from as2805_1_1...")
 
 kek_details_file = output_dir / "apc_created_kek.json"
 
 if not kek_details_file.exists():
     print(f"✗ KEK details file not found: {kek_details_file}")
-    print("  Please run Mod_1_1 first to create the AWS KEK!")
+    print("  Please run as2805_1_1 first to create the AWS KEK!")
     sys.exit(1)
 
 try:
@@ -204,14 +204,14 @@ try:
     print(f"\n✓ GenerateAs2805KekValidation API call successful!")
     print(f"  Key ARN: {validation_request['KeyArn']}")
     print(f"  Key Check Value: {validation_request['KeyCheckValue']}")
-    print(f"\n  RandomKeySend (to send to Node 2): {random_key_send}")
+    print(f"\n  RandomKeySend (to send to Node 1): {random_key_send}")
     print(f"  RandomKeyReceive (stored for comparison): {random_key_receive}")
 
     # Store the check value from the API response
     key_check_value = validation_request['KeyCheckValue']
 
     # Store RandomKeyReceive for later comparison
-    node1_stored_krr = random_key_receive
+    node2_stored_krr = random_key_receive
 
 except ClientError as e:
     print(f"✗ AWS API Error: {e.response['Error']['Message']}")
@@ -221,21 +221,21 @@ except Exception as e:
     sys.exit(1)
 
 # ============================================================================
-# STEP 3: Simulate Node 2 Processing
+# STEP 3: Simulate Node 1 Processing
 # ============================================================================
 print("\n" + "=" * 70)
-print("NODE 2 PROCESSING (Simulated)")
+print("NODE 1 PROCESSING (Simulated)")
 print("=" * 70)
 
-print("\n[STEP 3] Node 2 receives RandomKeySend and processes it...")
-print(f"  Received from Node 1: {random_key_send}")
+print("\n[STEP 3] Node 1 receives RandomKeySend and processes it...")
+print(f"  Received from Node 2: {random_key_send}")
 
 # Load Node 2's KEKr (which is the APC imported KEK in the keystore)
 keystore_path = output_dir / "node1_keystore.json"
 
 if not keystore_path.exists():
     print(f"\n✗ Keystore not found: {keystore_path}")
-    print("  Please run Mod_1_1 first to create the keystore!")
+    print("  Please run as2805_1_1 first to create the keystore!")
     sys.exit(1)
 
 try:
@@ -258,12 +258,11 @@ try:
         decrypted_data = fernet.decrypt(encrypted_data)
         keystore = json.loads(decrypted_data.decode())
 
-    # KEY MAPPING:
-    # Node 1's KEKs (AWS created) = apc_imported_kek in keystore
-    # Node 1's KEKr (AWS imported) = node1_kek in keystore
+    # Node 2's KEKs (AWS created) = apc_imported_kek in keystore
+    # Node 2's KEKr (AWS imported) = node1_kek in keystore
     #
-    # When simulating Node 2:
-    # Node 2 uses the SAME key (apc_imported_kek) for both decrypt and encrypt,
+    # When simulating Node 1:
+    # Node 1 uses the SAME key (apc_imported_kek) for both decrypt and encrypt,
     # but with DIFFERENT variant masks applied:
     #   - Request variant (0x82) for decrypting RandomKeySend
     #   - Response variant (0x84) for encrypting the response
@@ -274,20 +273,20 @@ try:
         sys.exit(1)
 
     kek_info = keystore["keys"][kek_alias]
-    node2_kek_bytes = base64.b64decode(kek_info["key"])
+    node1_kek_bytes = base64.b64decode(kek_info["key"])
 
-    print(f"✓ Node 2 loaded KEK from keystore")
+    print(f"✓ Node 1 loaded KEK from keystore")
     print(f"  Alias: {kek_alias}")
-    print(f"  Length: {len(node2_kek_bytes)} bytes")
+    print(f"  Length: {len(node1_kek_bytes)} bytes")
 
 except Exception as e:
     print(f"✗ Error loading keystore: {e}")
     sys.exit(1)
 
 # ============================================================================
-# STEP 4: Node 2 Decrypts RandomKeySend using KEK with Request Variant
+# STEP 4: Node 1 Decrypts RandomKeySend using KEK with Request Variant
 # ============================================================================
-print("\n[STEP 4] Node 2 decrypts RandomKeySend using KEK with request variant mask...")
+print("\n[STEP 4] Node 1 decrypts RandomKeySend using KEK with request variant mask...")
 
 try:
     # AS2805 variant masks (16-byte constants)
@@ -299,7 +298,7 @@ try:
     response_mask = RESPONSE_VARIANT_MASK
 
     # Apply request variant mask to KEK for decryption
-    kek_variant_request = bytes(a ^ b for a, b in zip(node2_kek_bytes, request_mask))
+    kek_variant_request = bytes(a ^ b for a, b in zip(node1_kek_bytes, request_mask))
 
     print(f"  Request variant mask: {request_mask.hex().upper()}")
     print(f"  KEK with request variant: {kek_variant_request.hex().upper()}")
@@ -323,9 +322,9 @@ except Exception as e:
     sys.exit(1)
 
 # ============================================================================
-# STEP 5: Node 2 Inverts Plaintext and Encrypts with Response Variant
+# STEP 5: Node 1 Inverts Plaintext and Encrypts with Response Variant
 # ============================================================================
-print("\n[STEP 5] Node 2 computes ~RNDs and encrypts with response variant mask...")
+print("\n[STEP 5] Node 1 computes ~RNDs and encrypts with response variant mask...")
 
 try:
     # AS2805 "one's complement": bitwise NOT
@@ -344,7 +343,7 @@ try:
     print(f"  ~RNDs (bitwise NOT + parity): {rnds_complement.hex().upper()}")
 
     # Apply response variant mask to KEK for encryption
-    kek_variant_response = bytes(a ^ b for a, b in zip(node2_kek_bytes, response_mask))
+    kek_variant_response = bytes(a ^ b for a, b in zip(node1_kek_bytes, response_mask))
 
     print(f"\n  Response variant mask: {response_mask.hex().upper()}")
     print(f"  KEK with response variant: {kek_variant_response.hex().upper()}")
@@ -359,32 +358,32 @@ try:
     ciphertext = encryptor.update(rnds_complement) + encryptor.finalize()
 
     # Encode to hex (uppercase)
-    node2_response = ciphertext.hex().upper()
+    node1_response = ciphertext.hex().upper()
 
-    print(f"✓ RandomKeyReceive (hex): {node2_response}")
-    print(f"\n  Node 2 sends this value back to Node 1: {node2_response}")
+    print(f"✓ RandomKeyReceive (hex): {node1_response}")
+    print(f"\n  Node 1 sends this value back to Node 2: {node1_response}")
 
 except Exception as e:
     print(f"✗ Error encrypting: {e}")
     sys.exit(1)
 
 # ============================================================================
-# STEP 6: Node 1 Validates Response
+# STEP 6: Node 2 Validates Response
 # ============================================================================
 print("\n" + "=" * 70)
-print("NODE 1 VALIDATION")
+print("NODE 2 VALIDATION")
 print("=" * 70)
 
-print("\n[STEP 6] Node 1 compares received value with stored RandomKeyReceive...")
+print("\n[STEP 6] Node 2 compares received value with stored RandomKeyReceive...")
 
-print(f"\n  Stored RandomKeyReceive:  {node1_stored_krr}")
-print(f"  Received from Node 2:     {node2_response}")
+print(f"\n  Stored RandomKeyReceive:  {node2_stored_krr}")
+print(f"  Received from Node 1:     {node1_response}")
 
 # Compare the values
-if node2_response == node1_stored_krr:
+if node1_response == node2_stored_krr:
     print(f"\n✓ ✓ ✓ PASS 1 VALIDATION SUCCESSFUL! ✓ ✓ ✓")
     print(f"\n  The two values MATCH!")
-    print(f"  Node 2's KEK is valid from Node 1's perspective.")
+    print(f"  Node 1's KEK is valid from Node 2's perspective.")
     pass1_passed = True
 else:
     print(f"\n✗ ✗ ✗ PASS 1 VALIDATION FAILED! ✗ ✗ ✗")
@@ -394,38 +393,38 @@ else:
     pass1_passed = False
 
 # ============================================================================
-# PASS 2: Node 2 Validates Node 1 (AS2805 Section 6.3 - Bidirectional)
+# PASS 2: Node 1 Validates Node 2 (AS2805 Section 6.3 - Bidirectional)
 # ============================================================================
 print("\n" + "=" * 70)
-print("PASS 2: NODE 2 VALIDATES NODE 1")
+print("PASS 2: NODE 1 VALIDATES NODE 2")
 print("=" * 70)
-print("\nNode 2 now initiates its own validation to confirm Node 1 holds")
+print("\nNode 1 now initiates its own validation to confirm Node 2 holds")
 print("the correct KEK. This completes the bidirectional validation")
 print("required by AS2805 Section 6.3.")
 
 # ============================================================================
-# STEP 7: Node 2 Generates Its Own Validation Request
+# STEP 7: Node 1 Generates Its Own Validation Request
 # ============================================================================
-print("\n[STEP 7] Node 2 generates its own RandomKeySend and RandomKeyReceive...")
+print("\n[STEP 7] Node 1 generates its own RandomKeySend and RandomKeyReceive...")
 
 try:
     # Generate random plaintext (16 bytes for 2-key TDES)
     rnd_length = 16
 
-    node2_rnds = os.urandom(rnd_length)
+    node1_rnds = os.urandom(rnd_length)
 
     # Compute ~RNDs (bitwise NOT with parity adjustment)
-    node2_rnds_complement = bytes(~b & 0xFF for b in node2_rnds)
+    node1_rnds_complement = bytes(~b & 0xFF for b in node1_rnds)
     parity_adjusted = bytearray()
-    for byte in node2_rnds_complement:
+    for byte in node1_rnds_complement:
         bit_count = bin(byte).count('1')
         if bit_count % 2 == 0:
             byte ^= 0x01
         parity_adjusted.append(byte)
-    node2_rnds_complement = bytes(parity_adjusted)
+    node1_rnds_complement = bytes(parity_adjusted)
 
-    print(f"  RNDs (hex):                    {node2_rnds.hex().upper()}")
-    print(f"  ~RNDs (NOT + parity) (hex):    {node2_rnds_complement.hex().upper()}")
+    print(f"  RNDs (hex):                    {node1_rnds.hex().upper()}")
+    print(f"  ~RNDs (NOT + parity) (hex):    {node1_rnds_complement.hex().upper()}")
 
     # Encrypt RNDs with request variant → Node 2's RandomKeySend
     cipher_req = Cipher(
@@ -434,7 +433,7 @@ try:
         backend=default_backend()
     )
     encryptor_req = cipher_req.encryptor()
-    node2_random_key_send = (encryptor_req.update(node2_rnds) + encryptor_req.finalize()).hex().upper()
+    node1_random_key_send = (encryptor_req.update(node1_rnds) + encryptor_req.finalize()).hex().upper()
 
     # Encrypt ~RNDs with response variant → Node 2's RandomKeyReceive (stored for comparison)
     cipher_resp = Cipher(
@@ -443,38 +442,38 @@ try:
         backend=default_backend()
     )
     encryptor_resp = cipher_resp.encryptor()
-    node2_stored_krr = (encryptor_resp.update(node2_rnds_complement) + encryptor_resp.finalize()).hex().upper()
+    node1_stored_krr = (encryptor_resp.update(node1_rnds_complement) + encryptor_resp.finalize()).hex().upper()
 
-    print(f"\n  Node 2's RandomKeySend:    {node2_random_key_send}")
-    print(f"  Node 2's RandomKeyReceive: {node2_stored_krr} (stored for comparison)")
-    print(f"\n  Node 2 sends RandomKeySend to Node 1...")
+    print(f"\n  Node 1's RandomKeySend:    {node1_random_key_send}")
+    print(f"  Node 1's RandomKeyReceive: {node1_stored_krr} (stored for comparison)")
+    print(f"\n  Node 1 sends RandomKeySend to Node 2...")
 
 except Exception as e:
-    print(f"✗ Error generating Node 2 validation request: {e}")
+    print(f"✗ Error generating Node 1 validation request: {e}")
     sys.exit(1)
 
 # ============================================================================
-# STEP 8: Node 1 (APC) Generates Validation Response
+# STEP 8: Node 2 (APC) Generates Validation Response
 # ============================================================================
-print("\n[STEP 8] Node 1 (APC) processes Node 2's RandomKeySend...")
+print("\n[STEP 8] Node 2 (APC) processes Node 1's RandomKeySend...")
 
 try:
-    # Call the API with KekValidationResponse, passing Node 2's RandomKeySend
+    # Call the API with KekValidationResponse, passing Node 1's RandomKeySend
     validation_response = data_client.generate_as2805_kek_validation(
         KekValidationType={
             'KekValidationResponse': {
-                'RandomKeySend': node2_random_key_send
+                'RandomKeySend': node1_random_key_send
             }
         },
         RandomKeySendVariantMask='VARIANT_MASK_82',
         KeyIdentifier=selected_kek_arn
     )
 
-    node1_response = validation_response['RandomKeyReceive']
+    node2_response = validation_response['RandomKeyReceive']
 
-    print(f"✓ Node 1 (APC) generated validation response!")
-    print(f"  RandomKeyReceive from Node 1: {node1_response}")
-    print(f"\n  Node 1 sends this value back to Node 2...")
+    print(f"✓ Node 2 (APC) generated validation response!")
+    print(f"  RandomKeyReceive from Node 2: {node2_response}")
+    print(f"\n  Node 2 sends this value back to Node 1...")
 
 except ClientError as e:
     print(f"✗ AWS API Error: {e.response['Error']['Message']}")
@@ -484,26 +483,26 @@ except Exception as e:
     sys.exit(1)
 
 # ============================================================================
-# STEP 9: Node 2 Validates Node 1's Response
+# STEP 9: Node 1 Validates Node 2's Response
 # ============================================================================
 print("\n" + "=" * 70)
-print("NODE 2 VALIDATION")
+print("NODE 1 VALIDATION")
 print("=" * 70)
 
-print("\n[STEP 9] Node 2 compares received value with stored RandomKeyReceive...")
+print("\n[STEP 9] Node 1 compares received value with stored RandomKeyReceive...")
 
-print(f"\n  Stored RandomKeyReceive:  {node2_stored_krr}")
-print(f"  Received from Node 1:     {node1_response}")
+print(f"\n  Stored RandomKeyReceive:  {node1_stored_krr}")
+print(f"  Received from Node 2:     {node2_response}")
 
-if node1_response == node2_stored_krr:
+if node2_response == node1_stored_krr:
     print(f"\n✓ ✓ ✓ PASS 2 VALIDATION SUCCESSFUL! ✓ ✓ ✓")
     print(f"\n  The two values MATCH!")
-    print(f"  Node 1's KEK is valid from Node 2's perspective.")
+    print(f"  Node 2's KEK is valid from Node 1's perspective.")
     pass2_passed = True
 else:
     print(f"\n✗ ✗ ✗ PASS 2 VALIDATION FAILED! ✗ ✗ ✗")
     print(f"\n  The two values DO NOT MATCH!")
-    print(f"  Node 1 does not hold the correct KEK.")
+    print(f"  Node 2 does not hold the correct KEK.")
     print(f"  DO NOT proceed with sending session keys.")
     pass2_passed = False
 
@@ -517,21 +516,21 @@ print("\n[STEP 10] Saving validation results...")
 
 try:
     validation_results = {
-        'pass1_node1_validates_node2': {
+        'pass1_node2_validates_node1': {
             'random_key_send': random_key_send,
-            'random_key_receive_expected': node1_stored_krr,
-            'node2_response': node2_response,
-            'passed': pass1_passed
-        },
-        'pass2_node2_validates_node1': {
-            'random_key_send': node2_random_key_send,
             'random_key_receive_expected': node2_stored_krr,
             'node1_response': node1_response,
+            'passed': pass1_passed
+        },
+        'pass2_node1_validates_node2': {
+            'random_key_send': node1_random_key_send,
+            'random_key_receive_expected': node1_stored_krr,
+            'node2_response': node2_response,
             'passed': pass2_passed
         },
-        'node1_keks_arn': selected_kek_arn,
-        'node1_keks_check_value': key_check_value,
-        'node2_kek_alias': kek_alias,
+        'node2_keks_arn': selected_kek_arn,
+        'node2_keks_check_value': key_check_value,
+        'node1_kek_alias': kek_alias,
         'validation_passed': validation_passed,
         'variant_mask': 'VARIANT_MASK_82',
         'derive_key_algorithm': 'TDES_2KEY'
@@ -553,23 +552,23 @@ print("\n" + "=" * 70)
 print("KEK VALIDATION COMPLETE - Summary")
 print("=" * 70)
 
-print(f"\nNode 1 (AWS Payment Cryptography):")
+print(f"\nNode 2 (AWS Payment Cryptography):")
 print(f"  KEKs ARN: {selected_kek_arn}")
 print(f"  KEKs Check Value: {key_check_value}")
 
-print(f"\nNode 2 (Local Keystore):")
+print(f"\nNode 1 (Local Keystore):")
 print(f"  KEK Alias: {kek_alias}")
 
-print(f"\nPass 1 - Node 1 validates Node 2:")
+print(f"\nPass 1 - Node 2 validates Node 1:")
 print(f"  RandomKeySend: {random_key_send}")
-print(f"  Expected RandomKeyReceive: {node1_stored_krr}")
-print(f"  Actual Response from Node 2: {node2_response}")
-print(f"  Result: {'✓ PASSED' if pass1_passed else '✗ FAILED'}")
-
-print(f"\nPass 2 - Node 2 validates Node 1:")
-print(f"  RandomKeySend: {node2_random_key_send}")
 print(f"  Expected RandomKeyReceive: {node2_stored_krr}")
 print(f"  Actual Response from Node 1: {node1_response}")
+print(f"  Result: {'✓ PASSED' if pass1_passed else '✗ FAILED'}")
+
+print(f"\nPass 2 - Node 1 validates Node 2:")
+print(f"  RandomKeySend: {node1_random_key_send}")
+print(f"  Expected RandomKeyReceive: {node1_stored_krr}")
+print(f"  Actual Response from Node 2: {node2_response}")
 print(f"  Result: {'✓ PASSED' if pass2_passed else '✗ FAILED'}")
 
 print(f"\nOverall Validation Result:")

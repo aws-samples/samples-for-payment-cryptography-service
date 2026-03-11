@@ -7,9 +7,9 @@ This script prepares for importing a KEK into AWS Payment Cryptography by:
 3. Saving the wrapping certificates for reference
 
 Complete Workflow:
-- Step 1: Run this script (Mod_1_2) to get import parameters from APC
-- Step 2: Run Mod_1_3_Node1_Export_KEK_for_APC.py to wrap Node1 KEK using the parameters
-- Step 3: Run Mod_1_4_APC_ImportKey.py to import the wrapped KEK into APC
+- Step 1: Run this script (as2805_1_2) to get import parameters from APC
+- Step 2: Run as2805_1_3_Node1_Export_KEK_for_APC.py to wrap Node1 KEK using the parameters
+- Step 3: Run as2805_1_4_APC_ImportKey.py to import the wrapped KEK into APC
 """
 
 import boto3
@@ -155,7 +155,7 @@ try:
     print(f"  Wrapping Certificate Length: {len(wrapping_key_cert)} characters")
     print(f"  Parameters Valid Until: {parameters_valid_until}")
 
-    # Save import parameters for use by Mod_1_3
+    # Save import parameters for use by as2805_1_3
     import_params_for_export = {
         'import_token': import_token,
         'wrapping_key_certificate': wrapping_key_cert,
@@ -201,13 +201,13 @@ print(f"  Import Token: [REDACTED - {len(import_token)} chars]")
 print(f"  Wrapping Certificate: {len(wrapping_key_cert)} chars")
 print(f"  Parameters Valid Until: {parameters_valid_until}")
 print(f"\nGenerated Files:")
-print(f"  1. {import_params_file.name} - Import parameters for Mod_1_3")
+print(f"  1. {import_params_file.name} - Import parameters for as2805_1_3")
 print(f"  2. {cert_file.name} - AWS wrapping certificate")
 print(f"  3. {cert_chain_file.name} - Certificate chain")
 print(f"\nNext Steps:")
-print(f"  • Run Mod_1_3_Node1_Export_KEK_for_APC.py to wrap the Node1 KEK")
+print(f"  • Run as2805_1_3_Node1_Export_KEK_for_APC.py to wrap the Node1 KEK")
 print(f"  • This will create node1_kek_wrapped_for_apc.txt and import package")
-print(f"  • Then run Mod_1_4_APC_ImportKey.py to import the wrapped KEK into APC")
+print(f"  • Then run as2805_1_4_APC_ImportKey.py to import the wrapped KEK into APC")
 print(f"\n⚠ Important: Import parameters expire at {parameters_valid_until}")
 print(f"  Complete all steps before expiration!")
 print("=" * 70)
