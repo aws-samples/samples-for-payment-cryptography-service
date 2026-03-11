@@ -1,15 +1,15 @@
 """
 AS2805 PIN Translation with Session Key Derivation
 
-This script demonstrates AS2805 PIN translation between Node 2 (software HSM)
-and Node 1 (AWS Payment Cryptography) using the AS2805 session key derivation
+This script demonstrates AS2805 PIN translation between Node 1 (software HSM)
+and Node 2 (AWS Payment Cryptography) using the AS2805 session key derivation
 scheme (section 6.4/6.6).
 
 Scenario:
-  A terminal sends a transaction with a PIN to Node 2 (acquirer).
-  Node 2 derives a session PIN key (KPE) from its ZPK/KPP using the STAN
+  A terminal sends a transaction with a PIN to Node 1 (acquirer).
+  Node 1 derives a session PIN key (KPE) from its ZPK/KPP using the STAN
   and transaction amount per AS2805 section 6.6, encrypts the PIN block
-  under the derived KPE, and sends it to Node 1 (APC).
+  under the derived KPE, and sends it to Node 2 (APC).
 
   APC uses IncomingAs2805Attributes to perform the same derivation internally
   and translates the PIN block to the outgoing key.
@@ -26,7 +26,7 @@ AS2805 OWF (One Way Function) for data > 8 bytes:
   3. OWF = result XOR data
 
 Prerequisites:
-  - Mod_2_1 has been run (working key exchange complete)
+  - as2805_2_1 has been run (working key exchange complete)
 
 Sample Data:
   PAN: 4242424242424242, PIN: 1234
@@ -128,29 +128,29 @@ try:
     with open(keystore_path, 'rb') as f:
         keystore = json.loads(fernet.decrypt(f.read()).decode())
 
-    if "node2_zpk" not in keystore["keys"]:
-        print("✗ Node 2 ZPK not found in keystore. Run Mod_2_1 first!")
+    if "node1_zpk" not in keystore["keys"]:
+        print("✗ Node 1 ZPK not found in keystore. Run as2805_2_1 first!")
         sys.exit(1)
 
-    node2_zpk_bytes = base64.b64decode(keystore["keys"]["node2_zpk"]["key"])
-    node2_zpk_kcv = keystore["keys"]["node2_zpk"]["check_value"]
-    print(f"✓ Node 2 ZPK/KPP loaded: {len(node2_zpk_bytes)} bytes, KCV={node2_zpk_kcv}")
+    node1_zpk_bytes = base64.b64decode(keystore["keys"]["node1_zpk"]["key"])
+    node1_zpk_kcv = keystore["keys"]["node1_zpk"]["check_value"]
+    print(f"✓ Node 1 ZPK/KPP loaded: {len(node1_zpk_bytes)} bytes, KCV={node1_zpk_kcv}")
 
 except Exception as e:
     print(f"✗ Error loading keystore: {e}")
     sys.exit(1)
 
-for fname in ["working_key_details.json", "node2_imported_key_details.json"]:
+for fname in ["working_key_details.json", "node1_imported_key_details.json"]:
     if not (output_dir / fname).exists():
-        print(f"✗ {fname} not found. Run Mod_2_1 first!")
+        print(f"✗ {fname} not found. Run as2805_2_1 first!")
         sys.exit(1)
 
 with open(output_dir / "working_key_details.json", 'r') as f:
     working_key_details = json.load(f)
-with open(output_dir / "node2_imported_key_details.json", 'r') as f:
-    node2_imported_details = json.load(f)
+with open(output_dir / "node1_imported_key_details.json", 'r') as f:
+    node1_imported_details = json.load(f)
 
-incoming_zpk_arn = node2_imported_details['zpk']['arn']
+incoming_zpk_arn = node1_imported_details['zpk']['arn']
 apc_zpk_arn = working_key_details['zpk']['arn']
 print(f"✓ Incoming ZPK ARN: {incoming_zpk_arn}")
 print(f"✓ Outgoing ZPK ARN: {apc_zpk_arn}")
@@ -240,10 +240,10 @@ try:
     print(f"\n  Field E: {field_e}")
     print(f"  Field F: {field_f}")
     print(f"  D:       {(field_e + field_f)} ({len(derivation_data)} bytes)")
-    print(f"  KPP:     {node2_zpk_bytes.hex().upper()}")
+    print(f"  KPP:     {node1_zpk_bytes.hex().upper()}")
 
     # KPE = OWF(KPP, D) using AS2805 OWF
-    session_kpe = calculate_owf_as2805(derivation_data, node2_zpk_bytes)
+    session_kpe = calculate_owf_as2805(derivation_data, node1_zpk_bytes)
     print(f"  KPE:     {session_kpe.hex().upper()}")
 
     # Encrypt PIN block under session KPE using 3DES-ECB
@@ -263,10 +263,10 @@ except Exception as e:
 # STEP 4: APC Translates PIN Block
 # ============================================================================
 print("\n" + "=" * 70)
-print("STEP 4: APC Translates PIN Block (AS2805 KPE → Node 1 ZPK)")
+print("STEP 4: APC Translates PIN Block (AS2805 KPE → Node 2 ZPK)")
 print("=" * 70)
 print("\nAPC uses IncomingAs2805Attributes to derive the same session KPE,")
-print("decrypts the PIN block, and re-encrypts under Node 1's ZPK.")
+print("decrypts the PIN block, and re-encrypts under Node 2's ZPK.")
 
 try:
     translate_response = data_client.translate_pin_data(
@@ -310,7 +310,7 @@ except ClientError as e:
 print("\n" + "=" * 70)
 print("STEP 5: Verify Translation")
 print("=" * 70)
-print("\nDecrypt the translated PIN block using Node 1's ZPK to verify")
+print("\nDecrypt the translated PIN block using Node 2's ZPK to verify")
 print("the PIN block is intact after translation.")
 
 try:
@@ -318,9 +318,9 @@ try:
         print("✗ APC ZPK not found in keystore")
         sys.exit(1)
 
-    node1_zpk_bytes = base64.b64decode(keystore["keys"]["apc_zpk"]["key"])
+    node2_zpk_bytes = base64.b64decode(keystore["keys"]["apc_zpk"]["key"])
     translated_bytes = binascii.unhexlify(translated_pin_block)
-    cipher = Cipher(TripleDES(node1_zpk_bytes), modes.ECB(), backend=default_backend())
+    cipher = Cipher(TripleDES(node2_zpk_bytes), modes.ECB(), backend=default_backend())
     dec = cipher.decryptor()
     decrypted_pin_block = (dec.update(translated_bytes) + dec.finalize()).hex().upper()
 
@@ -338,24 +338,24 @@ except Exception as e:
     sys.exit(1)
 
 # ============================================================================
-# STEP 6: Generate MAC Over Transaction Data (Node 2 ZAK)
+# STEP 6: Generate MAC Over Transaction Data (Node 1 ZAK)
 # ============================================================================
 print("\n" + "=" * 70)
 print("STEP 6: Generate MAC Over Transaction Data")
 print("=" * 70)
-print("\nNode 2 generates a MAC over the encrypted PIN block using its ZAK(s)")
+print("\nNode 1 generates a MAC over the encrypted PIN block using its ZAK(s)")
 print("per AS2805.4.1 (Retail MAC). This MAC is sent with the transaction")
-print("for verification by Node 1 (APC).")
+print("for verification by Node 2 (APC).")
 
 try:
-    # Load Node 2's ZAK from keystore
-    if "node2_zak" not in keystore["keys"]:
-        print("✗ Node 2 ZAK not found in keystore. Run Mod_2_1 first!")
+    # Load Node 1's ZAK from keystore
+    if "node1_zak" not in keystore["keys"]:
+        print("✗ Node 1 ZAK not found in keystore. Run as2805_2_1 first!")
         sys.exit(1)
 
-    node2_zak_bytes = base64.b64decode(keystore["keys"]["node2_zak"]["key"])
-    node2_zak_kcv = keystore["keys"]["node2_zak"]["check_value"]
-    print(f"  Node 2 ZAK loaded: KCV={node2_zak_kcv}")
+    node1_zak_bytes = base64.b64decode(keystore["keys"]["node1_zak"]["key"])
+    node1_zak_kcv = keystore["keys"]["node1_zak"]["check_value"]
+    print(f"  Node 1 ZAK loaded: KCV={node1_zak_kcv}")
 
     # Message data: the encrypted PIN block (as sent in the transaction)
     # In a real implementation, the MAC would cover more fields (PAN, amount, etc.)
@@ -368,8 +368,8 @@ try:
     # 3. Encrypt result with left key half (single DES)
     # 4. Truncate to 4 bytes
     # No padding needed if data is already block-aligned (Padding Method 1)
-    key_left = node2_zak_bytes[:8]
-    key_right = node2_zak_bytes[8:16]
+    key_left = node1_zak_bytes[:8]
+    key_right = node1_zak_bytes[8:16]
 
     # Pad to block boundary if needed (Padding Method 1: zero-pad)
     padded = message_bytes
@@ -399,9 +399,9 @@ try:
 
     print(f"\n  Message Data:    {message_data}")
     print(f"  MAC (AS2805.4.1): {mac_value}")
-    print(f"  MAC Key KCV:     {node2_zak_kcv}")
+    print(f"  MAC Key KCV:     {node1_zak_kcv}")
 
-    # Save transaction data for Mod_4_1
+    # Save transaction data for as2805_4_1
     transaction_data = {
         'encrypted_pin_block': encrypted_pin_block,
         'translated_pin_block': translated_pin_block,
@@ -410,7 +410,7 @@ try:
         'transaction_amount': TRANSACTION_AMOUNT,
         'mac': mac_value,
         'message_data': message_data,
-        'node2_zak_kcv': node2_zak_kcv,
+        'node1_zak_kcv': node1_zak_kcv,
     }
 
     transaction_file = output_dir / "transaction_data.json"
@@ -435,7 +435,7 @@ print(f"  Transaction Amount:             {TRANSACTION_AMOUNT}")
 print(f"  Original PIN Block (clear):     {PIN_BLOCK_CLEAR}")
 print(f"  Session KPE (derived):          {session_kpe.hex().upper()}")
 print(f"  Encrypted under KPE:            {encrypted_pin_block}")
-print(f"  Translated under Node 1 ZPK:    {translated_pin_block}")
+print(f"  Translated under Node 2 ZPK:    {translated_pin_block}")
 print(f"  Decrypted (verification):       {decrypted_pin_block}")
 print(f"\n  ✓ PIN successfully translated using AS2805 session key derivation")
 print(f"  ✓ MAC generated over transaction data using AS2805.4.1")

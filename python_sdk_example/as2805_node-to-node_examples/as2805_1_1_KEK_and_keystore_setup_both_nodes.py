@@ -2,9 +2,9 @@
 Complete KEK and Keystore Setup for Both Nodes
 
 This script combines the functionality of:
-- Mod_1_1: Node1 creates KEK and wrapping key pair, exports public key
-- Mod_1_2: AWS Payment Cryptography creates KEK, imports Node1's certificate, exports wrapped KEK
-- Mod_1_3: Node1 imports the wrapped KEK from AWS Payment Cryptography
+- as2805_1_1: Node1 creates KEK and wrapping key pair, exports public key
+- as2805_1_2: AWS Payment Cryptography creates KEK, imports Node1's certificate, exports wrapped KEK
+- as2805_1_3: Node1 imports the wrapped KEK from AWS Payment Cryptography
 
 The complete workflow:
 1. Node1: Create local keystore with password protection

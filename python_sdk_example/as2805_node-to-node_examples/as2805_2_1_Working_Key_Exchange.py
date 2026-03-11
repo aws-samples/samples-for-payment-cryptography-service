@@ -2,8 +2,8 @@
 AS2805 Working Key (Session Key) Exchange
 
 This script demonstrates the AS2805 working key exchange process between two nodes.
-Node 1 (AWS Payment Cryptography) creates working keys and exports them using
-AS2805 variant-based wrapping. Node 2 (local ephemeral HSM) unwraps and validates.
+Node 2 (AWS Payment Cryptography) creates working keys and exports them using
+AS2805 variant-based wrapping. Node 1 (local software HSM) unwraps and validates.
 
 Working Keys:
   ZPK (Zone PIN Key)        - PIN encryption between nodes
@@ -11,16 +11,16 @@ Working Keys:
   ZAK (Zone Authentication Key) - MAC generation/verification between nodes
 
 Prerequisites:
-  - Mod_1_1 has been run (KEK exchange complete)
-  - Mod_1_5 has been run (KEK validation complete)
+  - as2805_1_1 has been run (KEK exchange complete)
+  - as2805_1_5 has been run (KEK validation complete)
 
 AS2805 Key Exchange Process:
-  1. Node 1 creates working keys in APC
-  2. Node 1 exports each key wrapped under KEK(s) using AS2805 variant masks
-  3. Wrapped keys are transmitted to Node 2
-  4. Node 2 unwraps using matching variant mask on KEK(r)
-  5. Node 2 computes KCVs and returns them to Node 1
-  6. Node 1 validates KCVs against APC export response
+  1. Node 2 creates working keys in APC
+  2. Node 2 exports each key wrapped under KEK(s) using AS2805 variant masks
+  3. Wrapped keys are transmitted to Node 1
+  4. Node 1 unwraps using matching variant mask on KEK(r)
+  5. Node 1 computes KCVs and returns them to Node 2
+  6. Node 2 validates KCVs against APC export response
 """
 
 import json
@@ -49,7 +49,7 @@ print("=" * 70)
 print("\nThis script will:")
 print("  1. Create ZPK, ZEK, and ZAK working keys in APC")
 print("  2. Export each key using AS2805 variant-based wrapping")
-print("  3. Node 2 unwraps and validates each key")
+print("  3. Node 1 unwraps and validates each key")
 print("=" * 70)
 
 # ============================================================================
@@ -57,11 +57,11 @@ print("=" * 70)
 # ============================================================================
 print("\n[STEP 1] Loading prerequisites from previous modules...")
 
-# Load KEK details (Node 1's KEKs ARN)
+# Load KEK details (Node 2's KEKs ARN)
 kek_details_file = output_dir / "apc_created_kek.json"
 if not kek_details_file.exists():
     print(f"✗ KEK details file not found: {kek_details_file}")
-    print("  Please run Mod_1_1 first!")
+    print("  Please run as2805_1_1 first!")
     sys.exit(1)
 
 try:
@@ -71,7 +71,7 @@ try:
     keks_arn = kek_details['arn']
     keks_kcv = kek_details['check_value']
 
-    print(f"✓ Loaded KEKs (Node 1's sending KEK)")
+    print(f"✓ Loaded KEKs (Node 2's sending KEK)")
     print(f"  ARN: {keks_arn}")
     print(f"  KCV: {keks_kcv}")
 
@@ -79,11 +79,11 @@ except Exception as e:
     print(f"✗ Error loading KEK details: {e}")
     sys.exit(1)
 
-# Load Node 2's keystore (contains KEK(r) = Node 1's KEK(s))
+# Load Node 1's keystore (contains KEK(r) = Node 2's KEK(s))
 keystore_path = output_dir / "node1_keystore.json"
 if not keystore_path.exists():
     print(f"✗ Keystore not found: {keystore_path}")
-    print("  Please run Mod_1_1 first!")
+    print("  Please run as2805_1_1 first!")
     sys.exit(1)
 
 try:
@@ -104,8 +104,8 @@ try:
         decrypted_data = fernet.decrypt(encrypted_data)
         keystore = json.loads(decrypted_data.decode())
 
-    # Node 2's KEK(r) is the APC-created KEK that was imported into the keystore
-    # This is the same key as Node 1's KEK(s), just from Node 2's perspective
+    # Node 1's KEK(r) is the APC-created KEK that was imported into the keystore
+    # This is the same key as Node 2's KEK(s), just from Node 1's perspective
     if "apc_imported_kek" not in keystore["keys"]:
         print("✗ APC imported KEK not found in keystore")
         sys.exit(1)
@@ -113,7 +113,7 @@ try:
     kekr_info = keystore["keys"]["apc_imported_kek"]
     kekr_bytes = base64.b64decode(kekr_info["key"])
 
-    print(f"✓ Loaded Node 2's KEK(r) from keystore")
+    print(f"✓ Loaded Node 1's KEK(r) from keystore")
     print(f"  Alias: apc_imported_kek")
     print(f"  Length: {len(kekr_bytes)} bytes ({len(kekr_bytes) * 8} bits)")
 
@@ -333,12 +333,12 @@ for key_id, key_info in created_keys.items():
 print(f"\n✓ All {len(exported_keys)} working keys exported successfully")
 
 # ============================================================================
-# STEP 5: Node 2 Unwraps Working Keys
+# STEP 5: Node 1 Unwraps Working Keys
 # ============================================================================
 print("\n" + "=" * 70)
-print("STEP 5: Node 2 Unwraps Working Keys")
+print("STEP 5: Node 1 Unwraps Working Keys")
 print("=" * 70)
-print("\nNode 2 applies the AS2805 variant mask to KEK(r) and decrypts")
+print("\nNode 1 applies the AS2805 variant mask to KEK(r) and decrypts")
 print("each working key using 3DES-CBC with zero IV.")
 
 # AS2805 variant masks (2-byte patterns repeated for 2-key TDES / 16 bytes)
@@ -395,7 +395,7 @@ for key_id, export_info in exported_keys.items():
         print(f"  ✗ Error unwrapping {key_config['name']}: {e}")
         sys.exit(1)
 
-print(f"\n✓ All {len(unwrapped_keys)} working keys unwrapped by Node 2")
+print(f"\n✓ All {len(unwrapped_keys)} working keys unwrapped by Node 1")
 
 # ============================================================================
 # STEP 6: KCV Validation
@@ -403,7 +403,7 @@ print(f"\n✓ All {len(unwrapped_keys)} working keys unwrapped by Node 2")
 print("\n" + "=" * 70)
 print("STEP 6: KCV Validation")
 print("=" * 70)
-print("\nNode 2 computes KCVs for each unwrapped key (ANSI X9.24: encrypt")
+print("\nNode 1 computes KCVs for each unwrapped key (ANSI X9.24: encrypt")
 print("8 zero bytes with ECB, take first 3 bytes) and compares against")
 print("the KCVs returned by APC.")
 
@@ -448,10 +448,10 @@ else:
     sys.exit(1)
 
 # ============================================================================
-# STEP 7: Store Working Keys in Node 2's Keystore
+# STEP 7: Store Working Keys in Node 1's Keystore
 # ============================================================================
 print("\n" + "=" * 70)
-print("STEP 7: Store Working Keys in Node 2's Keystore")
+print("STEP 7: Store Working Keys in Node 1's Keystore")
 print("=" * 70)
 
 try:
@@ -521,7 +521,7 @@ print("\n" + "=" * 70)
 print("WORKING KEY EXCHANGE COMPLETE - Summary")
 print("=" * 70)
 
-print(f"\nNode 1 (AWS Payment Cryptography):")
+print(f"\nNode 2 (AWS Payment Cryptography):")
 print(f"  KEK(s) ARN: {keks_arn}")
 print(f"  KEK(s) KCV: {keks_kcv}")
 
@@ -535,7 +535,7 @@ for key_id, key_info in created_keys.items():
     print(f"    AS2805 Variant: {key_config['as2805_variant']}")
     print(f"    Keystore Alias: apc_{key_id}")
 
-print(f"\nNode 2 Keystore:")
+print(f"\nNode 1 Keystore:")
 print(f"  Location: {keystore_path}")
 print(f"  Total Keys: {len(keystore['keys'])}")
 
@@ -545,35 +545,35 @@ print(f"✓ ZEK ready for data encryption between nodes")
 print(f"✓ ZAK ready for MAC generation/verification between nodes")
 
 # ============================================================================
-# STEP 9: Node 2 Creates and Exports Working Keys to Node 1 (APC)
+# STEP 9: Node 1 Creates and Exports Working Keys to Node 2 (APC)
 # ============================================================================
 print("\n" + "=" * 70)
-print("STEP 9: Node 2 Creates Working Keys and Wraps for Node 1")
+print("STEP 9: Node 1 Creates Working Keys and Wraps for Node 2")
 print("=" * 70)
-print("\nNode 2 generates its own set of working keys (send keys) and wraps")
+print("\nNode 1 generates its own set of working keys (send keys) and wraps")
 print("them under its KEK(s) using AS2805 variant masks for import into APC.")
 
-# Load Node 2's KEK(s) - this is the node1_kek in the keystore
-node2_keks_bytes = base64.b64decode(keystore["keys"]["node1_kek"]["key"])
-print(f"\n  Node 2 KEK(s) loaded: {len(node2_keks_bytes)} bytes")
+# Load Node 1's KEK(s) - this is the node1_kek in the keystore
+node1_keks_bytes = base64.b64decode(keystore["keys"]["node1_kek"]["key"])
+print(f"\n  Node 1 KEK(s) loaded: {len(node1_keks_bytes)} bytes")
 
-# Load Node 1's KEK(r) ARN (the Node 2 KEK imported into APC)
+# Load Node 2's KEK(r) ARN (the Node 1 KEK imported into APC)
 kekr_details_file = output_dir / "imported_kek_details.json"
 if not kekr_details_file.exists():
     print(f"✗ Imported KEK details not found: {kekr_details_file}")
-    print("  Please run Mod_1_4 first!")
+    print("  Please run as2805_1_4 first!")
     sys.exit(1)
 
 with open(kekr_details_file, 'r') as f:
     kekr_details = json.load(f)
-node1_kekr_arn = kekr_details['arn']
-print(f"  Node 1 KEK(r) ARN: {node1_kekr_arn}")
+node2_kekr_arn = kekr_details['arn']
+print(f"  Node 2 KEK(r) ARN: {node2_kekr_arn}")
 
-# Generate working keys locally on Node 2
-node2_working_keys = {}
+# Generate working keys locally on Node 1
+node1_working_keys = {}
 
 for key_id, key_config in WORKING_KEYS.items():
-    print(f"\n  Generating Node 2 {key_config['name']}...")
+    print(f"\n  Generating Node 1 {key_config['name']}...")
 
     # Generate a random 2-key TDES key (16 bytes)
     wk_bytes = os.urandom(16)
@@ -587,7 +587,7 @@ for key_id, key_config in WORKING_KEYS.items():
     kcv_enc = kcv_cipher.encryptor()
     wk_kcv = (kcv_enc.update(b'\x00' * 8) + kcv_enc.finalize())[:3].hex().upper()
 
-    node2_working_keys[key_id] = {
+    node1_working_keys[key_id] = {
         'key': wk_bytes,
         'kcv': wk_kcv,
         'config': key_config,
@@ -601,12 +601,12 @@ for key_id, key_config in WORKING_KEYS.items():
 # STEP 10: Wrap Node 2 Working Keys Under KEK(s) with Variant Masks
 # ============================================================================
 print("\n" + "=" * 70)
-print("STEP 10: Wrap Node 2 Working Keys for Import into APC")
+print("STEP 10: Wrap Node 1 Working Keys for Import into APC")
 print("=" * 70)
 
-node2_wrapped_keys = {}
+node1_wrapped_keys = {}
 
-for key_id, wk_info in node2_working_keys.items():
+for key_id, wk_info in node1_working_keys.items():
     key_config = wk_info['config']
     variant_name = key_config['as2805_variant']
     variant_mask = AS2805_VARIANT_MASKS[variant_name]
@@ -614,8 +614,8 @@ for key_id, wk_info in node2_working_keys.items():
     print(f"\n  Wrapping {key_config['name']}...")
     print(f"    Variant: {variant_name}")
 
-    # Apply variant mask to Node 2's KEK(s)
-    kek_variant = bytes(a ^ b for a, b in zip(node2_keks_bytes, variant_mask))
+    # Apply variant mask to Node 1's KEK(s)
+    kek_variant = bytes(a ^ b for a, b in zip(node1_keks_bytes, variant_mask))
 
     # Encrypt working key using 3DES-CBC with zero IV
     cipher = Cipher(
@@ -626,21 +626,21 @@ for key_id, wk_info in node2_working_keys.items():
     encryptor = cipher.encryptor()
     wrapped_hex = (encryptor.update(wk_info['key']) + encryptor.finalize()).hex().upper()
 
-    node2_wrapped_keys[key_id] = wrapped_hex
+    node1_wrapped_keys[key_id] = wrapped_hex
     print(f"  ✓ Wrapped: {wrapped_hex}")
 
 # ============================================================================
 # STEP 11: Import Node 2 Working Keys into APC
 # ============================================================================
 print("\n" + "=" * 70)
-print("STEP 11: Import Node 2 Working Keys into APC")
+print("STEP 11: Import Node 1 Working Keys into APC")
 print("=" * 70)
 
 imported_keys = {}
 
-for key_id, wrapped_hex in node2_wrapped_keys.items():
-    key_config = node2_working_keys[key_id]['config']
-    expected_kcv = node2_working_keys[key_id]['kcv']
+for key_id, wrapped_hex in node1_wrapped_keys.items():
+    key_config = node1_working_keys[key_id]['config']
+    expected_kcv = node1_working_keys[key_id]['kcv']
 
     print(f"\n  Importing {key_config['name']}...")
 
@@ -648,7 +648,7 @@ for key_id, wrapped_hex in node2_wrapped_keys.items():
         import_response = control_client.import_key(
             KeyMaterial={
                 'As2805KeyCryptogram': {
-                    'WrappingKeyIdentifier': node1_kekr_arn,
+                    'WrappingKeyIdentifier': node2_kekr_arn,
                     'As2805KeyVariant': key_config['as2805_variant'],
                     'Exportable': True,
                     'KeyAlgorithm': 'TDES_2KEY',
@@ -659,8 +659,8 @@ for key_id, wrapped_hex in node2_wrapped_keys.items():
             KeyCheckValueAlgorithm='ANSI_X9_24',
             Enabled=True,
             Tags=[
-                {'Key': 'Name', 'Value': f"Node2-{key_config['tag_name']}"},
-                {'Key': 'Purpose', 'Value': 'AS2805-Working-Key-Node2'}
+                {'Key': 'Name', 'Value': f"Node1-{key_config['tag_name']}"},
+                {'Key': 'Purpose', 'Value': 'AS2805-Working-Key-Node1'}
             ]
         )
 
@@ -686,25 +686,25 @@ for key_id, wrapped_hex in node2_wrapped_keys.items():
         print(f"  ✗ Error importing {key_config['name']}: {e.response['Error']['Message']}")
         sys.exit(1)
 
-print(f"\n✓ All {len(imported_keys)} Node 2 working keys imported into APC")
+print(f"\n✓ All {len(imported_keys)} Node 1 working keys imported into APC")
 
 # ============================================================================
 # STEP 12: Store Node 2 Working Keys in Keystore
 # ============================================================================
 print("\n" + "=" * 70)
-print("STEP 12: Store Node 2 Working Keys in Keystore")
+print("STEP 12: Store Node 1 Working Keys in Keystore")
 print("=" * 70)
 
 try:
-    for key_id, wk_info in node2_working_keys.items():
+    for key_id, wk_info in node1_working_keys.items():
         key_config = wk_info['config']
-        keystore_alias = f"node2_{key_id}"
+        keystore_alias = f"node1_{key_id}"
         keystore["keys"][keystore_alias] = {
             "type": "secret",
             "algorithm": "3DES",
             "key": base64.b64encode(wk_info['key']).decode('utf-8'),
             "length": len(wk_info['key']),
-            "source": "Node2-Generated",
+            "source": "Node1-Generated",
             "check_value": wk_info['kcv'],
             "as2805_key_type": key_id.upper(),
             "as2805_variant": key_config['as2805_variant']
@@ -724,24 +724,24 @@ except Exception as e:
     print(f"✗ Error storing keys: {e}")
     sys.exit(1)
 
-# Save Node 2 imported key details for use by subsequent modules
+# Save Node 1 imported key details for use by subsequent modules
 try:
-    node2_imported_details = {}
+    node1_imported_details = {}
     for key_id, imp_info in imported_keys.items():
-        node2_imported_details[key_id] = {
+        node1_imported_details[key_id] = {
             'arn': imp_info['arn'],
             'kcv': imp_info['kcv'],
-            'as2805_variant': node2_working_keys[key_id]['config']['as2805_variant'],
-            'key_usage': node2_working_keys[key_id]['config']['key_usage'],
-            'keystore_alias': f"node2_{key_id}",
+            'as2805_variant': node1_working_keys[key_id]['config']['as2805_variant'],
+            'key_usage': node1_working_keys[key_id]['config']['key_usage'],
+            'keystore_alias': f"node1_{key_id}",
         }
 
-    node2_details_file = output_dir / "node2_imported_key_details.json"
-    with open(node2_details_file, 'w') as f:
-        json.dump(node2_imported_details, f, indent=2)
-    print(f"\n✓ Node 2 imported key details saved to: {node2_details_file.name}")
+    node1_details_file = output_dir / "node1_imported_key_details.json"
+    with open(node1_details_file, 'w') as f:
+        json.dump(node1_imported_details, f, indent=2)
+    print(f"\n✓ Node 1 imported key details saved to: {node1_details_file.name}")
 except Exception as e:
-    print(f"✗ Error saving Node 2 key details: {e}")
+    print(f"✗ Error saving Node 1 key details: {e}")
 
 # ============================================================================
 # SUMMARY
@@ -750,15 +750,15 @@ print("\n" + "=" * 70)
 print("WORKING KEY EXCHANGE COMPLETE - Summary")
 print("=" * 70)
 
-print(f"\n--- Node 1 → Node 2 (APC exports, Node 2 receives) ---")
+print(f"\n--- Node 2 → Node 1 (APC exports, Node 1 receives) ---")
 for key_id, key_info in created_keys.items():
     key_config = key_info['config']
     export_kcv = exported_keys[key_id]['kcv']
     print(f"  {key_config['name']}: ARN={key_info['arn']}, KCV={export_kcv}")
 
-print(f"\n--- Node 2 → Node 1 (Node 2 exports, APC imports) ---")
+print(f"\n--- Node 1 → Node 2 (Node 1 exports, APC imports) ---")
 for key_id, imp_info in imported_keys.items():
-    key_config = node2_working_keys[key_id]['config']
+    key_config = node1_working_keys[key_id]['config']
     print(f"  {key_config['name']}: ARN={imp_info['arn']}, KCV={imp_info['kcv']}")
 
 print(f"\n✓ Bidirectional working key exchange complete")

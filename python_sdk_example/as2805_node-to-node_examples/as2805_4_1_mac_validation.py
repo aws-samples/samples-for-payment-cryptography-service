@@ -2,17 +2,17 @@
 AS2805 MAC Validation
 
 This script demonstrates MAC verification and generation using the AS2805.4.1
-algorithm between Node 2 (software HSM) and Node 1 (AWS Payment Cryptography).
+algorithm between Node 1 (software HSM) and Node 2 (AWS Payment Cryptography).
 
 Scenario:
-  Node 2 sent a transaction with an encrypted PIN block and a MAC computed
-  using its ZAK(s) per AS2805.4.1. Node 1 (APC) verifies the MAC using the
-  imported Node 2 ZAK, then generates a new MAC using its own ZAK for the
+  Node 1 sent a transaction with an encrypted PIN block and a MAC computed
+  using its ZAK(s) per AS2805.4.1. Node 2 (APC) verifies the MAC using the
+  imported Node 1 ZAK, then generates a new MAC using its own ZAK for the
   outgoing message.
 
 Prerequisites:
-  - Mod_2_1 has been run (working key exchange complete)
-  - Mod_3_1 has been run (PIN translation + MAC generation complete)
+  - as2805_2_1 has been run (working key exchange complete)
+  - as2805_3_1 has been run (PIN translation + MAC generation complete)
 """
 
 import json
@@ -34,11 +34,11 @@ print("=" * 70)
 # ============================================================================
 print("\n[STEP 1] Loading prerequisites...")
 
-# Load transaction data from Mod_3_1
+# Load transaction data from as2805_3_1
 transaction_file = output_dir / "transaction_data.json"
 if not transaction_file.exists():
     print(f"✗ Transaction data not found: {transaction_file}")
-    print("  Please run Mod_3_1 first!")
+    print("  Please run as2805_3_1 first!")
     sys.exit(1)
 
 with open(transaction_file, 'r') as f:
@@ -51,28 +51,28 @@ print(f"  MAC:                 {txn['mac']}")
 print(f"  PAN:                 {txn['pan']}")
 print(f"  STAN:                {txn['stan']}")
 
-# Load Node 2 imported key details (ZAK ARN in APC)
-node2_imported_file = output_dir / "node2_imported_key_details.json"
-if not node2_imported_file.exists():
-    print(f"✗ Node 2 imported key details not found. Run Mod_2_1 first!")
+# Load Node 1 imported key details (ZAK ARN in APC)
+node1_imported_file = output_dir / "node1_imported_key_details.json"
+if not node1_imported_file.exists():
+    print(f"✗ Node 1 imported key details not found. Run as2805_2_1 first!")
     sys.exit(1)
 
-with open(node2_imported_file, 'r') as f:
-    node2_imported = json.load(f)
+with open(node1_imported_file, 'r') as f:
+    node1_imported = json.load(f)
 
-# Load Node 1 working key details (ZAK ARN for outgoing MAC)
+# Load Node 2 working key details (ZAK ARN for outgoing MAC)
 working_key_file = output_dir / "working_key_details.json"
 if not working_key_file.exists():
-    print(f"✗ Working key details not found. Run Mod_2_1 first!")
+    print(f"✗ Working key details not found. Run as2805_2_1 first!")
     sys.exit(1)
 
 with open(working_key_file, 'r') as f:
     working_keys = json.load(f)
 
-incoming_zak_arn = node2_imported['zak']['arn']
+incoming_zak_arn = node1_imported['zak']['arn']
 outgoing_zak_arn = working_keys['zak']['arn']
-print(f"✓ Node 2 ZAK ARN in APC (incoming): {incoming_zak_arn}")
-print(f"✓ Node 1 ZAK ARN in APC (outgoing): {outgoing_zak_arn}")
+print(f"✓ Node 1 ZAK ARN in APC (incoming): {incoming_zak_arn}")
+print(f"✓ Node 2 ZAK ARN in APC (outgoing): {outgoing_zak_arn}")
 
 # ============================================================================
 # STEP 2: Initialize AWS Clients
@@ -142,9 +142,9 @@ except Exception as e:
 # STEP 3: Generate MAC using APC (to establish known-good value)
 # ============================================================================
 print("\n" + "=" * 70)
-print("STEP 3: Generate MAC using APC (Node 2 ZAK)")
+print("STEP 3: Generate MAC using APC (Node 1 ZAK)")
 print("=" * 70)
-print("\nFirst, generate a MAC using APC with the imported Node 2 ZAK")
+print("\nFirst, generate a MAC using APC with the imported Node 1 ZAK")
 print("to establish the correct MAC value for our message data.")
 
 try:
@@ -202,13 +202,13 @@ except ClientError as e:
     sys.exit(1)
 
 # ============================================================================
-# STEP 5: Generate MAC for Outgoing Message (Node 1 ZAK)
+# STEP 5: Generate MAC for Outgoing Message (Node 2 ZAK)
 # ============================================================================
 print("\n" + "=" * 70)
 print("STEP 5: Generate MAC for Outgoing Message")
 print("=" * 70)
 print("\nAPC generates a new MAC over the translated PIN block using")
-print("Node 1's ZAK for the outgoing message to the next node.")
+print("Node 2's ZAK for the outgoing message to the next node.")
 
 try:
     # Use the translated PIN block as the outgoing message data
@@ -240,7 +240,7 @@ except ClientError as e:
 print("\n" + "=" * 70)
 print("MAC VALIDATION COMPLETE - Summary")
 print("=" * 70)
-print(f"\n  --- Incoming (Node 2 → APC) ---")
+print(f"\n  --- Incoming (Node 1 → APC) ---")
 print(f"  Message Data:  {txn['message_data']}")
 print(f"  MAC:           {txn['mac']}")
 print(f"  Verification:  ✓ PASSED")

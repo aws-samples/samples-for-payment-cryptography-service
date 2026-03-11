@@ -8,8 +8,8 @@ The workflow includes:
 3. Validating the imported key
 
 Prerequisites:
-- Mod_1_2 has been run to get import parameters
-- Mod_1_3 has been run to wrap and export the Node1 KEK
+- as2805_1_2 has been run to get import parameters
+- as2805_1_3 has been run to wrap and export the Node1 KEK
 """
 
 import boto3
@@ -140,7 +140,7 @@ import_package_file = output_dir / "node1_kek_import_package.json"
 
 if not import_package_file.exists():
     print(f"✗ Import package file not found: {import_package_file}")
-    print("  Please run Mod_1_3_Node1_Export_KEK_for_APC.py first!")
+    print("  Please run as2805_1_3_Node1_Export_KEK_for_APC.py first!")
     sys.exit(1)
 
 try:
@@ -225,7 +225,7 @@ except ClientError as e:
     if error_code == 'InvalidKeyMaterialException':
         print("  The wrapped key material may be invalid or corrupted")
     elif error_code == 'ExpiredImportTokenException':
-        print("  The import token has expired. Please re-run Mod_1_2 and Mod_1_3")
+        print("  The import token has expired. Please re-run as2805_1_2 and as2805_1_3")
     sys.exit(1)
 except Exception as e:
     print(f"✗ Error importing key: {e}")
@@ -307,8 +307,8 @@ print(f"  Usage: {key_usage}")
 print(f"  Algorithm: {key_algorithm}")
 print(f"  Enabled Modes: Encrypt, Decrypt, Wrap, Unwrap")
 print(f"\nWorkflow Summary:")
-print(f"  1. Mod_1_2 - Generated import parameters from APC")
-print(f"  2. Mod_1_3 - Wrapped Node1 KEK using APC parameters")
-print(f"  3. Mod_1_4 (this script) - Imported wrapped KEK into APC")
+print(f"  1. as2805_1_2 - Generated import parameters from APC")
+print(f"  2. as2805_1_3 - Wrapped Node1 KEK using APC parameters")
+print(f"  3. as2805_1_4 (this script) - Imported wrapped KEK into APC")
 print(f"\nThe key is now ready to use as an AS2805 KEK in AWS Payment Cryptography.")
 print("=" * 70)

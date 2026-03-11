@@ -93,7 +93,7 @@ keystore_path = output_dir / "node1_keystore.json"
 
 if not keystore_path.exists():
     print(f"✗ Keystore not found: {keystore_path}")
-    print("  Please run Mod_1_1_KEK_and_keystore_setup_both_nodes.py first!")
+    print("  Please run as2805_1_1_KEK_and_keystore_setup_both_nodes.py first!")
     exit(1)
 
 try:
