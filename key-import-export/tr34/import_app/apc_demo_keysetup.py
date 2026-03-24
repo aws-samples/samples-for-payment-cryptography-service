@@ -7,7 +7,7 @@
 """
 This script is intended to import/generate all the keys needed for the AWS Payment Cryptography demo
 """
-import import_tr34_raw_key_to_apc as tr34
+import import_raw_key_tr34 as tr34
 import import_tr31_raw_key_to_apc as tr31
 import boto3
 

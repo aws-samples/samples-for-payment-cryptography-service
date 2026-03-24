@@ -16,7 +16,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 The following api calls may be subject to https://aws.amazon.com/service-terms/ section 2 - Beta & Previews
 
-Usage - python import_raw_key_into_apc_with_rsa_wrap.py --action importclearkey --clearkey 6E46FE409DF704BCA75E7FF270B65E73 --clearkey_algorithm A
+Usage - python import_raw_key_rsa.py --action importclearkey --clearkey 6E46FE409DF704BCA75E7FF270B65E73 --clearkey_algorithm A
 '''
 import boto3
 import botocore.session
@@ -160,7 +160,10 @@ if __name__ == '__main__':
     parser.add_argument("--action", help="Actions this script can perform",choices={"generateWrappingKey","importKey","demo","importclearkey"},default="demo")
     parser.add_argument("--importToken", "-t", help="Pointer to key to unwrap key with",default="")
     parser.add_argument("--wrappedKey", "-w", help="Wrapped Key to import in RSA cryptogram format")
-    parser.add_argument("--clearkey", "-k", help="Clearkey to import",default="")
+    parser.add_argument("--clearkey", "-k", help="Clearkey to import. If using key components, leave this empty.",default="")
+    parser.add_argument("--component1", help="First key component (hex). All three components are XORed to form the final key.", default="")
+    parser.add_argument("--component2", help="Second key component (hex).", default="")
+    parser.add_argument("--component3", help="Third key component (hex).", default="")
     parser.add_argument("--clearkey_algorithm", "-a", help="Clearkey algorithm - (T)des or (A)es",default="T",choices={"T","A"})
 
     args = parser.parse_args()
@@ -203,10 +206,33 @@ if __name__ == '__main__':
             print("Done - Imported Key Cryptogram:",ImportKeyArn,"KCV:",importedKcv) 
             print("KCV Matches?",importedKcv==sourceKcv)
     elif args.action == "importclearkey":
-        clearkey = binascii.unhexlify(args.clearkey)
+        # Determine the clear key: either from --clearkey directly or by XORing three components
+        has_components = args.component1 or args.component2 or args.component3
+        if args.clearkey and has_components:
+            raise Exception('Provide either --clearkey or all three --component flags, not both.')
+        elif has_components:
+            if not (args.component1 and args.component2 and args.component3):
+                raise Exception('All three key components (--component1, --component2, --component3) must be provided.')
+            c1 = bytes.fromhex(args.component1.replace(" ", ""))
+            c2 = bytes.fromhex(args.component2.replace(" ", ""))
+            c3 = bytes.fromhex(args.component3.replace(" ", ""))
+            if not (len(c1) == len(c2) == len(c3)):
+                raise Exception('All three key components must be the same length. Got %d, %d, %d bytes.' % (len(c1), len(c2), len(c3)))
+            clearkey_hex = bytes(a ^ b ^ c for a, b, c in zip(c1, c2, c3)).hex()
+            print("Component 1:", args.component1)
+            print("Component 2:", args.component2)
+            print("Component 3:", args.component3)
+            print("Combined key (XOR):", clearkey_hex.upper())
+        elif args.clearkey:
+            clearkey_hex = args.clearkey
+        else:
+            print("Missing key to import. Provide --clearkey or all three --component flags.")
+            sys.exit(1)
+
+        clearkey = binascii.unhexlify(clearkey_hex.replace(" ", ""))
         algo = args.clearkey_algorithm
 
-        if clearkey != "":
+        if clearkey != b"":
             print("Import a clear key")
             print("Get parameters for import")
             importRes = GetParametersForImport()

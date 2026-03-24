@@ -87,7 +87,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='TR-31 Key Import Sample Code',
                                      description='Sample code to generate a TR-31 format and import it into AWS Payment Cryptography.  This assumes that you have a clear text \
                                      version of the KBPK (Key Block Protection Key) also known as KEK/ZMK/ZMCK, have uploaded it to AWS Payment Cryptography and have its \
-                                     associated keyIdentifier (keyARN or keyAlias).  If you have not yet imported it, use import_raw_key_to_apc.py \
+                                     associated keyIdentifier (keyARN or keyAlias).  If you have not yet imported it, use import_raw_key_tr34.py \
                         mode which will directly import the key into the service but can only import 3DES keys. \
                         Alternately, it can be run in offline mode where you specify the inputs and it will provide the payload to be run.',
                                      epilog='This is intended as sample code and comes with no warranty and is not intended for us with production keys.')

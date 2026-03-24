@@ -44,7 +44,8 @@ The script automates a complex manual key ceremony. Here is the step-by-step wor
 Run the script from the command line passing the AWS Region, AWS CLI Profile, and the cleartext key you wish to import (in Hexadecimal format).
 
 ```bash
-python import_raw_key.py --region <region> --profile <profile_name> --kek <hex_key> \
+python import_raw_key_ecdh.py --region <region> --profile <profile_name> --clearkey <hex_key> \
+                         [--component1 <hex> --component2 <hex> --component3 <hex>] \
                          [--export-mode <E|S|N>] \
                          [--key-type <K0|B0|D0|P0|D1>] \
                          [--mode-of-use <B|X|N|E|D|G|C|V>] \
@@ -58,10 +59,10 @@ python import_raw_key.py --region <region> --profile <profile_name> --kek <hex_k
 To import a dummy AES-256 key as a K0 key (Key Encryption Key):
 
 ```bash
-python import_raw_key.py \
+python import_raw_key_ecdh.py \
     --region us-east-1 \
     --profile default \
-    --kek 1111222233334444555566667777888811112222333344445555666677778888 \
+    --clearkey 1111222233334444555566667777888811112222333344445555666677778888 \
     --key-type K0 \
     --algorithm A \
     --mode-of-use B \
@@ -73,10 +74,10 @@ python import_raw_key.py \
 To import a dummy TDES Triple Length key as a K0 key:
 
 ```bash
-python import_raw_key.py \
+python import_raw_key_ecdh.py \
     --region us-east-1 \
     --profile default \
-    --kek 222233334444555566667777888899992222333344445555 \
+    --clearkey 222233334444555566667777888899992222333344445555 \
     --key-type K0 \
     --algorithm T \
     --mode-of-use B \
@@ -88,10 +89,27 @@ python import_raw_key.py \
 To import a dummy AES-192 key as a K0 key:
 
 ```bash
-python import_raw_key.py \
+python import_raw_key_ecdh.py \
     --region us-east-1 \
     --profile default \
-    --kek AAAABBBBCCCCDDDDEEEEFFFF11112222AAAABBBBCCCCDDDD \
+    --clearkey AAAABBBBCCCCDDDDEEEEFFFF11112222AAAABBBBCCCCDDDD \
+    --key-type K0 \
+    --algorithm A \
+    --mode-of-use B \
+    --export-mode E
+```
+
+#### Example 4: Using Three Key Components
+
+To import a key assembled from three XORed components:
+
+```bash
+python import_raw_key_ecdh.py \
+    --region us-east-1 \
+    --profile default \
+    --component1 AAAABBBBCCCCDDDDEEEEFFFF11112222AAAABBBBCCCCDDDDEEEEFFFF11112222 \
+    --component2 1111222233334444555566667777888811112222333344445555666677778888 \
+    --component3 FFFF0000FFFF00000000FFFF0000FFFFFFFF0000FFFF00000000FFFF0000FFFF \
     --key-type K0 \
     --algorithm A \
     --mode-of-use B \

@@ -120,7 +120,10 @@ def main():
     )
     parser.add_argument("--region", required=True, help="AWS Region")
     parser.add_argument("--profile", required=True, help="AWS Profile")
-    parser.add_argument("--kek", required=True, help="Cleartext KEK to import (Hex)")
+    parser.add_argument("--clearkey", help="Clear Text Key to import (Hex). If using key components, leave this empty.", default="")
+    parser.add_argument("--component1", help="First key component (hex). All three components are XORed to form the final key.", default="")
+    parser.add_argument("--component2", help="Second key component (hex).", default="")
+    parser.add_argument("--component3", help="Third key component (hex).", default="")
     parser.add_argument(
         "--export-mode",
         "-e",
@@ -152,20 +155,41 @@ def main():
 
     args = parser.parse_args()
 
-    # Validate KEK input
-    try:
-        kek_bytes = bytes.fromhex(args.kek)
-    except ValueError:
-        parser.error("KEK must be a valid hex string.")
-
-    if len(args.kek) % 2 != 0:
-        parser.error("KEK hex string must have an even length.")
+    # Determine the KEK: either from --kek directly or by XORing three components
+    has_components = args.component1 or args.component2 or args.component3
+    if args.clearkey and has_components:
+        parser.error("Provide either --clearkey or all three --component flags, not both.")
+    elif has_components:
+        if not (args.component1 and args.component2 and args.component3):
+            parser.error("All three key components (--component1, --component2, --component3) must be provided.")
+        try:
+            c1 = bytes.fromhex(args.component1.replace(" ", ""))
+            c2 = bytes.fromhex(args.component2.replace(" ", ""))
+            c3 = bytes.fromhex(args.component3.replace(" ", ""))
+        except ValueError:
+            parser.error("All key components must be valid hex strings.")
+        if not (len(c1) == len(c2) == len(c3)):
+            parser.error(f"All three key components must be the same length. Got {len(c1)}, {len(c2)}, {len(c3)} bytes.")
+        kek_bytes = bytes(a ^ b ^ c for a, b, c in zip(c1, c2, c3))
+        print(f"Component 1: {args.component1}")
+        print(f"Component 2: {args.component2}")
+        print(f"Component 3: {args.component3}")
+        print(f"Combined key (XOR): {kek_bytes.hex().upper()}")
+    elif args.clearkey:
+        try:
+            kek_bytes = bytes.fromhex(args.clearkey)
+        except ValueError:
+            parser.error("clearkey must be a valid hex string.")
+        if len(args.clearkey) % 2 != 0:
+            parser.error("clearkey hex string must have an even length.")
+    else:
+        parser.error("Provide either --clearkey or all three --component flags.")
 
     # Check for common key lengths (16, 24, 32 bytes for AES/TDES)
     valid_lengths = [16, 24, 32]
     if len(kek_bytes) not in valid_lengths:
         parser.error(
-            f"KEK length ({len(kek_bytes)} bytes) is not standard (16, 24, or 32 bytes)."
+            f"Key length ({len(kek_bytes)} bytes) is not standard (16, 24, or 32 bytes)."
         )
 
     session = boto3.Session(profile_name=args.profile, region_name=args.region)
@@ -243,7 +267,7 @@ def main():
     # Step 5: Use KEK from CLI
     print("\n" + "-" * 60)
     print("Step 5: Load KEK from CLI...")
-    KEK_HEX = args.kek.upper()
+    KEK_HEX = kek_bytes.hex().upper()
     print(f"Using KEK to import: {KEK_HEX}")
 
     # Step 6: Derive Shared Secret and AES Wrapping Key

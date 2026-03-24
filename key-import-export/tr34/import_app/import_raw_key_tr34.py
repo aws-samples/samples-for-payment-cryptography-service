@@ -550,11 +550,15 @@ def importTr34(runMode,clearKey,exportMode,algorithm,keyType,modeOfUse,region,kr
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(prog='TR-34 Key Import Sample Code',
-                                     description='Sample code to generate a TR-34 2012 non-CMS format and import it into AWS Payment Cryptography.  Clear keys up to AES-128 are supported, in the same way as RSA Wrap.  The application can be run in the default \
-                        mode which will directly import the key into the service. Alternately, it can be run in offline mode where you specify the KRD X509 cert (in base64) \
+                                     description='Sample code to generate a TR-34 2012 non-CMS format and import it into AWS Payment Cryptography. Clear keys up to AES-128 are supported, in the same way as RSA Wrap. \
+                        A key can be provided directly via --clearkey, or assembled from three key components (--component1, --component2, --component3) which are XORed together. \
+                        The application can be run in the default mode which will directly import the key into the service. Alternately, it can be run in offline mode where you specify the KRD X509 cert (in base64) \
                             and it will only produce the tr-34 payload but leave the importing up to you.',
                                      epilog='This is intended as sample code and comes with no warranty and is not intended for us with production keys.')
-    parser.add_argument("--clearkey", help="Clear Text Key to import", default="8A8349794C9EE9A4C2927098F249FED6")
+    parser.add_argument("--clearkey", help="Clear Text Key to import. If using key components, leave this empty.", default="")
+    parser.add_argument("--component1", help="First key component (hex). All three components are XORed to form the final key.", default="")
+    parser.add_argument("--component2", help="Second key component (hex).", default="")
+    parser.add_argument("--component3", help="Third key component (hex).", default="")
     parser.add_argument("--exportmode", "-e", help="Export Mode - E, S or N", default="E",choices=['E', 'S', 'N'])
     parser.add_argument("--algorithm", "-a", help="Algorithm of key - (T)DES or (A)ES", default="T", choices=['A', 'T'])
     parser.add_argument("--keytype", "-t", help="Key Type according to TR-31 norms. For instance K0, B0, etc", default="K0",choices=['K0', 'K1', 'B0', 'D0','P0','E0','E3','E6','E1','C0','E2'])
@@ -572,7 +576,29 @@ if __name__ == "__main__":
     print ("Can be run in the default mode where it generates the payload and directly makes all required service calls OR ")
     print ("Given the additional input of a KRD X509 cert, it will produce the appropriate payload to be imported at a later time.")
 
-    print ("Key to import:",args.clearkey)
+    # Determine the clear key: either from --clearkey directly or by XORing three components
+    has_components = args.component1 or args.component2 or args.component3
+    if args.clearkey and has_components:
+        raise Exception('Provide either --clearkey or all three --component flags, not both.')
+    elif has_components:
+        if not (args.component1 and args.component2 and args.component3):
+            raise Exception('All three key components (--component1, --component2, --component3) must be provided.')
+        c1 = bytes.fromhex(args.component1.replace(" ", ""))
+        c2 = bytes.fromhex(args.component2.replace(" ", ""))
+        c3 = bytes.fromhex(args.component3.replace(" ", ""))
+        if not (len(c1) == len(c2) == len(c3)):
+            raise Exception('All three key components must be the same length. Got %d, %d, %d bytes.' % (len(c1), len(c2), len(c3)))
+        clear_key = bytes(a ^ b ^ c for a, b, c in zip(c1, c2, c3)).hex().upper()
+        print("Component 1:", args.component1)
+        print("Component 2:", args.component2)
+        print("Component 3:", args.component3)
+        print("Combined key (XOR):", clear_key)
+    elif args.clearkey:
+        clear_key = args.clearkey
+    else:
+        clear_key = ""  # will cause a random key to be generated
+
+    print ("Key to import:", clear_key if clear_key else "<random>")
     print ("Export Mode:",args.exportmode)
     print ("Key Type:",args.keytype)
     print ("Key Mode of use:",args.modeofuse)
@@ -585,7 +611,7 @@ if __name__ == "__main__":
     else:
         print ("AWS Region:%s" % (args.region))
 
-        importTr34(args.runmode,args.clearkey,args.exportmode,args.algorithm,args.keytype,args.modeofuse,args.region,args.krdcert,None,args.deleteoldkeys)
+        importTr34(args.runmode,clear_key,args.exportmode,args.algorithm,args.keytype,args.modeofuse,args.region,args.krdcert,None,args.deleteoldkeys)
 
         print('')
         print('')
