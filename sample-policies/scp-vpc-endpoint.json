@@ -1,0 +1,18 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "NotVpcEndpointDeny",
+            "Effect": "Deny",
+            "Action": [
+                "payment-cryptography:*"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "Null": {
+                    "aws:sourceVpce": "true"
+                }
+            }
+        }
+    ]
+}
