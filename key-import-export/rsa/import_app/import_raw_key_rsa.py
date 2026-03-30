@@ -154,17 +154,52 @@ def WrapKey(wrappingCert,keyToWrap):
 
 ########################################################################
 
+# Mapping from TR-31 key type codes to AWS Payment Cryptography KeyUsage values
+TR31_KEY_USAGE_MAP = {
+    'K0': 'TR31_K0_KEY_ENCRYPTION_KEY',
+    'K1': 'TR31_K1_KEY_BLOCK_PROTECTION_KEY',
+    'B0': 'TR31_B0_BASE_DERIVATION_KEY',
+    'D0': 'TR31_D0_SYMMETRIC_DATA_ENCRYPTION_KEY',
+    'P0': 'TR31_P0_PIN_ENCRYPTION_KEY',
+    'E0': 'TR31_E0_EMV_MKEY_APP_CRYPTOGRAMS',
+    'E1': 'TR31_E1_EMV_MKEY_CONFIDENTIALITY',
+    'E2': 'TR31_E2_EMV_MKEY_INTEGRITY',
+    'E3': 'TR31_E3_EMV_MKEY_OTHER',
+    'E6': 'TR31_E6_EMV_MKEY_OTHER',
+    'C0': 'TR31_C0_CARD_VERIFICATION_KEY',
+}
+
+# Mapping from TR-31 mode of use codes to AWS Payment Cryptography KeyModesOfUse values
+def get_key_modes_of_use(mode_of_use):
+    modes = {
+        'B': {'Encrypt': True, 'Decrypt': True, 'Wrap': True, 'Unwrap': True},
+        'X': {'DeriveKey': True},
+        'N': {'NoRestrictions': True},
+        'E': {'Encrypt': True, 'Wrap': True},
+        'D': {'Decrypt': True, 'Unwrap': True},
+        'C': {'Encrypt': True, 'Decrypt': True},
+        'G': {'Generate': True},
+        'V': {'Verify': True},
+    }
+    return modes.get(mode_of_use, {'NoRestrictions': True})
+
+########################################################################
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--action", help="Actions this script can perform",choices={"generateWrappingKey","importKey","demo","importclearkey"},default="demo")
-    parser.add_argument("--importToken", "-t", help="Pointer to key to unwrap key with",default="")
+    parser.add_argument("--importToken", "-i", help="Pointer to key to unwrap key with",default="")
     parser.add_argument("--wrappedKey", "-w", help="Wrapped Key to import in RSA cryptogram format")
     parser.add_argument("--clearkey", "-k", help="Clearkey to import. If using key components, leave this empty.",default="")
     parser.add_argument("--component1", help="First key component (hex). All three components are XORed to form the final key.", default="")
     parser.add_argument("--component2", help="Second key component (hex).", default="")
     parser.add_argument("--component3", help="Third key component (hex).", default="")
     parser.add_argument("--clearkey_algorithm", "-a", help="Clearkey algorithm - (T)des or (A)es",default="T",choices={"T","A"})
+    parser.add_argument("--keytype", "-t", help="Key Type according to TR-31 norms. For instance K0, B0, etc", default="K0",
+                        choices=['K0', 'K1', 'B0', 'D0', 'P0', 'E0', 'E3', 'E6', 'E1', 'C0', 'E2'])
+    parser.add_argument("--modeofuse", "-m", help="Mode of use according to TR-31 norms. For instance B (encrypt/decrypt), X (derive key)", default="B",
+                        choices=['B', 'X', 'N', 'E', 'D', 'C', 'G', 'V'])
 
     args = parser.parse_args()
 
@@ -202,7 +237,9 @@ if __name__ == '__main__':
             wrappedKey = WrapKey(wrappingKeyCertificate,sampleKey)
             print("Wrapped keyType",KeyAlgo,"Result:",wrappedKey)
 
-            ImportKeyArn,importedKcv = ImportKey(wrappedKey,importToken,KeyAlgorithm=KeyAlgo,KCVType=KcvType,KeyModesOfUse={"DeriveKey": True},KeyUsage="TR31_B0_BASE_DERIVATION_KEY")
+            ImportKeyArn,importedKcv = ImportKey(wrappedKey,importToken,KeyAlgorithm=KeyAlgo,KCVType=KcvType,
+                                                  KeyModesOfUse=get_key_modes_of_use(args.modeofuse),
+                                                  KeyUsage=TR31_KEY_USAGE_MAP.get(args.keytype, 'TR31_K0_KEY_ENCRYPTION_KEY'))
             print("Done - Imported Key Cryptogram:",ImportKeyArn,"KCV:",importedKcv) 
             print("KCV Matches?",importedKcv==sourceKcv)
     elif args.action == "importclearkey":
@@ -278,7 +315,9 @@ if __name__ == '__main__':
         wrappedKey = WrapKey(wrappingKeyCertificate,clearkey)
         print("Wrapped keyType",KeyAlgo,"Result:",wrappedKey)
 
-        ImportKeyArn,importedKcv = ImportKey(wrappedKey,importToken,KeyAlgorithm=KeyAlgo,KCVType=KcvType,KeyModesOfUse={"DeriveKey": True},KeyUsage="TR31_B0_BASE_DERIVATION_KEY")
+        ImportKeyArn,importedKcv = ImportKey(wrappedKey,importToken,KeyAlgorithm=KeyAlgo,KCVType=KcvType,
+                                              KeyModesOfUse=get_key_modes_of_use(args.modeofuse),
+                                              KeyUsage=TR31_KEY_USAGE_MAP.get(args.keytype, 'TR31_K0_KEY_ENCRYPTION_KEY'))
         print("Done - Imported Key Cryptogram:",ImportKeyArn,"KCV:",importedKcv) 
         print("KCV Matches?",importedKcv==sourceKcv)
     else:
