@@ -14,7 +14,9 @@ Following diagrams illustrate at high level the process of key exchange using TR
 
 Three scripts are available for importing clear text keys into AWS Payment Cryptography. Each uses a different key wrapping method. All three support providing the key either directly via `--clearkey` or by XORing three key components (`--component1`, `--component2`, `--component3`).
 
-> **Note:** These scripts handle clear text key material and are intended for testing environments only.
+> **Note:** 
+1. These scripts handle clear text key material and are intended for testing environments only.
+2. If you only have two key components, you can enter 3rd component as all zero such as : --component3 00000000000000000000000000000000
 
 ### 1. TR-34 Import — `import_raw_key_tr34.py`
 
