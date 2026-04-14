@@ -47,7 +47,7 @@ This script will exchange the Key Exchange Key (KEK) from Atalla into AWS Paymen
 ## TR-34 KEK Exchange Flow
 ![Atalla TR-34 Flow](./assets/atalla-apc-tr34-key-exchange-sequence-diagram%20-%20Key%20Exchange.png)
 
-## TR-31 Exchagne flow for working keys 
+## TR-31 Exchange flow for working keys 
 
 After KEK exchange, you can now import working keys as below via script `atalla_to_apc_tr31.py` - 
 
