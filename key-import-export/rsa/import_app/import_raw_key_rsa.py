@@ -16,13 +16,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 The following api calls may be subject to https://aws.amazon.com/service-terms/ section 2 - Beta & Previews
 
-Usage - python import_raw_key_rsa.py --action importclearkey --clearkey 6E46FE409DF704BCA75E7FF270B65E73 --clearkey_algorithm A
+Usage - python import_raw_key_rsa.py --action importclearkey --clearkey 6E46FE409DF704BCA75E7FF270B65E73 --algorithm A
 '''
 import boto3
 import botocore.session
 import secrets
 import argparse
 import sys
+import termios
+import tty
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography import x509
@@ -33,22 +35,20 @@ from Crypto.Cipher import AES
 from Crypto.Cipher import DES3
 
 service = 'payment-cryptography'
-host = 'controlplane.payment-cryptography.us-east-1.amazonaws.com'
 regionName = 'us-east-1'
 
 session = botocore.session.Session()
-
 config = session.get_scoped_config()
-credentials = session.get_credentials()
 
-region = config.get('region', regionName)
+def _get_region():
+    return config.get('region', regionName)
 
 def DeleteKey(keyArn):
-    apc_client = boto3.client('payment-cryptography',region_name=region)
+    apc_client = boto3.client('payment-cryptography', region_name=_get_region())
     apc_client.delete_key(KeyIdentifier=keyArn, DeleteKeyInDays=3)
 
 def GetParametersForImport():
-    apc_client = boto3.client('payment-cryptography',region_name=region)
+    apc_client = boto3.client('payment-cryptography', region_name=_get_region())
     import_parameters_res = apc_client.get_parameters_for_import(
         KeyMaterialType='KEY_CRYPTOGRAM',
         WrappingKeyAlgorithm='RSA_4096')
@@ -61,7 +61,7 @@ def GetParametersForImport():
     return responseDict
 
 def ImportRootCert(PublicKeyCertificate):
-    apc_client = boto3.client('payment-cryptography',region_name=region)
+    apc_client = boto3.client('payment-cryptography', region_name=_get_region())
     imported_symmetric_key_res = apc_client.import_key(
                 Enabled=True,
                 KeyCheckValueAlgorithm="CMAC", 
@@ -90,7 +90,7 @@ def ImportRootCert(PublicKeyCertificate):
     return imported_symmetric_key_res["Key"]["KeyArn"]
 
 def ImportKey(WrappedKey,ImportToken,KeyAlgorithm="AES_128",KeyModesOfUse='{"Decrypt": true, "DeriveKey": false, "Encrypt": true, "Generate": false,"NoRestrictions": false, "Sign": false, "Unwrap": true, "Verify": false, "Wrap": true}',KeyUsage="TR31_K0_KEY_ENCRYPTION_KEY",KCVType="CMAC"):
-    apc_client = boto3.client('payment-cryptography',region_name=region)
+    apc_client = boto3.client('payment-cryptography', region_name=_get_region())
     imported_symmetric_key_res = apc_client.import_key(
             Enabled=True,
             KeyMaterial={
@@ -152,6 +152,109 @@ def WrapKey(wrappingCert,keyToWrap):
     )
     return binascii.hexlify(encrypted).decode("UTF-8").upper()
 
+
+def _calculate_kcv(key_bytes: bytes, algo: str) -> str:
+    """Calculate KCV. algo is 'A' for AES or 'T' for TDES."""
+    if algo == 'A':
+        return CMAC.new(key_bytes, msg=bytes(AES.block_size), ciphermod=AES).digest()[:3].hex().upper()
+    else:
+        return DES3.new(key_bytes, DES3.MODE_ECB).encrypt(bytes(DES3.block_size))[:3].hex().upper()
+
+
+def _read_masked_hex(prompt: str, optional: bool = False) -> str:
+    """Read hex from the terminal echoing '*' per character. Returns stripped hex or '' if optional+empty."""
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    chars = []
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+    try:
+        tty.setraw(fd)
+        while True:
+            ch = sys.stdin.read(1)
+            if ch in ('\r', '\n'):
+                sys.stdout.write('\n')
+                sys.stdout.flush()
+                break
+            elif ch in ('\x7f', '\x08'):
+                if chars:
+                    chars.pop()
+                    sys.stdout.write('\b \b')
+                    sys.stdout.flush()
+            elif ch == '\x03':
+                sys.stdout.write('\n')
+                raise KeyboardInterrupt
+            else:
+                chars.append(ch)
+                sys.stdout.write('*')
+                sys.stdout.flush()
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ''.join(chars).replace(' ', '')
+
+
+def prompt_key_components(algo: str) -> bytes:
+    """Interactive masked component entry. Returns combined key as bytes."""
+    VALID_LENGTHS = {
+        'A': {16: 'AES-128', 24: 'AES-192', 32: 'AES-256'},
+        'T': {16: 'TDES-2KEY', 24: 'TDES-3KEY'},
+    }
+
+    def read_component(label: str, expected_len: int = 0, optional: bool = False) -> str:
+        while True:
+            raw = _read_masked_hex(f"  Enter {label} (hex): ", optional=optional)
+            if optional and raw == '':
+                return ''
+            if not raw:
+                print("  Error: value cannot be empty.")
+                continue
+            if not all(c in '0123456789abcdefABCDEF' for c in raw):
+                print("  Error: only hex characters (0-9, a-f, A-F) are allowed.")
+                continue
+            if len(raw) % 2 != 0:
+                print(f"  Error: must be an even number of hex characters (got {len(raw)}).")
+                continue
+            key_bytes_len = len(raw) // 2
+            valid = VALID_LENGTHS[algo]
+            if key_bytes_len not in valid:
+                valid_desc = ', '.join(f"{b*2} hex chars ({v})" for b, v in valid.items())
+                print(f"  Error: {key_bytes_len} bytes is not a valid {'AES' if algo=='A' else 'TDES'} key length.")
+                print(f"  Valid lengths: {valid_desc}.")
+                continue
+            if expected_len and key_bytes_len != expected_len:
+                print(f"  Error: this component is {key_bytes_len} bytes but previous components were {expected_len} bytes.")
+                continue
+            kcv = _calculate_kcv(bytes.fromhex(raw), algo)
+            print(f"  {label} KCV: {kcv}")
+            return raw
+
+    print("\n--- Key Component Entry ---")
+    c1 = read_component("Component 1")
+    expected = len(c1) // 2
+    c2 = read_component("Component 2", expected_len=expected)
+    c3 = read_component("Component 3 (press Enter to skip for 2-component entry)", expected_len=expected, optional=True)
+
+    if c3 == '':
+        combined = bytes(a ^ b for a, b in zip(bytes.fromhex(c1), bytes.fromhex(c2)))
+    else:
+        combined = bytes(a ^ b ^ c for a, b, c in zip(bytes.fromhex(c1), bytes.fromhex(c2), bytes.fromhex(c3)))
+
+    combined_kcv = _calculate_kcv(combined, algo)
+    print(f"\n  Combined key KCV: {combined_kcv}")
+    print("---------------------------\n")
+
+    while True:
+        confirm = input(f"  Confirm import of key with KCV [{combined_kcv}]? (yes/no): ").strip().lower()
+        if confirm == 'yes':
+            break
+        elif confirm == 'no':
+            print("  Import cancelled.")
+            sys.exit(0)
+        else:
+            print("  Please type 'yes' or 'no'.")
+
+    return combined
+
 ########################################################################
 
 # Mapping from TR-31 key type codes to AWS Payment Cryptography KeyUsage values
@@ -195,13 +298,23 @@ if __name__ == '__main__':
     parser.add_argument("--component1", help="First key component (hex). All three components are XORed to form the final key.", default="")
     parser.add_argument("--component2", help="Second key component (hex).", default="")
     parser.add_argument("--component3", help="Third key component (hex).", default="")
-    parser.add_argument("--clearkey_algorithm", "-a", help="Clearkey algorithm - (T)des or (A)es",default="T",choices={"T","A"})
+    parser.add_argument("--prompt-components", action="store_true",
+                        help="Interactively prompt for key components with masked input and KCV display.")
+    parser.add_argument("--algorithm", "-a", help="Key algorithm - (T)des or (A)es (default: T)", default="T", choices={"T","A"})
+    parser.add_argument("--region", "-r", help="AWS region (optional, overrides profile/environment default)", default=None)
     parser.add_argument("--keytype", "-t", help="Key Type according to TR-31 norms. For instance K0, B0, etc", default="K0",
                         choices=['K0', 'K1', 'B0', 'D0', 'P0', 'E0', 'E3', 'E6', 'E1', 'C0', 'E2'])
     parser.add_argument("--modeofuse", "-m", help="Mode of use according to TR-31 norms. For instance B (encrypt/decrypt), X (derive key)", default="B",
                         choices=['B', 'X', 'N', 'E', 'D', 'C', 'G', 'V'])
 
     args = parser.parse_args()
+
+    if args.region:
+        regionName = args.region
+
+    # --prompt-components implies importclearkey
+    if args.prompt_components and args.action == 'demo':
+        args.action = 'importclearkey'
 
     if args.action == 'generateWrappingKey':
          print("Generating a wrapping key.  Export your key using this wrapping key and then call with action=importKey")
@@ -243,9 +356,22 @@ if __name__ == '__main__':
             print("Done - Imported Key Cryptogram:",ImportKeyArn,"KCV:",importedKcv) 
             print("KCV Matches?",importedKcv==sourceKcv)
     elif args.action == "importclearkey":
-        # Determine the clear key: either from --clearkey directly or by XORing three components
+        # Determine the clear key: prompt, --clearkey, or --component flags
         has_components = args.component1 or args.component2 or args.component3
-        if args.clearkey and has_components:
+        algo = args.algorithm
+        suppress_key_output = args.prompt_components
+
+        if args.prompt_components:
+            if args.clearkey or has_components:
+                raise Exception('Cannot combine --prompt-components with --clearkey or --component flags.')
+            algo_name = "AES" if algo == "A" else "TDES"
+            print("\n--- Key Import Summary ---")
+            print(f"  Algorithm  : {algo_name}")
+            print(f"  Key Type   : {args.keytype}")
+            print(f"  Mode of Use: {args.modeofuse}")
+            print("--------------------------")
+            clearkey = prompt_key_components(algo)
+        elif args.clearkey and has_components:
             raise Exception('Provide either --clearkey or all three --component flags, not both.')
         elif has_components:
             if not (args.component1 and args.component2 and args.component3):
@@ -260,28 +386,21 @@ if __name__ == '__main__':
             print("Component 2:", args.component2)
             print("Component 3:", args.component3)
             print("Combined key (XOR):", clearkey_hex.upper())
+            clearkey = binascii.unhexlify(clearkey_hex)
         elif args.clearkey:
-            clearkey_hex = args.clearkey
+            clearkey = binascii.unhexlify(args.clearkey.replace(" ", ""))
         else:
-            print("Missing key to import. Provide --clearkey or all three --component flags.")
+            print("Missing key to import. Provide --clearkey, --component flags, or --prompt-components.")
             sys.exit(1)
-
-        clearkey = binascii.unhexlify(clearkey_hex.replace(" ", ""))
-        algo = args.clearkey_algorithm
 
         if clearkey != b"":
             print("Import a clear key")
             print("Get parameters for import")
             importRes = GetParametersForImport()
             importToken = importRes["ImportToken"]
-            wrappingKeyAlgorithm = importRes["WrappingKeyAlgorithm"]
-            wrappingKeyCertificateChain = importRes["WrappingKeyCertificateChain"]
             wrappingKeyCertificate = importRes["WrappingKeyCertificate"]
 
-            
             Keylength = len(clearkey)
-            #read length and map that to KeyAlgo
-
             if algo == "A":
                 if Keylength == 16:
                     KeyAlgo = 'AES_128'
@@ -295,14 +414,15 @@ if __name__ == '__main__':
                     KeyAlgo = 'TDES_3KEY'
                 else:
                     print("Invalid Key length for TDES")
+                    sys.exit(1)
 
             if algo == 'A':
-                print("Importing AES-128 symmetric key")
+                print("Importing AES symmetric key")
                 sourceKcv = GenerateAesKcv(clearkey)
-                KcvType= "CMAC"
+                KcvType = "CMAC"
             elif algo == 'T':
-                print("Importing 2 key TDES symmetric key")
-                KcvType= "ANSI_X9_24"
+                print("Importing TDES symmetric key")
+                KcvType = "ANSI_X9_24"
                 sourceKcv = GenerateTdesKcv(clearkey)
             else:
                 print("Invalid Key Algorithm for this sample code")
@@ -311,15 +431,18 @@ if __name__ == '__main__':
             print("Missing key to import")
             sys.exit(1)
 
-        print("Key Info Algo:",KeyAlgo,". Clear Key:",binascii.hexlify(clearkey).decode()," Calculated KCV: ", sourceKcv)
-        wrappedKey = WrapKey(wrappingKeyCertificate,clearkey)
-        print("Wrapped keyType",KeyAlgo,"Result:",wrappedKey)
+        if not suppress_key_output:
+            print("Key Info Algo:", KeyAlgo, ". Clear Key:", binascii.hexlify(clearkey).decode(), " Calculated KCV: ", sourceKcv)
+        else:
+            print("Key Info Algo:", KeyAlgo, " Calculated KCV: ", sourceKcv)
 
-        ImportKeyArn,importedKcv = ImportKey(wrappedKey,importToken,KeyAlgorithm=KeyAlgo,KCVType=KcvType,
+        wrappedKey = WrapKey(wrappingKeyCertificate, clearkey)
+
+        ImportKeyArn, importedKcv = ImportKey(wrappedKey, importToken, KeyAlgorithm=KeyAlgo, KCVType=KcvType,
                                               KeyModesOfUse=get_key_modes_of_use(args.modeofuse),
                                               KeyUsage=TR31_KEY_USAGE_MAP.get(args.keytype, 'TR31_K0_KEY_ENCRYPTION_KEY'))
-        print("Done - Imported Key Cryptogram:",ImportKeyArn,"KCV:",importedKcv) 
-        print("KCV Matches?",importedKcv==sourceKcv)
+        print("Done - Imported Key Cryptogram:", ImportKeyArn, "KCV:", importedKcv)
+        print("KCV Matches?", importedKcv == sourceKcv)
     else:
         if args.wrappedKey == "" or args.importToken == "":
             print("Import Token and wrappedKey required for importKey")
