@@ -12,6 +12,9 @@ import datetime
 import binascii
 import logging
 import argparse
+import sys
+import termios
+import tty
 
 
 from Crypto.Hash import SHA256, CMAC
@@ -27,6 +30,136 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import hashes, serialization
 
 from cryptography.x509.name import _ASN1Type
+
+
+def _calculate_kcv(key_hex: str, algorithm: str) -> str:
+    """Calculate KCV. algorithm is 'A' for AES or 'T' for TDES."""
+    key_bytes = bytes.fromhex(key_hex)
+    if algorithm == 'A':
+        return CMAC.new(key_bytes, msg=bytes(AES.block_size), ciphermod=AES).digest()[:3].hex().upper()
+    else:
+        return DES3.new(key_bytes, DES3.MODE_ECB).encrypt(bytes(DES3.block_size))[:3].hex().upper()
+
+
+def _read_masked_hex(prompt: str, optional: bool = False) -> str:
+    """Read hex from the terminal, echoing '*' for each character typed.
+    Returns the stripped hex string, or '' if optional and the user presses Enter immediately."""
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    chars = []
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+    try:
+        tty.setraw(fd)
+        while True:
+            ch = sys.stdin.read(1)
+            if ch in ('\r', '\n'):
+                sys.stdout.write('\n')
+                sys.stdout.flush()
+                break
+            elif ch in ('\x7f', '\x08'):  # backspace / delete
+                if chars:
+                    chars.pop()
+                    sys.stdout.write('\b \b')
+                    sys.stdout.flush()
+            elif ch == '\x03':  # Ctrl-C
+                sys.stdout.write('\n')
+                raise KeyboardInterrupt
+            else:
+                chars.append(ch)
+                sys.stdout.write('*')
+                sys.stdout.flush()
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    return ''.join(chars).replace(' ', '')
+
+
+def prompt_key_components(algorithm: str) -> str:
+    """Interactively prompt for 2 or 3 key components with masked input.
+    Displays KCV after each component. Returns the XORed combined key as hex."""
+
+    # Valid key lengths in bytes per algorithm
+    VALID_LENGTHS = {
+        'A': {16: 'AES-128', 24: 'AES-192', 32: 'AES-256'},
+        'T': {16: 'TDES-2KEY', 24: 'TDES-3KEY'},
+    }
+
+    def read_component(label: str, expected_len: int = 0, optional: bool = False) -> str:
+        while True:
+            raw = _read_masked_hex(f"  Enter {label} (hex): ", optional=optional)
+
+            # Optional blank entry (Component 3 skip)
+            if optional and raw == '':
+                return ''
+
+            # Must not be empty
+            if len(raw) == 0:
+                print("  Error: value cannot be empty.")
+                continue
+
+            # Only hex characters allowed (no spaces were already stripped)
+            if not all(c in '0123456789abcdefABCDEF' for c in raw):
+                print("  Error: only hex characters (0-9, a-f, A-F) are allowed.")
+                continue
+
+            # Must be even number of characters
+            if len(raw) % 2 != 0:
+                print(f"  Error: must be an even number of hex characters (got {len(raw)}).")
+                continue
+
+            key_bytes = len(raw) // 2
+
+            # Must be a recognised key length for the algorithm
+            valid = VALID_LENGTHS[algorithm]
+            if key_bytes not in valid:
+                valid_desc = ', '.join(f"{b*2} hex chars ({v})" for b, v in valid.items())
+                print(f"  Error: {key_bytes} bytes is not a valid {('AES' if algorithm=='A' else 'TDES')} key length.")
+                print(f"  Valid lengths: {valid_desc}.")
+                continue
+
+            # If a previous component set the expected length, enforce consistency
+            if expected_len and key_bytes != expected_len:
+                print(f"  Error: this component is {key_bytes} bytes but previous components were {expected_len} bytes. All components must be the same length.")
+                continue
+
+            # All checks passed — show KCV
+            kcv = _calculate_kcv(raw, algorithm)
+            print(f"  {label} KCV: {kcv}")
+            return raw
+
+    print("\n--- Key Component Entry ---")
+
+    c1 = read_component("Component 1")
+    expected = len(c1) // 2
+    c2 = read_component("Component 2", expected_len=expected)
+    c3 = read_component(
+        "Component 3 (press Enter to skip for 2-component entry)",
+        expected_len=expected,
+        optional=True,
+    )
+
+    if c3 == '':
+        combined = bytes(a ^ b for a, b in zip(bytes.fromhex(c1), bytes.fromhex(c2)))
+    else:
+        combined = bytes(a ^ b ^ c for a, b, c in zip(bytes.fromhex(c1), bytes.fromhex(c2), bytes.fromhex(c3)))
+
+    combined_hex = combined.hex().upper()
+    combined_kcv = _calculate_kcv(combined_hex, algorithm)
+    print(f"\n  Combined key KCV: {combined_kcv}")
+    print("---------------------------\n")
+
+    while True:
+        confirm = input("  Confirm import of key with KCV [{}]? (yes/no): ".format(combined_kcv)).strip().lower()
+        if confirm == 'yes':
+            break
+        elif confirm == 'no':
+            print("  Import cancelled.")
+            sys.exit(0)
+        else:
+            print("  Please type 'yes' or 'no'.")
+
+    return combined_hex
 
 
 
@@ -559,6 +692,8 @@ if __name__ == "__main__":
     parser.add_argument("--component1", help="First key component (hex). All three components are XORed to form the final key.", default="")
     parser.add_argument("--component2", help="Second key component (hex).", default="")
     parser.add_argument("--component3", help="Third key component (hex).", default="")
+    parser.add_argument("--prompt-components", action="store_true",
+                        help="Interactively prompt for key components with masked input and KCV display.")
     parser.add_argument("--exportmode", "-e", help="Export Mode - E, S or N", default="E",choices=['E', 'S', 'N'])
     parser.add_argument("--algorithm", "-a", help="Algorithm of key - (T)DES or (A)ES", default="T", choices=['A', 'T'])
     parser.add_argument("--keytype", "-t", help="Key Type according to TR-31 norms. For instance K0, B0, etc", default="K0",choices=['K0', 'K1', 'B0', 'D0','P0','E0','E3','E6','E1','C0','E2'])
@@ -576,9 +711,22 @@ if __name__ == "__main__":
     print ("Can be run in the default mode where it generates the payload and directly makes all required service calls OR ")
     print ("Given the additional input of a KRD X509 cert, it will produce the appropriate payload to be imported at a later time.")
 
-    # Determine the clear key: either from --clearkey directly or by XORing three components
+    # Determine the clear key: from --prompt-components, --clearkey, or --component flags
     has_components = args.component1 or args.component2 or args.component3
-    if args.clearkey and has_components:
+    if args.prompt_components:
+        if args.clearkey or has_components:
+            raise Exception('Cannot combine --prompt-components with --clearkey or --component flags.')
+        algo_name = "AES" if args.algorithm == "A" else "TDES"
+        print("\n--- Key Import Summary ---")
+        print(f"  Algorithm  : {algo_name}")
+        print(f"  Key Type   : {args.keytype}")
+        print(f"  Mode of Use: {args.modeofuse}")
+        print(f"  Export Mode: {args.exportmode}")
+        if args.runmode != 'OFFLINE':
+            print(f"  AWS Region : {args.region}")
+        print("--------------------------")
+        clear_key = prompt_key_components(args.algorithm)
+    elif args.clearkey and has_components:
         raise Exception('Provide either --clearkey or all three --component flags, not both.')
     elif has_components:
         if not (args.component1 and args.component2 and args.component3):
@@ -598,7 +746,8 @@ if __name__ == "__main__":
     else:
         clear_key = ""  # will cause a random key to be generated
 
-    print ("Key to import:", clear_key if clear_key else "<random>")
+    if not args.prompt_components:
+        print("Key to import:", clear_key if clear_key else "<random>")
     print ("Export Mode:",args.exportmode)
     print ("Key Type:",args.keytype)
     print ("Key Mode of use:",args.modeofuse)
