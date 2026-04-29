@@ -1,0 +1,276 @@
+AWSTemplateFormatVersion: '2010-09-09' 
+Description: 'AWS Payment Cryptography Physical Key Exchange - Customer Prerequisites' 
+ 
+Parameters: 
+ BucketSuffix: 
+   Type: String 
+   Description: Random suffix for S3 bucket name (use 8 hex characters) 
+   AllowedPattern: '[a-f0-9]{8}' 
+   ConstraintDescription: Must be 8 hexadecimal characters 
+ KeyAlgorithm:
+   Type: String
+   Description: Key algorithm type for the transport key
+   AllowedValues:
+     - TDES_2KEY
+     - TDES_3KEY
+     - AES_128
+     - AES_192
+     - AES_256
+ KeyUsage:
+   Type: String
+   Description: Key usage type for the transport key
+   AllowedValues:
+     - TR31_K0_KEY_ENCRYPTION_KEY
+     - TR31_B0_BASE_DERIVATION_KEY
+     - TR31_K1_KEY_BLOCK_PROTECTION_KEY
+ Exportable:
+   Type: String
+   Description: Whether the transport key is exportable or not
+   AllowedValues:
+     - "true"
+     - "false"
+ KeyModesOfUse:
+    Type: String
+    Description: >
+      JSON string for transport key KeyModesOfUse configuration. This should be valid for the given KeyUsage.
+      Example: {"Encrypt":true,"Decrypt":true,"Wrap":true,"Unwrap":true,"Generate":false,"Verify":false,"DeriveKey":false,"NoRestrictions":false}
+
+Resources: 
+ # Create ECC_NIST_P521 Key Pair 
+ PaymentCryptographyKeyPair: 
+   Type: AWS::PaymentCryptography::Key 
+   Properties: 
+     Exportable: true
+     DeriveKeyUsage: TR31_K1_KEY_BLOCK_PROTECTION_KEY 
+     KeyAttributes: 
+       KeyAlgorithm: ECC_NIST_P521 
+       KeyUsage: TR31_K3_ASYMMETRIC_KEY_FOR_KEY_AGREEMENT 
+       KeyClass: ASYMMETRIC_KEY_PAIR
+       KeyModesOfUse: 
+         DeriveKey: true 
+         Encrypt: false 
+         Decrypt: false 
+         Wrap: false 
+         Unwrap: false 
+         Sign: false 
+         Verify: false 
+         Generate: false 
+         NoRestrictions: false 
+ 
+ # Create S3 Bucket 
+ KeyExchangeBucket: 
+   Type: AWS::S3::Bucket 
+   Properties: 
+     BucketName: !Sub 'apc-physical-key-exchange-${BucketSuffix}' 
+     PublicAccessBlockConfiguration: 
+       BlockPublicAcls: true 
+       BlockPublicPolicy: true 
+       IgnorePublicAcls: true 
+       RestrictPublicBuckets: true 
+     VersioningConfiguration: 
+       Status: Enabled 
+     BucketEncryption: 
+       ServerSideEncryptionConfiguration: 
+         - ServerSideEncryptionByDefault: 
+             SSEAlgorithm: AES256 
+ 
+ # Apply S3 Bucket Policy 
+ KeyExchangeBucketPolicy: 
+   Type: AWS::S3::BucketPolicy 
+   Properties: 
+     Bucket: !Ref KeyExchangeBucket 
+     PolicyDocument: 
+       Version: '2012-10-17' 
+       Statement: 
+         - Sid: AllowPaymentCryptographyAccountReadWrite 
+           Effect: Allow 
+           Principal:
+             Service: payment-cryptography.amazonaws.com
+           Action: 
+             - s3:GetObject 
+             - s3:GetObjectVersion 
+             - s3:PutObject 
+           Resource: !Sub '${KeyExchangeBucket.Arn}/*' 
+         - Sid: AllowPaymentCryptographyAccountListBucket 
+           Effect: Allow 
+           Principal: 
+             Service: payment-cryptography.amazonaws.com
+           Action: s3:ListBucket 
+           Resource: !GetAtt KeyExchangeBucket.Arn
+         - Sid: DenyInsecureTransport
+           Effect: Deny
+           Principal: '*'
+           Action: 's3:*'
+           Resource:
+             - !Sub '${KeyExchangeBucket.Arn}'
+             - !Sub '${KeyExchangeBucket.Arn}/*'
+           Condition:
+             Bool:
+               'aws:SecureTransport': 'false'
+ 
+ # Lambda Execution Role 
+ KeyExchangeInputsUploaderRole: 
+   Type: AWS::IAM::Role 
+   Properties: 
+     AssumeRolePolicyDocument: 
+       Version: '2012-10-17' 
+       Statement: 
+         - Effect: Allow 
+           Principal: 
+             Service: lambda.amazonaws.com 
+           Action: sts:AssumeRole 
+     ManagedPolicyArns: 
+       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole 
+     Policies: 
+       - PolicyName: PaymentCryptographyAndS3Access 
+         PolicyDocument: 
+           Version: '2012-10-17' 
+           Statement: 
+             - Effect: Allow 
+               Action: 
+                 - payment-cryptography:GetPublicKeyCertificate 
+               Resource: !GetAtt PaymentCryptographyKeyPair.KeyIdentifier 
+             - Effect: Allow 
+               Action: 
+                 - s3:PutObject 
+                 - s3:PutObjectAcl 
+               Resource: !Sub '${KeyExchangeBucket.Arn}/*' 
+ 
+ # Lambda Function to Get Certificate and Upload the inputs to S3 
+ KeyExchangeInputsUploaderFunction: 
+   Type: AWS::Lambda::Function 
+   Properties: 
+     FunctionName: !Sub '${AWS::StackName}-key-exchange-inputs-uploader' 
+     Runtime: python3.12 
+     Handler: index.handler 
+     Role: !GetAtt KeyExchangeInputsUploaderRole.Arn 
+     Timeout: 60 
+     Code: 
+       ZipFile: | 
+         import json
+         import boto3 
+         import cfnresponse 
+          
+         def handler(event, context): 
+             print(f"Event: {json.dumps(event)}") 
+              
+             try: 
+                 request_type = event['RequestType'] 
+                  
+                 if request_type == 'Delete': 
+                     cfnresponse.send(event, context, cfnresponse.SUCCESS, {}) 
+                     return 
+                  
+                 if request_type in ['Create', 'Update']: 
+                     props = event['ResourceProperties']
+                     key_arn = props['KeyARN'] 
+                     bucket_name = props['BucketName'] 
+                     region = props['Region'] 
+                     account_id = props['AccountId']
+                     key_algorithm = props['KeyAlgorithm']
+                     key_usage = props['KeyUsage']
+                     exportable = props['Exportable'].lower() == 'true'
+                     key_modes_of_use = json.loads(props['KeyModesOfUse'])
+                      
+                     # Initialize clients 
+                     apc_client = boto3.client('payment-cryptography', region_name=region) 
+                     s3_client = boto3.client('s3', region_name=region) 
+                      
+                     # Call GetPublicKeyCertificate API 
+                     print(f"Calling GetPublicKeyCertificate API for key: {key_arn}") 
+                     response = apc_client.get_public_key_certificate( 
+                         KeyIdentifier=key_arn 
+                     ) 
+                      
+                     # Prepare the JSON response with Account ID 
+                     key_exchange_inputs = { 
+                        'AccountId': account_id,
+                        'KeyAlgorithm': key_algorithm,
+                        'KeyUsage': key_usage,
+                        'KeyArn': key_arn, 
+                        'KeyModesOfUse': {
+                            'Encrypt': key_modes_of_use.get('Encrypt', False),
+                            'Decrypt': key_modes_of_use.get('Decrypt', False),
+                            'Wrap': key_modes_of_use.get('Wrap', False),
+                            'Unwrap': key_modes_of_use.get('Unwrap', False),
+                            'Generate': key_modes_of_use.get('Generate', False),
+                            'Verify': key_modes_of_use.get('Verify', False),
+                            'DeriveKey': key_modes_of_use.get('DeriveKey', False),
+                            'NoRestrictions': key_modes_of_use.get('NoRestrictions', False)
+                        },
+                        'Exportable': exportable,
+                        'KeyCertificate': response['KeyCertificate'],
+                        'KeyCertificateChain': response['KeyCertificateChain']
+                     } 
+                      
+                     # Upload to S3 
+                     object_key = 'key-exchange-input.json' 
+                     print(f"Uploading certificate to s3://{bucket_name}/{object_key}") 
+                     s3_client.put_object( 
+                         Bucket=bucket_name, 
+                         Key=object_key, 
+                         Body=json.dumps(key_exchange_inputs, indent=2), 
+                         ContentType='application/json',
+                         ChecksumAlgorithm='SHA256'
+                     ) 
+                      
+                     response_data = { 
+                         'S3Location': f's3://{bucket_name}/{object_key}', 
+                         'ObjectKey': object_key 
+                     } 
+                      
+                     cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data) 
+                  
+             except Exception as e: 
+                 print(f"Error: {str(e)}") 
+                 cfnresponse.send(event, context, cfnresponse.FAILED, { 
+                     'Error': str(e) 
+                 }) 
+ 
+ # Custom Resource to trigger Lambda 
+ KeyExchangeInputsUploader: 
+   Type: Custom::KeyExchangeInputsUploader 
+   DependsOn: 
+     - KeyExchangeBucketPolicy 
+   Properties: 
+     ServiceToken: !GetAtt KeyExchangeInputsUploaderFunction.Arn 
+     KeyARN: !GetAtt PaymentCryptographyKeyPair.KeyIdentifier 
+     BucketName: !Ref KeyExchangeBucket 
+     Region: !Ref AWS::Region 
+     AccountId: !Ref AWS::AccountId
+     KeyAlgorithm: !Ref KeyAlgorithm
+     KeyUsage: !Ref KeyUsage
+     Exportable: !Ref Exportable
+     KeyModesOfUse: !Ref KeyModesOfUse
+ 
+Outputs: 
+ KeyARN: 
+   Description: ARN of the created Payment Cryptgraphy key pair 
+   Value: !GetAtt PaymentCryptographyKeyPair.KeyIdentifier 
+   Export: 
+     Name: !Sub '${AWS::StackName}-KeyARN' 
+  
+ BucketName: 
+   Description: Name of the S3 bucket for key exchange 
+   Value: !Ref KeyExchangeBucket 
+   Export: 
+     Name: !Sub '${AWS::StackName}-BucketName' 
+  
+ BucketARN: 
+   Description: ARN of the S3 bucket 
+   Value: !GetAtt KeyExchangeBucket.Arn 
+   Export: 
+     Name: !Sub '${AWS::StackName}-BucketARN' 
+  
+ KeyExchangeInputS3Location: 
+   Description: S3 location of the key exchange inputs
+   Value: !GetAtt KeyExchangeInputsUploader.S3Location 
+  
+ KeyExchangeInputObjectKey: 
+   Description: S3 object key for the key exchange inputs 
+   Value: !GetAtt KeyExchangeInputsUploader.ObjectKey 
+  
+ CompletionStatus: 
+   Description: Status of automation 
+   Value: 'All steps completed successfully'
+
