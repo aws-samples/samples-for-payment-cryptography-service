@@ -1,0 +1,22 @@
+[
+  {
+    "ParameterKey": "BucketSuffix",
+    "ParameterValue": "20260430"
+  },
+  {
+    "ParameterKey": "KeyAlgorithm",
+    "ParameterValue": "AES_256"
+  },
+  {
+    "ParameterKey": "KeyUsage",
+    "ParameterValue": "TR31_K1_KEY_BLOCK_PROTECTION_KEY"
+  },
+  {
+    "ParameterKey": "Exportable",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "KeyModesOfUse",
+    "ParameterValue": "{\"Encrypt\":true,\"Decrypt\":true,\"Wrap\":true,\"Unwrap\":true,\"Generate\":false,\"Verify\":false,\"DeriveKey\":false,\"NoRestrictions\":false}"
+  }
+]
