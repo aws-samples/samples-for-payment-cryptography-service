@@ -3,19 +3,129 @@ import base64
 import boto3
 from cryptography import x509
 import os
+import sys
 import datetime
+import hashlib
+import hmac as hmac_module
+import termios
+import tty
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.kdf.concatkdf import ConcatKDFHash
 from cryptography.x509.oid import NameOID
+from Crypto.Hash import CMAC
+from Crypto.Cipher import AES, DES3
 import psec
 
-RECEIVER_KEY_ALIAS = "alias/import-kek-ecdh-receiver"
-SENDER_ROOT_CA_ALIAS = "alias/import-kek-ecdh-sender-root"
-IMPORTED_KEK_ALIAS = "alias/import-kek-ecdh-result"
+RECEIVER_KEY_ALIAS = "alias/import-ecdh-receiver"
+SENDER_ROOT_CA_ALIAS = "alias/import-ecdh-sender-root"
+IMPORTED_KEY_ALIAS = "alias/import-ecdh-result"
 
 SENDER_KEY_FILE = "certs/sender_key.pem"
 SENDER_CERT_FILE = "certs/sender_cert.pem"
+
+
+def _calculate_kcv(key_bytes: bytes, algo: str) -> str:
+    """Calculate KCV. algo is 'A' for AES or 'T' for TDES."""
+    if algo == 'A':
+        return CMAC.new(key_bytes, msg=bytes(AES.block_size), ciphermod=AES).digest()[:3].hex().upper()
+    else:
+        return DES3.new(key_bytes, DES3.MODE_ECB).encrypt(bytes(DES3.block_size))[:3].hex().upper()
+
+
+def _read_masked_hex(prompt: str, optional: bool = False) -> str:
+    """Read hex from the terminal echoing '*' per character."""
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    chars = []
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+    try:
+        tty.setraw(fd)
+        while True:
+            ch = sys.stdin.read(1)
+            if ch in ('\r', '\n'):
+                sys.stdout.write('\n')
+                sys.stdout.flush()
+                break
+            elif ch in ('\x7f', '\x08'):
+                if chars:
+                    chars.pop()
+                    sys.stdout.write('\b \b')
+                    sys.stdout.flush()
+            elif ch == '\x03':
+                sys.stdout.write('\n')
+                raise KeyboardInterrupt
+            else:
+                chars.append(ch)
+                sys.stdout.write('*')
+                sys.stdout.flush()
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ''.join(chars).replace(' ', '')
+
+
+def prompt_key_components(algo: str) -> bytes:
+    """Interactive masked component entry. Returns combined key as bytes."""
+    VALID_LENGTHS = {
+        'A': {16: 'AES-128', 24: 'AES-192', 32: 'AES-256'},
+        'T': {16: 'TDES-2KEY', 24: 'TDES-3KEY'},
+    }
+
+    def read_component(label: str, expected_len: int = 0, optional: bool = False) -> str:
+        while True:
+            raw = _read_masked_hex(f"  Enter {label} (hex): ", optional=optional)
+            if optional and raw == '':
+                return ''
+            if not raw:
+                print("  Error: value cannot be empty.")
+                continue
+            if not all(c in '0123456789abcdefABCDEF' for c in raw):
+                print("  Error: only hex characters (0-9, a-f, A-F) are allowed.")
+                continue
+            if len(raw) % 2 != 0:
+                print(f"  Error: must be an even number of hex characters (got {len(raw)}).")
+                continue
+            key_bytes_len = len(raw) // 2
+            valid = VALID_LENGTHS.get(algo, {16: 'AES-128', 24: 'AES-192', 32: 'AES-256'})
+            if key_bytes_len not in valid:
+                valid_desc = ', '.join(f"{b*2} hex chars ({v})" for b, v in valid.items())
+                print(f"  Error: {key_bytes_len} bytes is not a valid key length.")
+                print(f"  Valid lengths: {valid_desc}.")
+                continue
+            if expected_len and key_bytes_len != expected_len:
+                print(f"  Error: this component is {key_bytes_len} bytes but previous components were {expected_len} bytes.")
+                continue
+            kcv = _calculate_kcv(bytes.fromhex(raw), algo)
+            print(f"  {label} KCV: {kcv}")
+            return raw
+
+    print("\n--- Key Component Entry ---")
+    c1 = read_component("Component 1")
+    expected = len(c1) // 2
+    c2 = read_component("Component 2", expected_len=expected)
+    c3 = read_component("Component 3 (press Enter to skip for 2-component entry)", expected_len=expected, optional=True)
+
+    if c3 == '':
+        combined = bytes(a ^ b for a, b in zip(bytes.fromhex(c1), bytes.fromhex(c2)))
+    else:
+        combined = bytes(a ^ b ^ c for a, b, c in zip(bytes.fromhex(c1), bytes.fromhex(c2), bytes.fromhex(c3)))
+
+    combined_kcv = _calculate_kcv(combined, algo)
+    print(f"\n  Combined key KCV: {combined_kcv}")
+    print("---------------------------\n")
+
+    while True:
+        confirm = input(f"  Confirm import of key with KCV [{combined_kcv}]? (yes/no): ").strip().lower()
+        if confirm == 'yes':
+            break
+        elif confirm == 'no':
+            print("  Import cancelled.")
+            sys.exit(0)
+        else:
+            print("  Please type 'yes' or 'no'.")
+
+    return combined
 
 
 def construct_tr31_header(algo, export_mode, key_type, mode_of_use, version_id):
@@ -116,14 +226,16 @@ def get_or_create_sender_credentials():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Import an AES-256 KEK into AWS Payment Cryptography using ECDH"
+        description="Import a symmetric key into AWS Payment Cryptography using ECDH"
     )
     parser.add_argument("--region", required=True, help="AWS Region")
-    parser.add_argument("--profile", required=True, help="AWS Profile")
+    parser.add_argument("--profile", default=None, help="AWS Profile (optional, uses default credential chain if omitted)")
     parser.add_argument("--clearkey", help="Clear Text Key to import (Hex). If using key components, leave this empty.", default="")
     parser.add_argument("--component1", help="First key component (hex). All three components are XORed to form the final key.", default="")
     parser.add_argument("--component2", help="Second key component (hex).", default="")
     parser.add_argument("--component3", help="Third key component (hex).", default="")
+    parser.add_argument("--prompt-components", action="store_true",
+                        help="Interactively prompt for key components with masked input and KCV display.")
     parser.add_argument(
         "--export-mode",
         "-e",
@@ -134,9 +246,9 @@ def main():
     parser.add_argument(
         "--key-type",
         "-t",
-        help="Key Type according to TR-31 norms. For instance K0, B0, etc",
+        help="Key Type according to TR-31 norms. For instance K0, B0, M7 (HMAC), etc",
         default="K0",
-        choices=["K0", "B0", "D0", "P0", "D1"],
+        choices=["K0", "B0", "D0", "P0", "D1", "K1", "M7"],
     )
     parser.add_argument(
         "--mode-of-use",
@@ -148,16 +260,50 @@ def main():
     parser.add_argument(
         "--algorithm",
         "-a",
-        help="Algorithm of key - (T)DES or (A)ES",
+        help="Algorithm of key - (T)DES, (A)ES, or (H)MAC. H is only valid with --key-type M7.",
         default="A",
-        choices=["A", "T", "R"],
+        choices=["A", "T", "R", "H"],
+    )
+    parser.add_argument(
+        "--hash-algorithm",
+        help="Hash algorithm for HMAC (M7) keys. Required when --key-type is M7.",
+        default=None,
+        choices=["HMAC_SHA1", "HMAC_SHA256", "HMAC_SHA384", "HMAC_SHA512"],
     )
 
     args = parser.parse_args()
 
-    # Determine the KEK: either from --kek directly or by XORing three components
+    # HMAC (M7) validation
+    if args.key_type == "M7":
+        if not args.hash_algorithm:
+            parser.error("--hash-algorithm is required when --key-type is M7 (HMAC).")
+        if args.mode_of_use not in ("C", "G", "V"):
+            parser.error("For HMAC (M7) keys, --mode-of-use must be C, G, or V.")
+        # Override algorithm to H (HMAC) for TR-31 header
+        args.algorithm = "H"
+    else:
+        if args.hash_algorithm:
+            parser.error("--hash-algorithm is only valid when --key-type is M7 (HMAC).")
+        if args.algorithm == "H":
+            parser.error("Algorithm H (HMAC) is only valid when --key-type is M7.")
+
+    # Determine the key: prompt, --clearkey, or --component flags
     has_components = args.component1 or args.component2 or args.component3
-    if args.clearkey and has_components:
+    suppress_key_output = args.prompt_components
+
+    if args.prompt_components:
+        if args.clearkey or has_components:
+            parser.error("Cannot combine --prompt-components with --clearkey or --component flags.")
+        algo_name = "AES" if args.algorithm == "A" else "TDES"
+        print("\n--- Key Import Summary ---")
+        print(f"  Algorithm  : {algo_name}")
+        print(f"  Key Type   : {args.key_type}")
+        print(f"  Mode of Use: {args.mode_of_use}")
+        print(f"  Export Mode: {args.export_mode}")
+        print(f"  AWS Region : {args.region}")
+        print("--------------------------")
+        key_bytes = prompt_key_components(args.algorithm)
+    elif args.clearkey and has_components:
         parser.error("Provide either --clearkey or all three --component flags, not both.")
     elif has_components:
         if not (args.component1 and args.component2 and args.component3):
@@ -170,29 +316,36 @@ def main():
             parser.error("All key components must be valid hex strings.")
         if not (len(c1) == len(c2) == len(c3)):
             parser.error(f"All three key components must be the same length. Got {len(c1)}, {len(c2)}, {len(c3)} bytes.")
-        kek_bytes = bytes(a ^ b ^ c for a, b, c in zip(c1, c2, c3))
+        key_bytes = bytes(a ^ b ^ c for a, b, c in zip(c1, c2, c3))
         print(f"Component 1: {args.component1}")
         print(f"Component 2: {args.component2}")
         print(f"Component 3: {args.component3}")
-        print(f"Combined key (XOR): {kek_bytes.hex().upper()}")
+        print(f"Combined key (XOR): {key_bytes.hex().upper()}")
     elif args.clearkey:
         try:
-            kek_bytes = bytes.fromhex(args.clearkey)
+            key_bytes = bytes.fromhex(args.clearkey)
         except ValueError:
             parser.error("clearkey must be a valid hex string.")
         if len(args.clearkey) % 2 != 0:
             parser.error("clearkey hex string must have an even length.")
     else:
-        parser.error("Provide either --clearkey or all three --component flags.")
+        parser.error("Provide either --clearkey, --component flags, or --prompt-components.")
 
-    # Check for common key lengths (16, 24, 32 bytes for AES/TDES)
-    valid_lengths = [16, 24, 32]
-    if len(kek_bytes) not in valid_lengths:
-        parser.error(
-            f"Key length ({len(kek_bytes)} bytes) is not standard (16, 24, or 32 bytes)."
-        )
+    # Check for valid key lengths
+    if args.key_type == "M7":
+        # HMAC keys can be 16-64 bytes
+        if len(key_bytes) < 16 or len(key_bytes) > 64:
+            parser.error(
+                f"HMAC key length ({len(key_bytes)} bytes) must be between 16 and 64 bytes."
+            )
+    else:
+        valid_lengths = [16, 24, 32]
+        if len(key_bytes) not in valid_lengths:
+            parser.error(
+                f"Key length ({len(key_bytes)} bytes) is not standard (16, 24, or 32 bytes)."
+            )
 
-    session = boto3.Session(profile_name=args.profile, region_name=args.region)
+    session = boto3.Session(profile_name=args.profile if args.profile else None, region_name=args.region)
     client = session.client("payment-cryptography")
 
     # Step 1: Generate ECC Key Pair
@@ -264,11 +417,12 @@ def main():
     print(f"Imported Root Certificate ARN: {sender_root_ca_arn}")
     update_alias(client, SENDER_ROOT_CA_ALIAS, sender_root_ca_arn)
 
-    # Step 5: Use KEK from CLI
+    # Step 5: Load key from CLI
     print("\n" + "-" * 60)
-    print("Step 5: Load KEK from CLI...")
-    KEK_HEX = kek_bytes.hex().upper()
-    print(f"Using KEK to import: {KEK_HEX}")
+    print("Step 5: Load key from CLI...")
+    KEY_HEX = key_bytes.hex().upper()
+    if not suppress_key_output:
+        print(f"Using key to import: {KEY_HEX}")
 
     # Step 6: Derive Shared Secret and AES Wrapping Key
     print("\n" + "-" * 60)
@@ -289,7 +443,8 @@ def main():
     )
 
     aes_wrapping_key = kdf.derive(shared_secret)
-    print(f"Derived AES Wrapping Key (hex): {aes_wrapping_key.hex()}")
+    if not suppress_key_output:
+        print(f"Derived AES Wrapping Key (hex): {aes_wrapping_key.hex()}")
 
     # Step 7: Wrap Key into TR-31 Key Block
     print("\n" + "-" * 60)
@@ -299,6 +454,16 @@ def main():
     # we must use TR-31 Key Block Version 'D' (AES Key Bundle), regardless of
     # whether the payload key is AES or TDES.
     version_id = "D"
+
+    # Build optional blocks for HMAC keys (HM header required per TR-31)
+    # HM block value: hash algorithm ID per X9.143
+    HMAC_OPT_BLOCK_MAP = {
+        "HMAC_SHA1": "10",
+        "HMAC_SHA256": "21",
+        "HMAC_SHA384": "22",
+        "HMAC_SHA512": "23",
+    }
+
     tr31_header = psec.tr31.Header(
         version_id=version_id,
         key_usage=args.key_type,
@@ -307,20 +472,25 @@ def main():
         version_num="00",
         exportability=args.export_mode,
     )
+
+    if args.key_type == "M7":
+        hm_value = HMAC_OPT_BLOCK_MAP[args.hash_algorithm]
+        tr31_header.blocks["HM"] = hm_value
+
     print(f"Constructed TR-31 Header: {tr31_header}")
 
-    key_to_wrap = bytes.fromhex(KEK_HEX)
+    key_to_wrap = bytes.fromhex(KEY_HEX)
 
     tr31_key_block = psec.tr31.wrap(
         kbpk=aes_wrapping_key, header=tr31_header, key=key_to_wrap
     )
-
-    print(f"TR-31 Key Block: {tr31_key_block}")
+    if not suppress_key_output:
+        print(f"TR-31 Key Block: {tr31_key_block}")
 
     # Step 8: Import Key into AWS
     print("\n" + "-" * 60)
     print("Step 8: Importing Key into AWS...")
-    prepare_for_key_creation(client, IMPORTED_KEK_ALIAS)
+    prepare_for_key_creation(client, IMPORTED_KEY_ALIAS)
 
     # Prepare sender certificate (The leaf certificate signed by the Root CA, which is the same in this self-signed case)
     sender_ca_pem = sender_ca.public_bytes(serialization.Encoding.PEM)
@@ -328,7 +498,7 @@ def main():
 
     final_import_response = client.import_key(
         Enabled=True,
-        KeyCheckValueAlgorithm="CMAC",
+        KeyCheckValueAlgorithm="CMAC" if args.algorithm == "A" else ("HMAC" if args.algorithm == "H" else "ANSI_X9_24"),
         KeyMaterial={
             "DiffieHellmanTr31KeyBlock": {
                 "CertificateAuthorityPublicKeyIdentifier": sender_root_ca_arn,
@@ -343,12 +513,39 @@ def main():
         },
     )
 
-    imported_kek_arn = final_import_response["Key"]["KeyArn"]
-    imported_kek_kcv = final_import_response["Key"].get("KeyCheckValue", "N/A")
-    print(f"Successfully Imported KEK ARN: {imported_kek_arn}")
-    print(f"Imported KEK KCV: {imported_kek_kcv}")
-    update_alias(client, IMPORTED_KEK_ALIAS, imported_kek_arn)
+    imported_key_arn = final_import_response["Key"]["KeyArn"]
+    imported_key_kcv = final_import_response["Key"].get("KeyCheckValue", "N/A")
+    print(f"Successfully Imported Key ARN: {imported_key_arn}")
+    print(f"Imported Key KCV: {imported_key_kcv}")
 
+    # Calculate KCV locally and validate against APC
+    HMAC_HASH_MAP = {
+        "HMAC_SHA1": hashlib.sha1,
+        "HMAC_SHA256": hashlib.sha256,
+        "HMAC_SHA384": hashlib.sha384,
+        "HMAC_SHA512": hashlib.sha512,
+    }
+
+
+    if args.key_type == "M7":
+        # HMAC KCV: HMAC(key, empty_message, hash_algorithm) truncated to first 3 bytes
+        hash_fn = HMAC_HASH_MAP[args.hash_algorithm]
+        hmac_kcv = hmac_module.new(key_bytes, b'', hash_fn).digest()[:3].hex().upper()
+        print(f"Calculated HMAC KCV: {hmac_kcv}")
+    elif args.algorithm == "A":
+        hmac_kcv = CMAC.new(key_bytes, msg=bytes(AES.block_size), ciphermod=AES).digest()[:3].hex().upper()
+        print(f"Calculated CMAC KCV: {hmac_kcv}")
+    else:
+        hmac_kcv = DES3.new(key_bytes, DES3.MODE_ECB).encrypt(bytes(DES3.block_size))[:3].hex().upper()
+        print(f"Calculated KCV: {hmac_kcv}")
+
+    if imported_key_kcv != "N/A":
+        if hmac_kcv == imported_key_kcv:
+            print("KCV Match: PASS")
+        else:
+            print(f"KCV Match: FAIL (calculated={hmac_kcv}, reported={imported_key_kcv})")
+
+    update_alias(client, IMPORTED_KEY_ALIAS, imported_key_arn)
 
 if __name__ == "__main__":
     main()
