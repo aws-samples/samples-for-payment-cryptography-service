@@ -1,5 +1,6 @@
 # Import Export Migration Scripts
-**Note**: Currently supports payShield and Futurex HSMs
+**Note**: Currently supports payShield and Futurex HSMs.  Running TR-34, ECDH and RSA wrap commands relies on access to host (not admin) modules of HSM.  HSM admin consoles do not typically expose this functionality.
+
 
 ## Assumptions
 * KDH : Key Distribution Host
