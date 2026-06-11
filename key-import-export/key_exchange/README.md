@@ -18,6 +18,11 @@ If KDH or KRD is Futurex or payShield HSM, update the host ip address and port t
 As part of the key exchange, if you would like to generate a new symmetric KEK, leave 'transport_key' and 'transport_key_kcv' in the config file for KDH as blank.
 If you already have a key created, update the key and kcv in the config file for KDH.
 
+### Commands used when transferring with a payShield
+* payShield - EI (create RSA key), B8(export key using TR-34), A0 (create symmetric key, optional only if key to export isn't specified)
+* Payment Cryptography - Get Parameters for import, Import Key (KeyMaterial=Tr34KeyBlock), Import Key (type=RootCertificatePublicKey), Import Key (type=TrustedPublicKey, optional only for intermediate CA)
+* NOTE: This sample code uses a certificate authority (CA) within the sample code. For production use, we recommend using your own CA or AWS Private Certificate Authority (PCA).
+* 
 ### Usage
 
 * Establish the connection to your chosen Payment HSM and update input config file with host and port info to connect.
@@ -34,6 +39,8 @@ Establish a KEK using the Tr34 script and update the kek in the input_config fil
 As part of the key exchange, if you would like to generate a new symmetric KEK, leave 'transport_key' and 'transport_key_kcv' in the config file for KDH as blank.
 If you already have a key created, update the key and kcv in the config file for KDH.
 
+
+  
 ### Usage
 
 * Establish the connection to your chosen Payment HSM and update input config file with host and port info to connect.
@@ -43,9 +50,14 @@ If you already have a key created, update the key and kcv in the config file for
 python3 import_export_tr31.py --kdh <Options: "futurex | payshield"> --krd <Options: "apc">
 ```
 
-### Key Exchange using ECDH
+## Key Exchange using ECDH
 The script will perform key agreement using ECDH between KDH and KRD, derive a shared key which will be the KEK to wrap the transport key.
 Using this path, you can import/export upto AES-256 keys.
+
+### Commands used when transferring with a payShield
+* payShield - FY (create ECC key), IG(derive key using ECDH), A8 (export key using TR-31), A0 (create symmetric key, optional only if key to export isn't specified)
+* Payment Cryptography - Create Key (ECC type), Get Public Key Certificate, Import Key (KeyMaterial=DiffieHellmanTr31KeyBlock), Import Key (type=RootCertificatePublicKey), Import Key (type=TrustedPublicKey, optional only for intermediate CA)
+* NOTE: This sample code uses a certificate authority (CA) within the sample code. For production use, we recommend using your own CA or AWS Private Certificate Authority (PCA).
 
 ### Usage
 
