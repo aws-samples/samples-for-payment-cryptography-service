@@ -55,7 +55,8 @@ The script will perform key agreement using ECDH between KDH and KRD, derive a s
 Using this path, you can import/export upto AES-256 keys.
 
 ### Commands used when transferring with a payShield
-* payShield - FY (create ECC key), IG(derive key using ECDH), A8 (export key using TR-31), A0 (create symmetric key, optional only if key to export isn't specified)
+* Ensure that all commands/APIs are enabled on both HSM and Payment Cryptography side.
+* payShield - FY (create ECC key), IG(derive key using ECDH), A8 (export key using TR-31), A0 (create symmetric key, optional only if key to export isn't specified), authorized activty = eckai.K1.host (enable using ECDH to generate Key Block Protection Keys)
 * Payment Cryptography - Create Key (ECC type), Get Public Key Certificate, Import Key (KeyMaterial=DiffieHellmanTr31KeyBlock), Import Key (type=RootCertificatePublicKey), Import Key (type=TrustedPublicKey, optional only for intermediate CA)
 * NOTE: This sample code uses a certificate authority (CA) within the sample code. For production use, we recommend using your own CA or AWS Private Certificate Authority (PCA).
 
