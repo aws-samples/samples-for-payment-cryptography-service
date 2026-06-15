@@ -19,6 +19,7 @@
         },
         "apc": {
             "region": "us-west-2",
+            "assume_role": "arn:aws:iam::111111111111:role/Admin",
             "ecdh": {
                  "transport_key": "",
                  "transport_key_kcv": ""
@@ -27,7 +28,7 @@
         "payshield": {
             "host": "127.0.0.1",
             "port": 9150,
-            "variant_lmk": true,
+            "variant_lmk": false,
             "variant_lmk_identifier": "02",
             "tr34": {
                 "transport_key": "",
@@ -47,6 +48,7 @@
     "krd": {
         "apc": {
             "region": "us-east-2",
+            "assume_role": "arn:aws:iam::111111111111:role/Admin",
             "tr31": {
                 "kek": ""
             }
