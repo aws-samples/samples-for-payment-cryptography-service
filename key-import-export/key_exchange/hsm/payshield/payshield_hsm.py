@@ -24,7 +24,14 @@ class PayshieldHsm(object):
 
     def __init__(self, config):
         self.config = config
-        self.payshield_commands = PayshieldCommands(config["host"], config["port"], config["variant_lmk"], config["variant_lmk_identifier"])
+        self.payshield_commands = PayshieldCommands(
+            config["host"],
+            config["port"],
+            config["variant_lmk"],
+            config["variant_lmk_identifier"],
+            config.get("key_block_lmk_identifier", "00"),
+            config.get("debug", False),
+        )
 
     def create_rsa_key_pair(self, key_algorithm: RsaKeyAlgorithm, key_usage: AsymmetricKeyUsage):
         public_key, private_key = self.payshield_commands.ei_command(key_algorithm, key_usage)
