@@ -1,0 +1,109 @@
+diff --git a/key-import-export/key_exchange/hsm/payshield/commands.py b/key-import-export/key_exchange/hsm/payshield/commands.py
+index d77f77a..dd66335 100644
+--- a/key-import-export/key_exchange/hsm/payshield/commands.py
++++ b/key-import-export/key_exchange/hsm/payshield/commands.py
+@@ -90,13 +90,14 @@ Tr34Payload = namedtuple(
+ 
+ class PayshieldCommands:
+ 
+-    def __init__(self, host, port, variant_lmk, variant_lmk_identifier):
++    def __init__(self, host, port, variant_lmk, variant_lmk_identifier, key_block_lmk_identifier="00", debug=False):
+         self.host = host
+         self.port = port
++        self.debug = debug
+         if variant_lmk:
+             self.command_builder = VariantLmkCommandBuilder(variant_lmk_identifier)
+         else:
+-            self.command_builder = KeyBlockLmkCommandBuilder()
++            self.command_builder = KeyBlockLmkCommandBuilder(key_block_lmk_identifier)
+ 
+     def a0_command(self, key_algorithm: SymmetricKeyAlgorithm, key_usage: SymmetricKeyUsage):
+         command = self.command_builder.build_a0_command(key_usage, key_algorithm)
+@@ -451,9 +452,22 @@ class PayshieldCommands:
+                 host_command = self._build_command(THALES_HEADER + command)
+                 size = pack(">h", len(host_command))
+                 message = size + host_command
++
++                if self.debug:
++                    # Dump request for correlation against the HSM audit log.
++                    # - "string"   : assembled command with <...> hex markers (readable)
++                    # - "wire hex" : exact bytes sent (2-byte length + header + command,
++                    #                with <...> segments converted from hex to raw bytes)
++                    print("\n[DEBUG] HSM command code   : {}".format(command[:2]))
++                    print("[DEBUG] command (string)   : {}".format(THALES_HEADER + command))
++                    print("[DEBUG] command (wire hex) : {}".format(message.hex().upper()))
++
+                 sock.send(message)
+                 response = sock.recv(4096)
+ 
++                if self.debug:
++                    print("[DEBUG] response (wire hex) : {}".format(bytes(response).hex().upper()))
++
+                 return response
+         except Exception as e:
+             print("Failed to execute the HSM comamnd : {}".format(str(e)))
+@@ -480,6 +494,9 @@ class PayshieldCommands:
+ 
+ class KeyBlockLmkCommandBuilder:
+ 
++    def __init__(self, lmk_identifier="00"):
++        self.lmk_identifier = lmk_identifier
++
+     def build_ei_command(self, rsa_key_type, rsa_key_length):
+         command = "EI" + rsa_key_type + rsa_key_length + "02" + "#" + "00" + "00" + "&N"
+         return command
+@@ -512,8 +529,7 @@ class KeyBlockLmkCommandBuilder:
+         return command
+ 
+     def build_a8_command(self, kek, transport_key, key_block_version):
+-        lmk_id = "00"
+-        command = "A8" + "FFF" + kek + transport_key + "R" + "%" + lmk_id + "!" + key_block_version
++        command = "A8" + "FFF" + kek + transport_key + "R" + "%" + self.lmk_identifier + "!" + key_block_version
+         return command
+ 
+     def build_fy_command(self, ecc_key_type, ecc_key_algorithm):
+@@ -523,7 +539,7 @@ class KeyBlockLmkCommandBuilder:
+             + ecc_key_algorithm
+             + "03"
+             + "%"
+-            + "00"
++            + self.lmk_identifier
+             + "#"
+             + ecc_key_type
+             + "00"
+diff --git a/key-import-export/key_exchange/hsm/payshield/payshield_hsm.py b/key-import-export/key_exchange/hsm/payshield/payshield_hsm.py
+index 55f4caf..0399a7a 100644
+--- a/key-import-export/key_exchange/hsm/payshield/payshield_hsm.py
++++ b/key-import-export/key_exchange/hsm/payshield/payshield_hsm.py
+@@ -24,7 +24,14 @@ class PayshieldHsm(object):
+ 
+     def __init__(self, config):
+         self.config = config
+-        self.payshield_commands = PayshieldCommands(config["host"], config["port"], config["variant_lmk"], config["variant_lmk_identifier"])
++        self.payshield_commands = PayshieldCommands(
++            config["host"],
++            config["port"],
++            config["variant_lmk"],
++            config["variant_lmk_identifier"],
++            config.get("key_block_lmk_identifier", "00"),
++            config.get("debug", False),
++        )
+ 
+     def create_rsa_key_pair(self, key_algorithm: RsaKeyAlgorithm, key_usage: AsymmetricKeyUsage):
+         public_key, private_key = self.payshield_commands.ei_command(key_algorithm, key_usage)
+diff --git a/key-import-export/key_exchange/utils/apc.py b/key-import-export/key_exchange/utils/apc.py
+index 02eaf30..639e6c9 100644
+--- a/key-import-export/key_exchange/utils/apc.py
++++ b/key-import-export/key_exchange/utils/apc.py
+@@ -17,7 +17,10 @@ from key_exchange.utils.enums import (
+ 
+ class Apc(object):
+     def __init__(self, config):
+-        self.apc_client = boto3.client("payment-cryptography", region_name=config["region"])
++        # Use a named AWS profile if provided, otherwise fall back to the
++        # default credential chain (env vars, default profile, instance role).
++        session = boto3.Session(profile_name=config.get("profile") or None)
++        self.apc_client = session.client("payment-cryptography", region_name=config["region"])
+ 
+     def create_symmetric_key(
+         self, key_algorithm: SymmetricKeyAlgorithm, key_usage: SymmetricKeyUsage

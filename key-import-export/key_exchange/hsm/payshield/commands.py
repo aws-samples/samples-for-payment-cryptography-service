@@ -90,13 +90,14 @@ Tr34Payload = namedtuple(
 
 class PayshieldCommands:
 
-    def __init__(self, host, port, variant_lmk, variant_lmk_identifier):
+    def __init__(self, host, port, variant_lmk, variant_lmk_identifier, key_block_lmk_identifier="00", debug=False):
         self.host = host
         self.port = port
+        self.debug = debug
         if variant_lmk:
             self.command_builder = VariantLmkCommandBuilder(variant_lmk_identifier)
         else:
-            self.command_builder = KeyBlockLmkCommandBuilder()
+            self.command_builder = KeyBlockLmkCommandBuilder(key_block_lmk_identifier)
 
     def a0_command(self, key_algorithm: SymmetricKeyAlgorithm, key_usage: SymmetricKeyUsage):
         command = self.command_builder.build_a0_command(key_usage, key_algorithm)
@@ -451,8 +452,21 @@ class PayshieldCommands:
                 host_command = self._build_command(THALES_HEADER + command)
                 size = pack(">h", len(host_command))
                 message = size + host_command
+
+                if self.debug:
+                    # Dump request for correlation against the HSM audit log.
+                    # - "string"   : assembled command with <...> hex markers (readable)
+                    # - "wire hex" : exact bytes sent (2-byte length + header + command,
+                    #                with <...> segments converted from hex to raw bytes)
+                    print("\n[DEBUG] HSM command code   : {}".format(command[:2]))
+                    print("[DEBUG] command (string)   : {}".format(THALES_HEADER + command))
+                    print("[DEBUG] command (wire hex) : {}".format(message.hex().upper()))
+
                 sock.send(message)
                 response = sock.recv(4096)
+
+                if self.debug:
+                    print("[DEBUG] response (wire hex) : {}".format(bytes(response).hex().upper()))
 
                 return response
         except Exception as e:
@@ -479,6 +493,9 @@ class PayshieldCommands:
 
 
 class KeyBlockLmkCommandBuilder:
+
+    def __init__(self, lmk_identifier="00"):
+        self.lmk_identifier = lmk_identifier
 
     def build_ei_command(self, rsa_key_type, rsa_key_length):
         command = "EI" + rsa_key_type + rsa_key_length + "02" + "#" + "00" + "00" + "&N"
@@ -512,8 +529,7 @@ class KeyBlockLmkCommandBuilder:
         return command
 
     def build_a8_command(self, kek, transport_key, key_block_version):
-        lmk_id = "00"
-        command = "A8" + "FFF" + kek + transport_key + "R" + "%" + lmk_id + "!" + key_block_version
+        command = "A8" + "FFF" + kek + transport_key + "R" + "%" + self.lmk_identifier + "!" + key_block_version
         return command
 
     def build_fy_command(self, ecc_key_type, ecc_key_algorithm):
@@ -523,7 +539,7 @@ class KeyBlockLmkCommandBuilder:
             + ecc_key_algorithm
             + "03"
             + "%"
-            + "00"
+            + self.lmk_identifier
             + "#"
             + ecc_key_type
             + "00"

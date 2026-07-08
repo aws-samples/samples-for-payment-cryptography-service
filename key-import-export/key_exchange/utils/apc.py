@@ -17,7 +17,10 @@ from key_exchange.utils.enums import (
 
 class Apc(object):
     def __init__(self, config):
-        self.apc_client = boto3.client("payment-cryptography", region_name=config["region"])
+        # Use a named AWS profile if provided, otherwise fall back to the
+        # default credential chain (env vars, default profile, instance role).
+        session = boto3.Session(profile_name=config.get("profile") or None)
+        self.apc_client = session.client("payment-cryptography", region_name=config["region"])
 
     def create_symmetric_key(
         self, key_algorithm: SymmetricKeyAlgorithm, key_usage: SymmetricKeyUsage
