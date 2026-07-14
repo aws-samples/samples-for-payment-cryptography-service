@@ -29,6 +29,8 @@
             "port": 9150,
             "variant_lmk": true,
             "variant_lmk_identifier": "02",
+            "key_block_lmk_identifier": "00",
+            "debug": false,
             "tr34": {
                 "transport_key": "",
                 "transport_key_kcv": ""
