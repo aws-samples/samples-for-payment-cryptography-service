@@ -23,8 +23,12 @@ import botocore.session
 import secrets
 import argparse
 import sys
-import termios
-import tty
+
+if sys.platform == 'win32':
+    import msvcrt
+else:
+    import termios
+    import tty
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography import x509
@@ -161,8 +165,35 @@ def _calculate_kcv(key_bytes: bytes, algo: str) -> str:
         return DES3.new(key_bytes, DES3.MODE_ECB).encrypt(bytes(DES3.block_size))[:3].hex().upper()
 
 
-def _read_masked_hex(prompt: str, optional: bool = False) -> str:
-    """Read hex from the terminal echoing '*' per character. Returns stripped hex or '' if optional+empty."""
+def _read_masked_hex_windows(prompt: str) -> list:
+    chars = []
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+    while True:
+        ch = msvcrt.getwch()
+        if ch in ('\x00', '\xe0'):
+            msvcrt.getwch() 
+            continue
+        if ch in ('\r', '\n'):
+            sys.stdout.write('\n')
+            sys.stdout.flush()
+            break
+        elif ch == '\x08':
+            if chars:
+                chars.pop()
+                sys.stdout.write('\b \b')
+                sys.stdout.flush()
+        elif ch == '\x03':
+            sys.stdout.write('\n')
+            raise KeyboardInterrupt
+        else:
+            chars.append(ch)
+            sys.stdout.write('*')
+            sys.stdout.flush()
+    return chars
+
+
+def _read_masked_hex_posix(prompt: str) -> list:
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
     chars = []
@@ -190,6 +221,15 @@ def _read_masked_hex(prompt: str, optional: bool = False) -> str:
                 sys.stdout.flush()
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return chars
+
+
+def _read_masked_hex(prompt: str, optional: bool = False) -> str:
+    """Read hex from the terminal echoing '*' per character. Returns stripped hex or '' if optional+empty."""
+    if sys.platform == 'win32':
+        chars = _read_masked_hex_windows(prompt)
+    else:
+        chars = _read_masked_hex_posix(prompt)
     return ''.join(chars).replace(' ', '')
 
 
