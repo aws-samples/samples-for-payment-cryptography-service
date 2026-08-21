@@ -19,7 +19,6 @@ The following api calls may be subject to https://aws.amazon.com/service-terms/ 
 Usage - python import_raw_key_rsa.py --action importclearkey --clearkey 6E46FE409DF704BCA75E7FF270B65E73 --algorithm A
 '''
 import boto3
-import botocore.session
 import secrets
 import argparse
 import sys
@@ -41,11 +40,8 @@ from Crypto.Cipher import DES3
 service = 'payment-cryptography'
 regionName = 'us-east-1'
 
-session = botocore.session.Session()
-config = session.get_scoped_config()
-
 def _get_region():
-    return config.get('region', regionName)
+    return boto3.Session().region_name or regionName
 
 def DeleteKey(keyArn):
     apc_client = boto3.client('payment-cryptography', region_name=_get_region())
@@ -342,12 +338,16 @@ if __name__ == '__main__':
                         help="Interactively prompt for key components with masked input and KCV display.")
     parser.add_argument("--algorithm", "-a", help="Key algorithm - (T)des or (A)es (default: T)", default="T", choices={"T","A"})
     parser.add_argument("--region", "-r", help="AWS region (optional, overrides profile/environment default)", default=None)
+    parser.add_argument("--profile", "-p", help="Named AWS profile to use for credentials (e.g. an AWS SSO profile). Overrides AWS_PROFILE/default.", default=None)
     parser.add_argument("--keytype", "-t", help="Key Type according to TR-31 norms. For instance K0, B0, etc", default="K0",
                         choices=['K0', 'K1', 'B0', 'D0', 'P0', 'E0', 'E3', 'E6', 'E1', 'C0', 'E2'])
     parser.add_argument("--modeofuse", "-m", help="Mode of use according to TR-31 norms. For instance B (encrypt/decrypt), X (derive key)", default="B",
                         choices=['B', 'X', 'N', 'E', 'D', 'C', 'G', 'V'])
 
     args = parser.parse_args()
+
+    if args.profile:
+        boto3.setup_default_session(profile_name=args.profile)
 
     if args.region:
         regionName = args.region
