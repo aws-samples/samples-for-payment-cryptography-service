@@ -276,8 +276,8 @@ This document maps Thales payShield HSM commands to their equivalent AWS Payment
 | Supported | Description | Command | APC Equivalent | Notes |
 |-----------|-------------|---------|----------------|-------|
 | Y | Import ZPK (replaced by A6) | FA | Import Key | |
-| N/A | Import keys (replaced by A6) | FC | Encrypt | |
-| N/A | Export Keys (replaced by A8) | FE | Encrypt | |
+| Y | Import keys (replaced by A6) | FC | Import Key | |
+| Y | Export Keys (replaced by A8) | FE | Export Key | |
 | Y | Generate PVK (replaced by A0) | FG | Create Key | |
 | Y | Create a ZEK or ZAK (replaced by A0) | FI | CreateKey | |
 | Y | Import a ZAK or ZEK (replaced by A6) | FK | Import Key | |
@@ -308,7 +308,7 @@ This document maps Thales payShield HSM commands to their equivalent AWS Payment
 |-----------|-------------|---------|----------------|-------|
 | N/A | Hash Data | GM | | Hash functions can be performed outside an HSM. |
 | Y | General Record Verify pin using IBM3624 | GO | VerifyPin | Input can be DUKPT protected pin. |
-| Y | General Record Verify pin using ABA/Visa PVV | GQ | TranslatePinData | Input can be DUKPT protected pin. |
+| Y | General Record Verify pin using ABA/Visa PVV | GQ | VerifyPin | Input can be DUKPT protected pin. |
 
 ### DUKPT MAC (GW)
 
