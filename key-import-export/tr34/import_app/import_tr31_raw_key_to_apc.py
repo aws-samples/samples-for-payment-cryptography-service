@@ -95,7 +95,7 @@ if __name__ == "__main__":
     parser.add_argument("--kbpk_clearkey", help="Clear Text version of KBPK", default="8A8349794C9EE9A4C2927098F249FED6")
     parser.add_argument("--exportmode", "-e", help="Export Mode - E, S or N", default="E",choices=['E', 'S', 'N'])
     parser.add_argument("--algorithm", "-a", help="Algorithm of key - (T)DES or (A)ES", default="T", choices=['A', 'T','R'])
-    parser.add_argument("--keytype", "-t", help="Key Type according to TR-31 norms. For instance K0, B0, etc", default="B0",choices=['K0', 'B0', 'D0','P0','D1'])
+    parser.add_argument("--keytype", "-t", help="Key Type according to TR-31 norms. For instance K0, B0, etc", default="B0",choices=['C0', 'K0', 'K1', 'D0', 'P0', 'V1', 'V2', 'E0', 'E1', 'E2', 'E6', 'B0', 'E4', 'E5', 'M1', 'M3'])
     parser.add_argument("--modeofuse", "-m", help="Mode of use according to TR-31 norms.  For instance B (encrypt/decrypt),X (derive key)", default="X",choices=['B', 'X', 'N','E','D','G','C','V'])
     parser.add_argument("--runmode", help="Run mode. APC will directly import will offline will only produce tr-31 payload", default="APC",choices=['APC', 'OFFLINE'])
     parser.add_argument("--kbpkkey_apcIdentifier","-z", help="Key identifier for KEK that has already been imported into the service. It should have a keytype of K0.", default="",required=True)
