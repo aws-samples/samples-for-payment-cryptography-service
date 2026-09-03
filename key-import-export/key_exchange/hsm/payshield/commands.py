@@ -10,6 +10,7 @@ from key_exchange.utils.enums import (
     EccKeyAlgorithm,
     KeyDerivationFunction,
     RsaKeyAlgorithm,
+    RsaWrappingSpec,
     SymmetricKeyAlgorithm,
     SymmetricKeyUsage,
 )
@@ -78,6 +79,14 @@ DERIVE_KEY_LENGTH = {
     SymmetricKeyAlgorithm.AES_128: "00128",
     SymmetricKeyAlgorithm.AES_192: "00192",
     SymmetricKeyAlgorithm.AES_256: "00256",
+}
+
+# payShield GK command OAEP hash identifier used in the pad-mode field.
+# The pad mode string for OAEP is "0201HH00" where HH selects the hash:
+#   02 -> SHA-256, 08 -> SHA-512
+GK_OAEP_HASH = {
+    RsaWrappingSpec.RSA_OAEP_SHA_256: "02",
+    RsaWrappingSpec.RSA_OAEP_SHA_512: "08",
 }
 
 THALES_HEADER = "0000"
@@ -225,6 +234,57 @@ class PayshieldCommands:
   
         return derived_key
 
+    def eo_command(self, krd_public_key_pkcs1):
+        """
+        Imports the KRD RSA public key (PKCS#1 DER, hex encoded) into the payShield
+        and returns it encrypted under the LMK so it can be used as the wrapping key
+        for the GK command.
+        """
+        public_key = "<" + krd_public_key_pkcs1 + ">"
+        command = "EO" + "02" + public_key + "~%00#N00N00"
+
+        result = self._send_receive(command)
+        wrapped_public_key = self._decode_eo(bytes(result))
+        return wrapped_public_key
+
+    def bu_command(self, wrapped_key):
+        """
+        Calculates the key check value (KCV) for a key that is encrypted under the LMK.
+        """
+        command = "BU" + "FFF" + wrapped_key + ";" + "FFF" + ";000"
+
+        result = self._send_receive(command)
+        kcv = self._decode_bu(bytes(result))
+        return kcv
+
+    def gk_command(self, wrapped_key, kcv, krd_wrapped_public_key, wrapping_spec: RsaWrappingSpec):
+        """
+        Exports (RSA wraps) the key using the KRD public key. The key is returned
+        as an RSA key cryptogram wrapped using OAEP with the requested hash.
+        """
+        oaep_hash = GK_OAEP_HASH[wrapping_spec]
+        pad_mode = "0201" + oaep_hash + "00"
+        # GK + 01 (RSA) + pad mode (OAEP) + key block indicator (FFFF) + F +
+        # key to export + KCV + <public key to encrypt under> + ;03
+        command = (
+            "GK"
+            + "01"
+            + pad_mode
+            + ";"
+            + "FFFF"
+            + "F"
+            + wrapped_key
+            + kcv
+            + "<"
+            + krd_wrapped_public_key
+            + ">"
+            + ";03"
+        )
+
+        result = self._send_receive(command)
+        rsa_cryptogram = self._decode_gk(bytes(result))
+        return rsa_cryptogram
+
     def _decode_a0(self, response_to_decode: bytes):
         response_to_decode_str, msg_len, str_pointer = self._common_parser(response_to_decode)
 
@@ -235,6 +295,40 @@ class PayshieldCommands:
         else:
             print("Error Response Received : {}".format(response_to_decode_str[str_pointer:]))
             sys.exit(1)
+
+    def _decode_eo(self, response_to_decode: bytes):
+        response_to_decode_str, msg_len, str_pointer = self._common_parser(response_to_decode)
+
+        head_len = len(THALES_HEADER)
+        if response_to_decode_str[str_pointer : str_pointer + 2] == "00":
+            return bytes.hex(response_to_decode[6 + head_len :])
+        else:
+            print("Error Response Received : {}".format(response_to_decode_str[str_pointer:]))
+            sys.exit(1)
+
+    def _decode_bu(self, response_to_decode: bytes):
+        response_to_decode_str, msg_len, str_pointer = self._common_parser(response_to_decode)
+
+        head_len = len(THALES_HEADER)
+        if response_to_decode_str[str_pointer : str_pointer + 2] == "00":
+            return response_to_decode_str[6 + head_len :]
+        else:
+            print("Error Response Received : {}".format(response_to_decode_str[str_pointer:]))
+            sys.exit(1)
+
+    def _decode_gk(self, response_to_decode: bytes):
+        response_to_decode_str, msg_len, str_pointer = self._common_parser(response_to_decode)
+
+        if response_to_decode_str[str_pointer : str_pointer + 2] != "00":
+            print("Error Response Received : {}".format(response_to_decode_str[str_pointer:]))
+            sys.exit(1)
+
+        str_pointer = str_pointer + 2
+        key_length = int(response_to_decode[str_pointer : str_pointer + 4])
+        str_pointer = str_pointer + 4
+        encrypted_data = response_to_decode[str_pointer : str_pointer + key_length]
+
+        return bytes.hex(encrypted_data)
 
     def _decode_a8(self, response_to_decode: bytes):
         response_to_decode_str, msg_len, str_pointer = self._common_parser(response_to_decode)

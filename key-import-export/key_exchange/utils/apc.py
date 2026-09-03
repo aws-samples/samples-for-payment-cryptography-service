@@ -10,6 +10,7 @@ from key_exchange.utils.enums import (
     KeyDerivationFunction,
     KeyDerivationHashAlgorithm,
     KeyExchangeType,
+    RsaWrappingSpec,
     SymmetricKeyAlgorithm,
     SymmetricKeyUsage,
 )
@@ -70,6 +71,24 @@ class Apc(object):
         elif key_exchange_type == KeyExchangeType.EXPORT_TR34_KEY_BLOCK:
             export_token_response = self.apc_client.get_parameters_for_export(
                 KeyMaterialType="TR34_KEY_BLOCK", SigningKeyAlgorithm=key_algorithm.name
+            )
+            private_key_token = export_token_response["ExportToken"]
+            certificate_base64 = export_token_response["SigningKeyCertificate"]
+            ca_certificate_base64 = export_token_response["SigningKeyCertificateChain"]
+        elif key_exchange_type == KeyExchangeType.IMPORT_KEY_CRYPTOGRAM:
+            # For an RSA key cryptogram import, APC returns the RSA wrapping public
+            # key certificate (and chain) that the KDH will use to wrap the key.
+            import_token_response = self.apc_client.get_parameters_for_import(
+                KeyMaterialType="KEY_CRYPTOGRAM", WrappingKeyAlgorithm=key_algorithm.name
+            )
+            private_key_token = import_token_response["ImportToken"]
+            certificate_base64 = import_token_response["WrappingKeyCertificate"]
+            ca_certificate_base64 = import_token_response["WrappingKeyCertificateChain"]
+        elif key_exchange_type == KeyExchangeType.EXPORT_KEY_CRYPTOGRAM:
+            # For an RSA key cryptogram export, APC returns the RSA signing public
+            # key certificate (and chain) used when APC is the key distribution host.
+            export_token_response = self.apc_client.get_parameters_for_export(
+                KeyMaterialType="KEY_CRYPTOGRAM", SigningKeyAlgorithm=key_algorithm.name
             )
             private_key_token = export_token_response["ExportToken"]
             certificate_base64 = export_token_response["SigningKeyCertificate"]
@@ -160,6 +179,50 @@ class Apc(object):
             "Tr31KeyBlock": {
                 "WrappingKeyIdentifier": kek,
                 "WrappedKeyBlock": key_to_import,
+            }
+        }
+
+        response = self.apc_client.import_key(Enabled=True, KeyMaterial=key_material)
+        return response["Key"]["KeyArn"], response["Key"]["KeyCheckValue"]
+
+    def import_symmetric_key_using_rsa(
+        self,
+        import_token,
+        wrapped_key_cryptogram,
+        key_algorithm: SymmetricKeyAlgorithm,
+        key_usage: SymmetricKeyUsage,
+        wrapping_spec: RsaWrappingSpec,
+    ):
+        """
+        Imports a symmetric key that has been RSA-wrapped (KEY_CRYPTOGRAM) under the
+        APC wrapping public key returned during get_parameters_for_import. The
+        import_token references the service side RSA private key used to unwrap it.
+        """
+        if key_usage == SymmetricKeyUsage.PEK:
+            usage = "TR31_P0_PIN_ENCRYPTION_KEY"
+            modes_of_use = {"Encrypt": True, "Decrypt": True, "Wrap": True, "Unwrap": True}
+        elif key_usage == SymmetricKeyUsage.BDK:
+            usage = "TR31_B0_BASE_DERIVATION_KEY"
+            modes_of_use = {"DeriveKey": True}
+        elif key_usage == SymmetricKeyUsage.KBPK:
+            usage = "TR31_K1_KEY_BLOCK_PROTECTION_KEY"
+            modes_of_use = {"Encrypt": True, "Decrypt": True, "Wrap": True, "Unwrap": True}
+        else:
+            usage = "TR31_K0_KEY_ENCRYPTION_KEY"
+            modes_of_use = {"Encrypt": True, "Decrypt": True, "Wrap": True, "Unwrap": True}
+
+        key_material = {
+            "KeyCryptogram": {
+                "Exportable": True,
+                "ImportToken": import_token,
+                "KeyAttributes": {
+                    "KeyAlgorithm": key_algorithm.name,
+                    "KeyClass": "SYMMETRIC_KEY",
+                    "KeyModesOfUse": modes_of_use,
+                    "KeyUsage": usage,
+                },
+                "WrappedKeyCryptogram": wrapped_key_cryptogram.upper(),
+                "WrappingSpec": wrapping_spec.name,
             }
         }
 

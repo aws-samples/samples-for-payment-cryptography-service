@@ -65,3 +65,31 @@ Using this path, you can import/export upto AES-256 keys.
 ```
 python3 import_export_ecdh.py --kdh <Options: "futurex | payshield | apc"> --krd <Options: "apc">
 ```
+
+## Key Exchange using RSA (Key Cryptogram)
+The script exports a symmetric transport key from the KDH as an RSA key cryptogram, wrapped under an RSA public key provided by the KRD, and imports it into the KRD.
+AWS Payment Cryptography returns the RSA wrapping public key certificate (and chain) via GetParametersForImport (KeyMaterialType = KEY_CRYPTOGRAM). The KDH wraps the key under that public key using RSA-OAEP (SHA-512 by default) and the KRD imports it using the matching import token.
+
+As part of the key exchange, if you would like to generate a new symmetric key, leave 'transport_key' and 'transport_key_kcv' in the config file for KDH as blank.
+If you already have a key created, update the key and kcv in the config file for KDH.
+
+### Commands used when transferring with a payShield
+* Ensure that all commands/APIs are enabled on both HSM and Payment Cryptography side.
+* payShield - EO (import KRD public key under LMK), BU (calculate KCV), GK (RSA wrap key using OAEP), A0 (create symmetric key, optional only if key to export isn't specified), authorized activity required for import of a key under an RSA key.
+* Payment Cryptography - Get Parameters for import (KeyMaterialType=KEY_CRYPTOGRAM), Import Key (KeyMaterial=KeyCryptogram).
+* NOTE: This sample code uses a certificate authority (CA) within the sample code. For production use, we recommend using your own CA or AWS Private Certificate Authority (PCA).
+
+### Commands used when transferring with a Futurex
+* Ensure that all commands/APIs are enabled on both HSM and Payment Cryptography side.
+* Futurex - GPGS (create symmetric key, optional only if key to export isn't specified), AVPC (trust KRD certificate chain and certificate), GPRW (RSA wrap key using OAEP).
+* Payment Cryptography - Get Parameters for import (KeyMaterialType=KEY_CRYPTOGRAM), Import Key (KeyMaterial=KeyCryptogram).
+* NOTE: This sample code uses a certificate authority (CA) within the sample code. For production use, we recommend using your own CA or AWS Private Certificate Authority (PCA).
+
+### Usage
+
+* Establish the connection to your chosen Payment HSM and update input config file with host and port info to connect.
+* Set AWS credentials for the account you want to use for the service resources. Set the region you want to execute the scripts in input config.
+
+```
+python3 import_export_rsa.py --kdh <Options: "futurex | payshield"> --krd <Options: "apc">
+```

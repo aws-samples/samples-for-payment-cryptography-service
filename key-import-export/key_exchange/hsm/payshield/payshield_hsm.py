@@ -14,6 +14,7 @@ from key_exchange.utils.enums import (
     AsymmetricKeyUsage,
     KeyExchangeType,
     RsaKeyAlgorithm,
+    RsaWrappingSpec,
     EccKeyAlgorithm,
     SymmetricKeyAlgorithm,
     SymmetricKeyUsage,
@@ -320,3 +321,48 @@ class PayshieldHsm(object):
             transport_key, derived_key, transport_key_algorithm
         )
         return exported_key
+
+    def import_public_key(self, krd_certificate):
+        """
+        Imports the KRD RSA wrapping public key into the payShield (encrypted under
+        the LMK) so it can be used as the wrapping key for the GK command.
+        """
+        krd_public_key_pkcs1 = (
+            krd_certificate.public_key()
+            .public_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PublicFormat.PKCS1,
+            )
+            .hex()
+        )
+        krd_wrapped_public_key = self.payshield_commands.eo_command(krd_public_key_pkcs1)
+        return krd_wrapped_public_key
+
+    def export_symmetric_key_using_rsa(
+        self,
+        krd_certificate,
+        transport_key,
+        transport_key_algorithm,
+        wrapping_spec: RsaWrappingSpec = RsaWrappingSpec.RSA_OAEP_SHA_512,
+    ):
+        """
+        Exports the transport key as an RSA key cryptogram wrapped under the KRD
+        RSA public key. The payShield first computes the KCV of the key, imports
+        the KRD public key under the LMK, then RSA wraps the key using the GK
+        command.
+        """
+        # Calculate the KCV of the key to export and pad it as the GK command expects.
+        kcv = self.payshield_commands.bu_command(transport_key)
+        if transport_key_algorithm.startswith("TDES"):
+            kcv = kcv.rjust(16, "0")
+        else:
+            kcv = kcv.rjust(6, "0")[0:6]
+
+        # Import the KRD public key under the LMK to use it as the wrapping key.
+        krd_wrapped_public_key = self.import_public_key(krd_certificate)
+
+        # RSA wrap the key using the KRD public key.
+        rsa_cryptogram = self.payshield_commands.gk_command(
+            transport_key, kcv, krd_wrapped_public_key, wrapping_spec
+        )
+        return rsa_cryptogram

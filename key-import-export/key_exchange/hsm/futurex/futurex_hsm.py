@@ -11,6 +11,7 @@ from key_exchange.utils.enums import (
     EccKeyAlgorithm,
     KeyExchangeType,
     RsaKeyAlgorithm,
+    RsaWrappingSpec,
     SymmetricKeyAlgorithm,
     SymmetricKeyUsage,
 )
@@ -214,3 +215,24 @@ class FuturexHsm(object):
         )
         exported_key = self.export_symmetric_key_using_tr31(transport_key, derived_key, transport_key_algorithm)
         return exported_key
+
+    def export_symmetric_key_using_rsa(
+        self,
+        krd_ca_certificate_trusted,
+        krd_certificate,
+        transport_key,
+        transport_key_algorithm,
+        wrapping_spec: RsaWrappingSpec = RsaWrappingSpec.RSA_OAEP_SHA_512,
+    ):
+        """
+        Exports the transport key as an RSA key cryptogram wrapped under the KRD
+        RSA public key. The KRD certificate is first trusted under the previously
+        trusted KRD CA, then the key is RSA wrapped using the GPRW command.
+        """
+        krd_trusted_public_key = self.trust_certificate(
+            krd_certificate, krd_ca_certificate_trusted
+        )
+        rsa_cryptogram = self.futurex_commands.gprw_command(
+            krd_trusted_public_key, transport_key, wrapping_spec
+        )
+        return rsa_cryptogram
