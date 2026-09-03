@@ -124,3 +124,67 @@ Example `rsa` block:
     }
 }
 ```
+
+### Running the phases in separate environments (split HSM / APC)
+
+By default `import_export_rsa.py` runs the whole exchange end to end, which requires the environment running the script to reach **both** the HSM and AWS Payment Cryptography (APC). Some environments cannot reach both at once. For those cases the flow can be split into three phases with the `--mode` flag, exchanging a small JSON state file between environments.
+
+The RSA key-cryptogram exchange is ordered `APC -> HSM -> APC`, so it splits into:
+
+| Mode | Runs in | Reads | Writes | What it does |
+|---|---|---|---|---|
+| `get-params` | APC environment | — | params file | Calls `GetParametersForImport`; captures the import token and the RSA wrapping certificate + chain. |
+| `export` | HSM environment | params file | export file | RSA-wraps the transport key under the wrapping certificate; produces the key cryptogram. |
+| `import` | APC environment | export file | — | Imports the key cryptogram into APC using the import token. |
+| `full` (default) | both | — | — | Runs all three phases in one process (original behavior). |
+
+File paths are controlled with `--output-file` (written by `get-params` and `export`) and `--input-file` (read by `export` and `import`). When omitted they default to `rsa_import_params.json` (params) and `rsa_export_output.json` (export).
+
+#### Split usage
+
+```
+# 1) APC environment — get import parameters
+python3 import_export_rsa.py --kdh payshield --mode get-params --output-file params.json
+#    Copy params.json to the HSM environment.
+
+# 2) HSM environment — wrap the transport key
+python3 import_export_rsa.py --kdh payshield --mode export --input-file params.json --output-file export.json
+#    Copy export.json back to the APC environment.
+
+# 3) APC environment — import the key cryptogram
+python3 import_export_rsa.py --kdh payshield --mode import --input-file export.json
+```
+
+Notes:
+* The `input_config.json` still supplies the HSM connection and transport key details on the HSM side, and the APC region on the APC side. Populate each environment's config with the parts it needs.
+* The interim JSON files carry the `key_algorithm`, `apc_key_usage`, and `apc_key_modes_of_use` metadata forward, so those only need to be set once (before the `get-params` phase). x509 certificates are carried as PEM text inside the JSON.
+* The import token from `get-params` is time-limited by APC. Run the `export` and `import` phases before it expires (otherwise re-run `get-params`).
+* Treat the interim files as sensitive: they contain the import token and the wrapped key cryptogram. Transfer them over a secure channel and delete them once the import succeeds.
+
+#### Interim JSON schema
+
+`get-params` output (params file):
+
+```json
+{
+    "krd": "apc",
+    "krd_wrapping_key_algorithm": "RSA_4096",
+    "key_algorithm": "TDES_2KEY",
+    "apc_key_usage": "TR31_K0_KEY_ENCRYPTION_KEY",
+    "apc_key_modes_of_use": { "Encrypt": true, "Decrypt": true, "Wrap": true, "Unwrap": true },
+    "import_token": "import-token-...",
+    "krd_certificate_pem": "-----BEGIN CERTIFICATE-----\n...",
+    "krd_ca_certificate_pem": "-----BEGIN CERTIFICATE-----\n..."
+}
+```
+
+`export` output (export file) adds the wrapping result to the above:
+
+```json
+{
+    "kdh": "payshield",
+    "rsa_cryptogram": "....",
+    "transport_key_kcv": "5F30B6",
+    "wrapping_spec": "RSA_OAEP_SHA_512"
+}
+```
