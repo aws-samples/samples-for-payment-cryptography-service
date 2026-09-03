@@ -93,3 +93,34 @@ If you already have a key created, update the key and kcv in the config file for
 ```
 python3 import_export_rsa.py --kdh <Options: "futurex | payshield"> --krd <Options: "apc">
 ```
+
+### Configurable key metadata (RSA)
+
+The metadata describing the transport key is read from the KDH `rsa` block in `input_config.json`, so it can match the actual key being exported without editing code. AWS Payment Cryptography validates these attributes against the wrapped key material during import; a mismatch (for example declaring `TDES_3KEY` for a `TDES_2KEY` key) raises `ValidationException: Actual KeyAlgorithm of the WrappedKey is mismatching ...`.
+
+| Field | Purpose | Example | Default |
+|---|---|---|---|
+| `key_algorithm` | Algorithm of the transport key. Must match the real key. | `TDES_2KEY` | `TDES_3KEY` |
+| `apc_key_usage` | APC `KeyUsage` (`TR31_*`) applied on import into APC. | `TR31_K0_KEY_ENCRYPTION_KEY` | `TR31_K0_KEY_ENCRYPTION_KEY` |
+| `apc_key_modes_of_use` | APC `KeyModesOfUse` object applied on import into APC. | `{ "Decrypt": true, "Unwrap": true }` | `{ "Encrypt": true, "Decrypt": true, "Wrap": true, "Unwrap": true }` |
+
+* Valid `key_algorithm` values: `TDES_2KEY`, `TDES_3KEY`, `AES_128`, `AES_192`, `AES_256`.
+* `apc_key_usage` accepts any `TR31_*` KeyUsage supported by APC, and `apc_key_modes_of_use` any combination of `Encrypt`, `Decrypt`, `Wrap`, `Unwrap`, `Generate`, `Verify`, `DeriveKey`, `NoRestrictions`. For the allowed usage/algorithm/mode combinations, see [Valid keys for cryptographic operations](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/crypto-ops-validkeys-ops.html).
+* `apc_key_usage` and `apc_key_modes_of_use` are optional. When omitted, they default to a key-encryption key with full modes of use.
+
+Example `rsa` block:
+
+```json
+"rsa": {
+    "transport_key": "S10096V0TC00...",
+    "transport_key_kcv": "5F30B6",
+    "key_algorithm": "TDES_2KEY",
+    "apc_key_usage": "TR31_K0_KEY_ENCRYPTION_KEY",
+    "apc_key_modes_of_use": {
+        "Encrypt": true,
+        "Decrypt": true,
+        "Wrap": true,
+        "Unwrap": true
+    }
+}
+```

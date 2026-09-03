@@ -185,6 +185,46 @@ class Apc(object):
         response = self.apc_client.import_key(Enabled=True, KeyMaterial=key_material)
         return response["Key"]["KeyArn"], response["Key"]["KeyCheckValue"]
 
+    # Default APC KeyUsage and KeyModesOfUse for each coarse SymmetricKeyUsage.
+    # Used when an explicit apc_key_usage / apc_key_modes_of_use is not provided.
+    # Values follow the valid combinations documented at:
+    # https://docs.aws.amazon.com/payment-cryptography/latest/userguide/crypto-ops-validkeys-ops.html
+    _DEFAULT_APC_KEY_USAGE = {
+        SymmetricKeyUsage.PEK: (
+            "TR31_P0_PIN_ENCRYPTION_KEY",
+            {"Encrypt": True, "Decrypt": True, "Wrap": True, "Unwrap": True},
+        ),
+        SymmetricKeyUsage.BDK: (
+            "TR31_B0_BASE_DERIVATION_KEY",
+            {"DeriveKey": True},
+        ),
+        SymmetricKeyUsage.KBPK: (
+            "TR31_K1_KEY_BLOCK_PROTECTION_KEY",
+            {"Encrypt": True, "Decrypt": True, "Wrap": True, "Unwrap": True},
+        ),
+        SymmetricKeyUsage.KEK: (
+            "TR31_K0_KEY_ENCRYPTION_KEY",
+            {"Encrypt": True, "Decrypt": True, "Wrap": True, "Unwrap": True},
+        ),
+    }
+
+    def _resolve_apc_key_usage_and_modes(
+        self, key_usage: SymmetricKeyUsage, apc_key_usage: str, apc_key_modes_of_use: dict
+    ):
+        """
+        Resolves the APC KeyUsage (TR31_* string) and KeyModesOfUse dict to send
+        to ImportKey. An explicit apc_key_usage / apc_key_modes_of_use always
+        takes precedence; otherwise a default is derived from the coarse
+        SymmetricKeyUsage enum. When only one of the two is provided explicitly,
+        the other falls back to the enum default.
+        """
+        default_usage, default_modes = self._DEFAULT_APC_KEY_USAGE.get(
+            key_usage, self._DEFAULT_APC_KEY_USAGE[SymmetricKeyUsage.KEK]
+        )
+        usage = apc_key_usage if apc_key_usage else default_usage
+        modes_of_use = apc_key_modes_of_use if apc_key_modes_of_use else default_modes
+        return usage, modes_of_use
+
     def import_symmetric_key_using_rsa(
         self,
         import_token,
@@ -192,24 +232,23 @@ class Apc(object):
         key_algorithm: SymmetricKeyAlgorithm,
         key_usage: SymmetricKeyUsage,
         wrapping_spec: RsaWrappingSpec,
+        apc_key_usage: str = None,
+        apc_key_modes_of_use: dict = None,
     ):
         """
         Imports a symmetric key that has been RSA-wrapped (KEY_CRYPTOGRAM) under the
         APC wrapping public key returned during get_parameters_for_import. The
         import_token references the service side RSA private key used to unwrap it.
+
+        The APC key usage and key modes of use may be supplied explicitly via
+        apc_key_usage (a TR31_* KeyUsage value) and apc_key_modes_of_use (a dict
+        of KeyModesOfUse booleans). When not supplied, they are derived from the
+        coarse SymmetricKeyUsage enum for backwards compatibility. See:
+        https://docs.aws.amazon.com/payment-cryptography/latest/userguide/crypto-ops-validkeys-ops.html
         """
-        if key_usage == SymmetricKeyUsage.PEK:
-            usage = "TR31_P0_PIN_ENCRYPTION_KEY"
-            modes_of_use = {"Encrypt": True, "Decrypt": True, "Wrap": True, "Unwrap": True}
-        elif key_usage == SymmetricKeyUsage.BDK:
-            usage = "TR31_B0_BASE_DERIVATION_KEY"
-            modes_of_use = {"DeriveKey": True}
-        elif key_usage == SymmetricKeyUsage.KBPK:
-            usage = "TR31_K1_KEY_BLOCK_PROTECTION_KEY"
-            modes_of_use = {"Encrypt": True, "Decrypt": True, "Wrap": True, "Unwrap": True}
-        else:
-            usage = "TR31_K0_KEY_ENCRYPTION_KEY"
-            modes_of_use = {"Encrypt": True, "Decrypt": True, "Wrap": True, "Unwrap": True}
+        usage, modes_of_use = self._resolve_apc_key_usage_and_modes(
+            key_usage, apc_key_usage, apc_key_modes_of_use
+        )
 
         key_material = {
             "KeyCryptogram": {

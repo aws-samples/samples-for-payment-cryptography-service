@@ -68,8 +68,25 @@ def main():
     krd_config = config["krd"][krd]
     kdh_host, krd_host = _get_kdh_krd_hosts(kdh, krd, kdh_config, krd_config)
 
+    # Transport key metadata (algorithm and usage) is read from the KDH's rsa
+    # config so it matches the actual key being exported. This is what APC
+    # validates against the wrapped key material during import; a mismatch
+    # raises "Actual KeyAlgorithm of the WrappedKey is mismatching ...".
+    # Defaults preserve the previous behaviour when not specified in config.
+    rsa_config = kdh_config.get("rsa", {})
+    key_algorithm = SymmetricKeyAlgorithm(rsa_config.get("key_algorithm", "TDES_3KEY"))
+
+    # Coarse usage used only for HSM-side key generation (when the transport key
+    # is not provided in config and a new key is created on the KDH). APC import
+    # uses apc_key_usage / apc_key_modes_of_use below.
     key_usage = SymmetricKeyUsage.KEK
-    key_algorithm = SymmetricKeyAlgorithm.TDES_3KEY
+
+    # APC key metadata used when importing into APC (KRD). apc_key_usage maps
+    # directly to a TR31_* KeyUsage value and apc_key_modes_of_use to a
+    # KeyModesOfUse dict. When omitted, they default from key_usage above. See:
+    # https://docs.aws.amazon.com/payment-cryptography/latest/userguide/crypto-ops-validkeys-ops.html
+    apc_key_usage = rsa_config.get("apc_key_usage")
+    apc_key_modes_of_use = rsa_config.get("apc_key_modes_of_use")
 
     # APC returns an RSA wrapping public key certificate (and chain) for the
     # cryptogram import. RSA_4096 is used as the wrapping key algorithm.
@@ -142,6 +159,8 @@ def main():
         key_algorithm,
         key_usage,
         wrapping_spec,
+        apc_key_usage=apc_key_usage,
+        apc_key_modes_of_use=apc_key_modes_of_use,
     )
     print("\nImported Key : {}".format(imported_key))
     print("Imported Key KCV : {}".format(imported_key_kcv))
