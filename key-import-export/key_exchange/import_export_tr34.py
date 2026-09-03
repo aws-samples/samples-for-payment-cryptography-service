@@ -161,6 +161,7 @@ def phase_export(kdh, kdh_config, params_state, kdh_algorithm, kdh_ca_algorithm,
     export_state["kdh_ca_certificate_pem"] = certificate_to_pem(kdh_ca_certificate)
     export_state["tr34_payload"] = tr34_payload
     export_state["nonce"] = nonce
+    export_state["key_algorithm"] = key_algorithm.name
     export_state["transport_key_kcv"] = transport_key_kcv
     return export_state
 
@@ -180,6 +181,7 @@ def phase_import(krd, krd_config, export_state):
     kdh_ca_algorithm = RsaKeyAlgorithm[export_state["kdh_ca_algorithm"]]
     tr34_payload = export_state["tr34_payload"]
     nonce = export_state["nonce"]
+    key_algorithm = SymmetricKeyAlgorithm[export_state["key_algorithm"]]
 
     print("\nPhase 'import' ({}) : Trust KDH certificate chain.".format(krd.upper()))
     kdh_ca_certificate_trusted = krd_host.trust_certificate_chain(kdh_ca_certificate, kdh_ca_algorithm)
@@ -193,6 +195,7 @@ def phase_import(krd, krd_config, export_state):
         kdh_ca_certificate_trusted,
         tr34_payload,
         nonce,
+        key_algorithm,
     )
     print("\nImported Key : {}".format(imported_key))
     print("Imported Key KCV : {}".format(imported_key_kcv))

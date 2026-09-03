@@ -47,13 +47,16 @@ File paths follow `--output-file`/`--input-file`, defaulting to `tr34_import_par
 
 ```
 # 1) APC environment — get import parameters
-python3 import_export_tr34.py --kdh payshield --mode get-params --output-file params.json
+python3 import_export_tr34.py --kdh payshield --krd apc --mode get-params --output-file tr34_params.json
 
 # 2) HSM environment — build the TR-34 payload
-python3 import_export_tr34.py --kdh payshield --mode export --input-file params.json --output-file export.json
+python3 import_export_tr34.py --kdh payshield --krd apc --mode export --input-file tr34_params.json --output-file tr34_export.json
 
 # 3) APC environment — import the TR-34 payload
-python3 import_export_tr34.py --kdh payshield --mode import --input-file export.json
+python3 import_export_tr34.py --kdh payshield --krd apc --mode import --input-file tr34_export.json
+
+# Or run all three phases in one process (single environment)
+python3 import_export_tr34.py --kdh payshield --krd apc --mode full
 ```
 
 Notes:
@@ -93,10 +96,13 @@ File paths follow `--output-file`/`--input-file`, defaulting to `tr31_export_out
 
 ```
 # 1) HSM environment — wrap the transport key under the KEK
-python3 import_export_tr31.py --kdh payshield --mode export --output-file export.json
+python3 import_export_tr31.py --kdh payshield --krd apc --mode export --output-file tr31_export.json
 
 # 2) APC environment — import the wrapped key
-python3 import_export_tr31.py --kdh payshield --mode import --input-file export.json
+python3 import_export_tr31.py --kdh payshield --krd apc --mode import --input-file tr31_export.json
+
+# Or run both phases in one process (single environment)
+python3 import_export_tr31.py --kdh payshield --krd apc --mode full
 ```
 
 Note: both `kdh_config["tr31"]["kek"]` and `krd_config["tr31"]["kek"]` must already be populated (e.g. from a prior TR-34 or ECDH exchange) before running either phase.
@@ -132,13 +138,16 @@ File paths follow `--output-file`/`--input-file`, defaulting to `ecdh_import_par
 
 ```
 # 1) APC environment — get the KRD key agreement certificate
-python3 import_export_ecdh.py --kdh payshield --mode get-params --output-file params.json
+python3 import_export_ecdh.py --kdh payshield --krd apc --mode get-params --output-file ecdh_params.json
 
 # 2) HSM environment — derive the KEK and wrap the transport key
-python3 import_export_ecdh.py --kdh payshield --mode export --input-file params.json --output-file export.json
+python3 import_export_ecdh.py --kdh payshield --krd apc --mode export --input-file ecdh_params.json --output-file ecdh_export.json
 
 # 3) APC environment — derive the same KEK and unwrap the transport key
-python3 import_export_ecdh.py --kdh payshield --mode import --input-file export.json
+python3 import_export_ecdh.py --kdh payshield --krd apc --mode import --input-file ecdh_export.json
+
+# Or run all three phases in one process (single environment)
+python3 import_export_ecdh.py --kdh payshield --krd apc --mode full
 ```
 
 Notes:
@@ -224,15 +233,18 @@ File paths are controlled with `--output-file` (written by `get-params` and `exp
 
 ```
 # 1) APC environment — get import parameters
-python3 import_export_rsa.py --kdh payshield --mode get-params --output-file params.json
-#    Copy params.json to the HSM environment.
+python3 import_export_rsa.py --kdh payshield --krd apc --mode get-params --output-file rsa_params.json
+#    Copy rsa_params.json to the HSM environment.
 
 # 2) HSM environment — wrap the transport key
-python3 import_export_rsa.py --kdh payshield --mode export --input-file params.json --output-file export.json
-#    Copy export.json back to the APC environment.
+python3 import_export_rsa.py --kdh payshield --krd apc --mode export --input-file rsa_params.json --output-file rsa_export.json
+#    Copy rsa_export.json back to the APC environment.
 
 # 3) APC environment — import the key cryptogram
-python3 import_export_rsa.py --kdh payshield --mode import --input-file export.json
+python3 import_export_rsa.py --kdh payshield --krd apc --mode import --input-file rsa_export.json
+
+# Or run all three phases in one process (single environment)
+python3 import_export_rsa.py --kdh payshield --krd apc --mode full
 ```
 
 Notes:
@@ -268,3 +280,15 @@ Notes:
     "wrapping_spec": "RSA_OAEP_SHA_512"
 }
 ```
+
+## Key check value (KCV) algorithm
+
+When a key is imported into AWS Payment Cryptography, APC returns a key check value (KCV) that you can compare against the source KCV to confirm the key material transferred intact. The KCV algorithm must match the type of key being imported, otherwise the returned KCV will not match the value your HSM computed:
+
+* **TDES keys** use `ANSI_X9_24` (the legacy KCV: encrypt an all-zero block with the key, keep the 3 highest-order bytes).
+* **AES keys** use `CMAC` (CMAC over 16 zero bytes, keep the 3 highest-order bytes).
+
+All four scripts select the KCV algorithm automatically for the key being transferred, following the same convention as `key-import-export/rsa/import_app/import_raw_key_rsa.py` (`TDES -> ANSI_X9_24`, `AES -> CMAC`):
+
+* **RSA, TR-31, TR-34** derive the KCV algorithm from the transport key's declared algorithm (`key_algorithm` in the RSA config block, or the default TDES/AES for the flow).
+* **ECDH** derives the KCV algorithm from the transport key's own TR-31 key block header (the algorithm indicator character), **not** from the AES key derived via ECDH that is used to wrap it. This keeps the KCV correct for a TDES transport key while leaving the ECDH wrapping untouched. Because ECDH is only supported under a key block LMK (payShield variant LMK is rejected up front), the transport key always carries a parseable key block header, so no additional configuration is required.

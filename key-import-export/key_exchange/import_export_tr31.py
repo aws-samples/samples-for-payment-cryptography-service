@@ -110,9 +110,12 @@ def phase_import(krd, krd_config, export_state):
         sys.exit(1)
 
     exported_key = export_state["exported_key"]
+    key_algorithm = SymmetricKeyAlgorithm[export_state["key_algorithm"]]
 
     print("\nPhase 'import' ({}) : Import the transport key under the KEK using TR31.".format(krd.upper()))
-    imported_key, imported_key_kcv = krd_host.import_symmetric_key_using_tr31(exported_key, krd_kek)
+    imported_key, imported_key_kcv = krd_host.import_symmetric_key_using_tr31(
+        exported_key, krd_kek, key_algorithm
+    )
     print("\nImported Key : {}".format(imported_key))
     print("Imported Key KCV : {}".format(imported_key_kcv))
     return imported_key, imported_key_kcv

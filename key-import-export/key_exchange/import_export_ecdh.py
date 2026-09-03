@@ -198,6 +198,10 @@ def phase_export(
     export_state["hash_algorithm"] = hash_algorithm.name
     export_state["shared_info"] = shared_info
     export_state["exported_key"] = exported_key
+    # The transport key's own TR-31 key block, carried so the import phase can
+    # derive the KCV algorithm (ANSI_X9_24 for TDES, CMAC otherwise) from its
+    # header -- independent of the AES ECDH-derived KEK used to wrap it.
+    export_state["transport_key_block"] = transport_key
     export_state["transport_key_kcv"] = transport_key_kcv
     return export_state
 
@@ -219,6 +223,7 @@ def phase_import(krd, krd_config, export_state):
     hash_algorithm = KeyDerivationHashAlgorithm[export_state["hash_algorithm"]]
     shared_info = export_state["shared_info"]
     exported_key = export_state["exported_key"]
+    transport_key_block = export_state["transport_key_block"]
 
     print("\nPhase 'import' ({}) : Trust KDH certificate chain.".format(krd.upper()))
     kdh_ca_certificate_trusted = krd_host.trust_certificate_chain(kdh_ca_certificate, kdh_ca_algorithm)
@@ -238,6 +243,7 @@ def phase_import(krd, krd_config, export_state):
         hash_algorithm,
         shared_info,
         exported_key,
+        transport_key_block,
     )
     print("Imported Key : {}".format(imported_key))
     print("Imported Key KCV : {}".format(imported_key_kcv))
