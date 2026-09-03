@@ -32,6 +32,35 @@ If you already have a key created, update the key and kcv in the config file for
 python3 import_export_tr34.py --kdh <Options: "futurex | payshield"> --krd <Options: "apc">
 ```
 
+### Running the phases in separate environments (split HSM / APC)
+
+`import_export_tr34.py` also supports `--mode` to split the exchange so the HSM and AWS Payment Cryptography (APC) can run in separate environments, exchanging a JSON state file. TR-34 touches APC at both ends (each side generates its own certificate and trusts the other's CA), so it splits into the same three phases as RSA:
+
+| Mode | Runs in | Reads | Writes | What it does |
+|---|---|---|---|---|
+| `get-params` | APC environment | — | params file | Generates the KRD's TR-34 import certificate + chain and import token (`GetParametersForImport`). |
+| `export` | HSM environment | params file | export file | Generates the KDH's signing certificate + chain, trusts the KRD CA locally, and builds the TR-34 2-pass payload (wrapped key + nonce). |
+| `import` | APC environment | export file | — | Trusts the KDH CA locally, then imports the TR-34 payload using the import token from `get-params`. |
+| `full` (default) | both | — | — | Runs all three phases in one process (original behavior). |
+
+File paths follow `--output-file`/`--input-file`, defaulting to `tr34_import_params.json` and `tr34_export_output.json`.
+
+```
+# 1) APC environment — get import parameters
+python3 import_export_tr34.py --kdh payshield --mode get-params --output-file params.json
+
+# 2) HSM environment — build the TR-34 payload
+python3 import_export_tr34.py --kdh payshield --mode export --input-file params.json --output-file export.json
+
+# 3) APC environment — import the TR-34 payload
+python3 import_export_tr34.py --kdh payshield --mode import --input-file export.json
+```
+
+Notes:
+* On payShield, the KDH's private key from certificate generation is a live key object, not a serializable token, so KDH key generation and the TR-34 payload build must happen in the same `export` phase (they already do). Futurex uses a key handle string instead, which is JSON-safe either way.
+* The import token from `get-params` is time-limited by APC. Run `export` and `import` before it expires.
+* Treat the interim files as sensitive: they contain the import token and the TR-34 wrapped key payload.
+
 ## Key Exchange using TR31
 The script will exchange working keys between KDH and KRD once a KEK is established between KDH and KRD.
 Establish a KEK using the Tr34 script and update the kek in the input_config file for both KDH and KRD.
@@ -50,6 +79,28 @@ If you already have a key created, update the key and kcv in the config file for
 python3 import_export_tr31.py --kdh <Options: "futurex | payshield"> --krd <Options: "apc">
 ```
 
+### Running the phases in separate environments (split HSM / APC)
+
+`import_export_tr31.py` also supports `--mode` to split the exchange. TR-31 uses a KEK that must already be established on both sides (via TR-34 or ECDH), so APC does not need to be contacted before the HSM wraps the key — there is no `get-params` phase, just two:
+
+| Mode | Runs in | Reads | Writes | What it does |
+|---|---|---|---|---|
+| `export` | HSM environment | — | export file | Wraps the transport key under the KDH's KEK (`kdh_config["tr31"]["kek"]`) using TR-31. |
+| `import` | APC environment | export file | — | Imports the wrapped key under the KRD's KEK (`krd_config["tr31"]["kek"]`). |
+| `full` (default) | both | — | — | Runs both phases in one process (original behavior). |
+
+File paths follow `--output-file`/`--input-file`, defaulting to `tr31_export_output.json`. No certificates cross the seam for TR-31 — only the TR-31 wrapped key block string.
+
+```
+# 1) HSM environment — wrap the transport key under the KEK
+python3 import_export_tr31.py --kdh payshield --mode export --output-file export.json
+
+# 2) APC environment — import the wrapped key
+python3 import_export_tr31.py --kdh payshield --mode import --input-file export.json
+```
+
+Note: both `kdh_config["tr31"]["kek"]` and `krd_config["tr31"]["kek"]` must already be populated (e.g. from a prior TR-34 or ECDH exchange) before running either phase.
+
 ## Key Exchange using ECDH
 The script will perform key agreement using ECDH between KDH and KRD, derive a shared key which will be the KEK to wrap the transport key.
 Using this path, you can import/export upto AES-256 keys.
@@ -65,6 +116,35 @@ Using this path, you can import/export upto AES-256 keys.
 ```
 python3 import_export_ecdh.py --kdh <Options: "futurex | payshield | apc"> --krd <Options: "apc">
 ```
+
+### Running the phases in separate environments (split HSM / APC)
+
+`import_export_ecdh.py` also supports `--mode` to split the exchange. ECDH is a mutual key agreement: both sides generate an ECC key pair + certificate and independently derive the same shared KEK, so it splits into the same three phases as RSA/TR-34, but each side's cert is only usable by the other after the handshake completes:
+
+| Mode | Runs in | Reads | Writes | What it does |
+|---|---|---|---|---|
+| `get-params` | APC environment | — | params file | Generates the KRD's ECC key pair + certificate chain for the key agreement. |
+| `export` | HSM environment | params file | export file | Generates the KDH's ECC key pair + certificate chain, trusts the KRD CA locally, derives the shared KEK via ECDH, and TR-31-wraps the transport key under it. |
+| `import` | APC environment | export file | — | Trusts the KDH CA locally, independently derives the same KEK via ECDH, and unwraps the transport key. |
+| `full` (default) | both | — | — | Runs all three phases in one process (original behavior). |
+
+File paths follow `--output-file`/`--input-file`, defaulting to `ecdh_import_params.json` and `ecdh_export_output.json`.
+
+```
+# 1) APC environment — get the KRD key agreement certificate
+python3 import_export_ecdh.py --kdh payshield --mode get-params --output-file params.json
+
+# 2) HSM environment — derive the KEK and wrap the transport key
+python3 import_export_ecdh.py --kdh payshield --mode export --input-file params.json --output-file export.json
+
+# 3) APC environment — derive the same KEK and unwrap the transport key
+python3 import_export_ecdh.py --kdh payshield --mode import --input-file export.json
+```
+
+Notes:
+* The derivation parameters (`shared_info`, key derivation function, hash algorithm, derived key algorithm) are carried in the interim JSON so both sides derive the identical KEK; do not edit these files by hand.
+* `--kdh apc` is supported (APC acting as its own KDH); in that case both the `get-params`/`export` phases and the `import` phase run against APC, but the split still works the same way.
+* payShield with `variant_lmk: true` does not support ECDH; the script exits with an error in that case regardless of mode.
 
 ## Key Exchange using RSA (Key Cryptogram)
 The script exports a symmetric transport key from the KDH as an RSA key cryptogram, wrapped under an RSA public key provided by the KRD, and imports it into the KRD.

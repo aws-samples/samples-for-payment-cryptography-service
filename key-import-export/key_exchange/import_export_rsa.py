@@ -1,15 +1,17 @@
 # flake8: noqa: E402
+# flake8: noqa: E402
 
-import argparse
-import json
 import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import json
+
 from key_exchange.hsm.futurex.futurex_hsm import FuturexHsm
 from key_exchange.hsm.payshield.payshield_hsm import PayshieldHsm
 from key_exchange.utils.apc import Apc
+from key_exchange.utils import phases
 from key_exchange.utils.enums import (
     AsymmetricKeyUsage,
     KeyExchangeType,
@@ -21,71 +23,23 @@ from key_exchange.utils.enums import (
 from key_exchange.utils.serialization import (
     certificate_from_pem,
     certificate_to_pem,
-    read_state,
-    write_state,
 )
 
-# Default file names used to hand interim state between environments/phases.
-DEFAULT_PARAMS_FILE = "rsa_import_params.json"
-DEFAULT_EXPORT_FILE = "rsa_export_output.json"
+FLOW = "rsa"
+DEFAULT_PARAMS_FILE = phases.default_params_file(FLOW)
+DEFAULT_EXPORT_FILE = phases.default_export_file(FLOW)
 
 
 def _get_command_line_args():
-    parser = argparse.ArgumentParser(
+    parser = phases.new_parser(
         description=(
             "Exchange a symmetric key from a KDH (HSM) to a KRD (AWS Payment "
-            "Cryptography) as an RSA key cryptogram. Supports running the whole "
-            "flow end to end, or splitting it into three phases so the HSM and "
-            "APC can run in separate environments."
+            "Cryptography) as an RSA key cryptogram. Run the whole flow end to "
+            "end (--mode full), or split it into get-params (APC), export "
+            "(HSM), and import (APC) so the HSM and APC can run in separate "
+            "environments."
         )
     )
-    parser.add_argument(
-        "--kdh",
-        help="Key Distribution Host. Options are [futurex, payshield]",
-        required=True,
-        choices=["futurex", "payshield"],
-    )
-    parser.add_argument(
-        "--krd",
-        help="Key Receiving Device. Options are [apc]",
-        required=False,
-        default="apc",
-        choices=["apc"],
-    )
-    parser.add_argument(
-        "--mode",
-        help=(
-            "Which phase(s) to run. "
-            "'full' (default) runs everything end to end. "
-            "'get-params' runs on the APC side and writes the import token and "
-            "wrapping certificates. "
-            "'export' runs on the HSM side, reads the get-params output, wraps "
-            "the transport key, and writes the RSA key cryptogram. "
-            "'import' runs on the APC side and imports the cryptogram."
-        ),
-        required=False,
-        default="full",
-        choices=["full", "get-params", "export", "import"],
-    )
-    parser.add_argument(
-        "--output-file",
-        help=(
-            "Path to write interim JSON state (used by 'get-params' and "
-            "'export'). Defaults to a mode-specific file name."
-        ),
-        required=False,
-        default=None,
-    )
-    parser.add_argument(
-        "--input-file",
-        help=(
-            "Path to read interim JSON state from (used by 'export' and "
-            "'import'). Defaults to a mode-specific file name."
-        ),
-        required=False,
-        default=None,
-    )
-
     return parser.parse_args()
 
 
@@ -168,7 +122,7 @@ def phase_export(kdh, kdh_config, params_state, key_algorithm, wrapping_spec):
 
     krd_certificate = certificate_from_pem(params_state["krd_certificate_pem"])
     krd_ca_certificate = certificate_from_pem(params_state["krd_ca_certificate_pem"])
-    krd_wrapping_key_algorithm = RsaKeyAlgorithm(params_state["krd_wrapping_key_algorithm"])
+    krd_wrapping_key_algorithm = RsaKeyAlgorithm[params_state["krd_wrapping_key_algorithm"]]
 
     # Coarse usage used only for HSM-side key generation (when the transport key
     # is not provided in config and a new key is created on the KDH).
@@ -279,27 +233,27 @@ def main():
     key_algorithm, apc_key_usage, apc_key_modes_of_use = _rsa_metadata(kdh_config)
     wrapping_spec = RsaWrappingSpec.RSA_OAEP_SHA_512
 
-    if mode == "get-params":
+    if mode == phases.MODE_GET_PARAMS:
         output_file = args.output_file or DEFAULT_PARAMS_FILE
         state = phase_get_params(
             krd, krd_config, key_algorithm, apc_key_usage, apc_key_modes_of_use
         )
-        write_state(output_file, state)
+        phases.save_state(output_file, state)
         print("\nWrote import parameters to : {}".format(output_file))
         print("Transfer this file to the HSM environment and run --mode export.")
 
-    elif mode == "export":
+    elif mode == phases.MODE_EXPORT:
         input_file = args.input_file or DEFAULT_PARAMS_FILE
         output_file = args.output_file or DEFAULT_EXPORT_FILE
-        params_state = read_state(input_file)
+        params_state = phases.load_state(input_file)
         state = phase_export(kdh, kdh_config, params_state, key_algorithm, wrapping_spec)
-        write_state(output_file, state)
+        phases.save_state(output_file, state)
         print("\nWrote RSA key cryptogram output to : {}".format(output_file))
         print("Transfer this file to the APC environment and run --mode import.")
 
-    elif mode == "import":
+    elif mode == phases.MODE_IMPORT:
         input_file = args.input_file or DEFAULT_EXPORT_FILE
-        export_state = read_state(input_file)
+        export_state = phases.load_state(input_file)
         phase_import(krd, krd_config, export_state)
 
     else:  # full
