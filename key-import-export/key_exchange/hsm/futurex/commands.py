@@ -10,6 +10,7 @@ from key_exchange.utils.enums import (
     KeyDerivationFunction,
     KeyDerivationHashAlgorithm,
     RsaKeyAlgorithm,
+    RsaWrappingSpec,
     SymmetricKeyAlgorithm,
 )
 
@@ -44,6 +45,11 @@ RG_TOKEN = {
 KM_TOKEN = {
     KeyDerivationFunction.NIST_SP800: 0,
     KeyDerivationFunction.ANSI_X963: 1,
+}
+# GPRW OP token selects the OAEP hash used for the RSA key cryptogram.
+GPRW_OAEP_HASH = {
+    RsaWrappingSpec.RSA_OAEP_SHA_256: 4,
+    RsaWrappingSpec.RSA_OAEP_SHA_512: 6,
 }
 
 
@@ -148,6 +154,29 @@ class FuturexCommands:
 
         wrapped_key = self._get_response_token("BH", response)
         return wrapped_key
+
+    def gprw_command(self, krd_trusted_public_key, key_to_export, wrapping_spec):
+        """
+        RSA wraps (protects) the key under the trusted KRD RSA public key and returns
+        the key as an RSA key cryptogram.
+        OP token selects the OAEP hash : 6 -> SHA-512, 4 -> SHA-256.
+        """
+        oaep_hash_token = GPRW_OAEP_HASH[wrapping_spec]
+        command = f"[AOGPRW;RC{krd_trusted_public_key};BG{key_to_export};AS2;CE4;OP{oaep_hash_token};FS6;]"
+        response = self._send_payload(command.encode())
+
+        rsa_cryptogram = self._get_response_token("BG", response)
+        return rsa_cryptogram
+
+    def gckd_command(self, key_to_export):
+        """
+        Calculates the key check value (KCV) for a key encrypted under the HSM major key.
+        """
+        command = f"[AOGCKD;FS6;FUC;AS0;BG{key_to_export};]"
+        response = self._send_payload(command.encode())
+
+        kcv = self._get_response_token("AE", response)
+        return kcv
 
     def sddh_command(
         self,

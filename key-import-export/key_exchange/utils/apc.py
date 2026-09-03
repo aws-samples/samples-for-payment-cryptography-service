@@ -10,6 +10,7 @@ from key_exchange.utils.enums import (
     KeyDerivationFunction,
     KeyDerivationHashAlgorithm,
     KeyExchangeType,
+    RsaWrappingSpec,
     SymmetricKeyAlgorithm,
     SymmetricKeyUsage,
 )
@@ -70,6 +71,24 @@ class Apc(object):
         elif key_exchange_type == KeyExchangeType.EXPORT_TR34_KEY_BLOCK:
             export_token_response = self.apc_client.get_parameters_for_export(
                 KeyMaterialType="TR34_KEY_BLOCK", SigningKeyAlgorithm=key_algorithm.name
+            )
+            private_key_token = export_token_response["ExportToken"]
+            certificate_base64 = export_token_response["SigningKeyCertificate"]
+            ca_certificate_base64 = export_token_response["SigningKeyCertificateChain"]
+        elif key_exchange_type == KeyExchangeType.IMPORT_KEY_CRYPTOGRAM:
+            # For an RSA key cryptogram import, APC returns the RSA wrapping public
+            # key certificate (and chain) that the KDH will use to wrap the key.
+            import_token_response = self.apc_client.get_parameters_for_import(
+                KeyMaterialType="KEY_CRYPTOGRAM", WrappingKeyAlgorithm=key_algorithm.name
+            )
+            private_key_token = import_token_response["ImportToken"]
+            certificate_base64 = import_token_response["WrappingKeyCertificate"]
+            ca_certificate_base64 = import_token_response["WrappingKeyCertificateChain"]
+        elif key_exchange_type == KeyExchangeType.EXPORT_KEY_CRYPTOGRAM:
+            # For an RSA key cryptogram export, APC returns the RSA signing public
+            # key certificate (and chain) used when APC is the key distribution host.
+            export_token_response = self.apc_client.get_parameters_for_export(
+                KeyMaterialType="KEY_CRYPTOGRAM", SigningKeyAlgorithm=key_algorithm.name
             )
             private_key_token = export_token_response["ExportToken"]
             certificate_base64 = export_token_response["SigningKeyCertificate"]
@@ -160,6 +179,89 @@ class Apc(object):
             "Tr31KeyBlock": {
                 "WrappingKeyIdentifier": kek,
                 "WrappedKeyBlock": key_to_import,
+            }
+        }
+
+        response = self.apc_client.import_key(Enabled=True, KeyMaterial=key_material)
+        return response["Key"]["KeyArn"], response["Key"]["KeyCheckValue"]
+
+    # Default APC KeyUsage and KeyModesOfUse for each coarse SymmetricKeyUsage.
+    # Used when an explicit apc_key_usage / apc_key_modes_of_use is not provided.
+    # Values follow the valid combinations documented at:
+    # https://docs.aws.amazon.com/payment-cryptography/latest/userguide/crypto-ops-validkeys-ops.html
+    _DEFAULT_APC_KEY_USAGE = {
+        SymmetricKeyUsage.PEK: (
+            "TR31_P0_PIN_ENCRYPTION_KEY",
+            {"Encrypt": True, "Decrypt": True, "Wrap": True, "Unwrap": True},
+        ),
+        SymmetricKeyUsage.BDK: (
+            "TR31_B0_BASE_DERIVATION_KEY",
+            {"DeriveKey": True},
+        ),
+        SymmetricKeyUsage.KBPK: (
+            "TR31_K1_KEY_BLOCK_PROTECTION_KEY",
+            {"Encrypt": True, "Decrypt": True, "Wrap": True, "Unwrap": True},
+        ),
+        SymmetricKeyUsage.KEK: (
+            "TR31_K0_KEY_ENCRYPTION_KEY",
+            {"Encrypt": True, "Decrypt": True, "Wrap": True, "Unwrap": True},
+        ),
+    }
+
+    def _resolve_apc_key_usage_and_modes(
+        self, key_usage: SymmetricKeyUsage, apc_key_usage: str, apc_key_modes_of_use: dict
+    ):
+        """
+        Resolves the APC KeyUsage (TR31_* string) and KeyModesOfUse dict to send
+        to ImportKey. An explicit apc_key_usage / apc_key_modes_of_use always
+        takes precedence; otherwise a default is derived from the coarse
+        SymmetricKeyUsage enum. When only one of the two is provided explicitly,
+        the other falls back to the enum default.
+        """
+        default_usage, default_modes = self._DEFAULT_APC_KEY_USAGE.get(
+            key_usage, self._DEFAULT_APC_KEY_USAGE[SymmetricKeyUsage.KEK]
+        )
+        usage = apc_key_usage if apc_key_usage else default_usage
+        modes_of_use = apc_key_modes_of_use if apc_key_modes_of_use else default_modes
+        return usage, modes_of_use
+
+    def import_symmetric_key_using_rsa(
+        self,
+        import_token,
+        wrapped_key_cryptogram,
+        key_algorithm: SymmetricKeyAlgorithm,
+        key_usage: SymmetricKeyUsage,
+        wrapping_spec: RsaWrappingSpec,
+        apc_key_usage: str = None,
+        apc_key_modes_of_use: dict = None,
+    ):
+        """
+        Imports a symmetric key that has been RSA-wrapped (KEY_CRYPTOGRAM) under the
+        APC wrapping public key returned during get_parameters_for_import. The
+        import_token references the service side RSA private key used to unwrap it.
+
+        The APC key usage and key modes of use may be supplied explicitly via
+        apc_key_usage (a TR31_* KeyUsage value) and apc_key_modes_of_use (a dict
+        of KeyModesOfUse booleans). When not supplied, they are derived from the
+        coarse SymmetricKeyUsage enum for backwards compatibility. See:
+        https://docs.aws.amazon.com/payment-cryptography/latest/userguide/crypto-ops-validkeys-ops.html
+        """
+        usage, modes_of_use = self._resolve_apc_key_usage_and_modes(
+            key_usage, apc_key_usage, apc_key_modes_of_use
+        )
+
+        key_material = {
+            "KeyCryptogram": {
+                "Exportable": True,
+                "ImportToken": import_token,
+                "KeyAttributes": {
+                    "KeyAlgorithm": key_algorithm.name,
+                    "KeyClass": "SYMMETRIC_KEY",
+                    "KeyModesOfUse": modes_of_use,
+                    "KeyUsage": usage,
+                },
+                "WrappedKeyCryptogram": wrapped_key_cryptogram.upper(),
+                "WrappingSpec": wrapping_spec.name,
             }
         }
 

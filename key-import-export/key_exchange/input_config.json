@@ -15,6 +15,18 @@
             "ecdh": {
                 "transport_key": "",
                 "transport_key_kcv": ""
+            },
+            "rsa": {
+                "transport_key": "",
+                "transport_key_kcv": "",
+                "key_algorithm": "TDES_3KEY",
+                "apc_key_usage": "TR31_K0_KEY_ENCRYPTION_KEY",
+                "apc_key_modes_of_use": {
+                    "Encrypt": true,
+                    "Decrypt": true,
+                    "Wrap": true,
+                    "Unwrap": true
+                }
             }
         },
         "apc": {
@@ -26,7 +38,7 @@
         },
         "payshield": {
             "host": "127.0.0.1",
-            "port": 9150,
+            "port": 9000,
             "variant_lmk": true,
             "variant_lmk_identifier": "02",
             "key_block_lmk_identifier": "00",
@@ -43,7 +55,19 @@
             "ecdh": {
                  "transport_key": "",
                  "transport_key_kcv": ""
-             }
+             },
+            "rsa": {
+                "transport_key": "S100XXXXXXXXXXXXXXX....",
+                "transport_key_kcv": "5FXXXX",
+                "key_algorithm": "TDES_2KEY",
+                "apc_key_usage": "TR31_V2_VISA_PIN_VERIFICATION_KEY",
+                "apc_key_modes_of_use": {
+                    "Verify": true,
+                    "Generate": true,
+                    "Wrap": false,
+                    "Unwrap": false
+                }
+            }
         }
     },
     "krd": {

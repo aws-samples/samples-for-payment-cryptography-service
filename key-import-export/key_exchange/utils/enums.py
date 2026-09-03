@@ -47,7 +47,14 @@ class AsymmetricKeyUsage(Enum):
 class KeyExchangeType(Enum):
     IMPORT_TR34_KEY_BLOCK = "IMPORT_TR34_KEY_BLOCK"
     EXPORT_TR34_KEY_BLOCK = "EXPORT_TR34_KEY_BLOCK"
+    IMPORT_KEY_CRYPTOGRAM = "IMPORT_KEY_CRYPTOGRAM"
+    EXPORT_KEY_CRYPTOGRAM = "EXPORT_KEY_CRYPTOGRAM"
     ECDH = "ECDH"
+
+
+class RsaWrappingSpec(Enum):
+    RSA_OAEP_SHA_256 = "RSA_OAEP_SHA_256"
+    RSA_OAEP_SHA_512 = "RSA_OAEP_SHA_512"
 
 
 class KeyDerivationFunction(Enum):
