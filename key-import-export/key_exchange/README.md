@@ -156,6 +156,9 @@ Notes:
 * payShield with `variant_lmk: true` does not support ECDH; the script exits with an error in that case regardless of mode.
 
 ## Key Exchange using RSA (Key Cryptogram)
+
+**Note**: RSA key cryptogram export/import is currently supported only for key block LMKs on payShield. It is not supported when the payShield is configured with a variant LMK (`variant_lmk: true`).
+
 The script exports a symmetric transport key from the KDH as an RSA key cryptogram, wrapped under an RSA public key provided by the KRD, and imports it into the KRD.
 AWS Payment Cryptography returns the RSA wrapping public key certificate (and chain) via GetParametersForImport (KeyMaterialType = KEY_CRYPTOGRAM). The KDH wraps the key under that public key using RSA-OAEP (SHA-512 by default) and the KRD imports it using the matching import token.
 
