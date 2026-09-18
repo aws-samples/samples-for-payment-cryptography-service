@@ -55,3 +55,7 @@ __pycache__
 
 ### Idea
 .idea
+### Locally-generated cryptographic material (e.g. key-import-export/ecdh/*/certs/)
+# These directories hold private keys and self-signed certificates generated at runtime
+# by the ECDH import/export sample scripts. They must never be committed.
+certs/

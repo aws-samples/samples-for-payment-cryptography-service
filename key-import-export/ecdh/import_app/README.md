@@ -1,5 +1,19 @@
 # Import AES-256 KEK using ECDH and TR-31
 
+> **⚠️ WARNING: DEVELOPMENT / TESTING USE ONLY**
+>
+> This script handles cleartext key material (via command-line arguments, terminal input,
+> and/or stdout) and uses locally-generated, self-signed certificates for its Certificate
+> Authority trust chain. This approach is **not compliant** with PCI PIN Security, PCI DSS,
+> or similar payment industry key-management requirements for production use. Do not run it
+> against production AWS accounts or production key material.
+>
+> On every run, the script prints this warning and requires you to interactively type
+> `yes` at a confirmation prompt before it will proceed. This cannot be bypassed with an
+> environment variable or command-line flag -- it must be a deliberate action taken by
+> whoever is running the script, so it can't be silently baked into a scheduled job or
+> CI/CD pipeline.
+
 This sample script demonstrates how to securely import a symmetric AES-256 Key Encryption Key (KEK) into **AWS Payment Cryptography** using Asymmetric Key Exchange (ECDH) and TR-31 key blocks.
 
 This script demonstrates the import of a cleartext AES-256 Key Encryption Key (KEK), establishing a secure channel for transporting subsequent keys between AWS Payment Cryptography and your local environment. With AES-256, this KEK provides sufficient strength to wrap and transport the majority of key types supported by APC.

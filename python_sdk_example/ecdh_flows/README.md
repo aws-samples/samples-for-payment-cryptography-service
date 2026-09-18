@@ -90,6 +90,44 @@ These keys and CA will stay created until you call the tear_down.py script.
 python3 payment_crypto/main.py
 ```
 
+## Browser-based Select PIN demo
+
+In addition to the CLI-only demo above, this sample includes a browser UX for the **Select PIN**
+flow where **ECDH key agreement and ISO 9564 Format 4 PIN block encryption happen entirely in the
+browser**, using the [WebCrypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API).
+The plaintext PIN never leaves the browser tab.
+
+What happens where:
+
+| Step | Where | Notes |
+|---|---|---|
+| Generate ephemeral ECDH key pair (P-256) | Browser | `window.crypto.subtle.generateKey` |
+| Fetch AWS Payment Cryptography's ECDH public key certificate | Server → Browser | Server just proxies `GetPublicKeyCertificate` |
+| ECDH key agreement | Browser | `window.crypto.subtle.deriveBits` |
+| Key derivation (NIST SP 800-56A Concatenation KDF, SHA-512) | Browser | No native WebCrypto API for this; implemented directly on `subtle.digest` |
+| ISO Format 4 PIN block encryption | Browser | AES-ECB has no native WebCrypto mode; implemented via the AES-CBC-with-zero-IV single-block trick |
+| PKCS#10 CSR generation + signing | Browser | Via [pkijs](https://github.com/PeculiarVentures/PKI.js) + [asn1js](https://github.com/PeculiarVentures/ASN1.js), loaded from esm.sh (no build step) |
+| Sign browser's CSR with the demo AWS Private CA | Server | So AWS Payment Cryptography trusts the browser's ephemeral public key |
+| Translate PIN block to PEK + generate PVV | Server | Calls `TranslatePinData` / `GeneratePinData` |
+
+Only the browser-encrypted PIN block (never the plaintext PIN) is ever sent over the network, to the
+Flask server in this demo.
+
+### Run it
+
+```
+python3 payment_crypto/webapp.py
+```
+
+Then open http://127.0.0.1:5000 in a browser, enter a PAN and a PIN, and submit. The "Client-side
+crypto log" panel on the page shows each step happening in the browser.
+
+**Security note:** `webapp.py` is a local development demo server (Flask's built-in dev server, no
+authentication, single process). It is not intended to be exposed beyond localhost or used as-is in
+production. The AWS Private CA in this demo is a self-signed root created solely to satisfy AWS
+Payment Cryptography's requirement for a trust anchor on the browser's ephemeral key; it has no
+bearing on the security of the PIN block encryption itself, which relies on the ECDH-derived key.
+
 ## Clean Up
 Clean up resources (including CA)
 ```

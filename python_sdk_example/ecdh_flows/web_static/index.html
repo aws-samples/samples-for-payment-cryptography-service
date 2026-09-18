@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AWS Payment Cryptography - Select PIN (Browser ECDH Demo)</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Select PIN</h1>
+    <p class="subtitle">
+      ECDH key agreement and ISO 9564 Format&nbsp;4 PIN block encryption happen entirely in this
+      browser tab via the WebCrypto API. The plaintext PIN is never sent to the server.
+    </p>
+
+    <!--
+      Demo simplification: this page assumes the user is already authenticated and would
+      normally pick their card from a list of cards on their account, not type a PAN by
+      hand. The free-text PAN field below exists only so this demo can be exercised without
+      building out account lookup/authentication -- it is not representative of a real
+      cardholder-facing "Select PIN" flow.
+    -->
+    <form id="select-pin-form" class="card">
+      <label for="pan">Primary Account Number (PAN)</label>
+      <input id="pan" name="pan" type="text" inputmode="numeric" autocomplete="off"
+             placeholder="e.g. 1234567890123456" required pattern="\d{12,19}" maxlength="19" />
+      <div class="field-note">
+        For demo purposes only: the PAN is typed in here. In production, an authenticated
+        user would select their card from a list rather than entering a PAN directly.
+      </div>
+
+      <label for="pin">New PIN</label>
+      <input id="pin" name="pin" type="password" inputmode="numeric" autocomplete="off"
+             placeholder="4-12 digits" required pattern="\d{4,12}" maxlength="12" />
+
+      <label for="pin-confirm">Confirm New PIN</label>
+      <input id="pin-confirm" name="pin-confirm" type="password" inputmode="numeric" autocomplete="off"
+             placeholder="Re-enter PIN" required pattern="\d{4,12}" maxlength="12" />
+      <div id="pin-mismatch" class="field-error" hidden>PINs do not match.</div>
+
+      <button id="submit-btn" type="submit">Select PIN</button>
+    </form>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <div id="result" class="card result" hidden></div>
+
+    <details class="card log-card" open>
+      <summary>Client-side crypto log</summary>
+      <div id="log" class="log"></div>
+    </details>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
