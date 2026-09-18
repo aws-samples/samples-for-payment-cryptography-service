@@ -1,3 +1,24 @@
+"""
+============================================================================
+ WARNING: DEVELOPMENT / TESTING USE ONLY
+============================================================================
+This script handles cryptographic key material in cleartext (via command-line
+arguments, terminal input, and/or stdout) and uses locally-generated,
+self-signed certificates for its Certificate Authority trust chain. This
+approach is NOT compliant with PCI PIN Security, PCI DSS, or similar payment
+industry key-management requirements for production use.
+
+This script is intended strictly for development, testing, and
+proof-of-concept purposes. Do not run it against production AWS accounts,
+production AWS Payment Cryptography key material, or in any environment
+where the output could be exposed to unauthorized parties.
+
+Running this script requires interactively typing "yes" at a confirmation
+prompt (see --help / README.md for details); it cannot be bypassed via an
+environment variable or command-line flag, since that could be baked into a
+script/CI job and defeat the purpose of the confirmation.
+============================================================================
+"""
 import argparse
 import base64
 import boto3
@@ -16,6 +37,36 @@ from cryptography.x509.oid import NameOID
 from Crypto.Hash import CMAC
 from Crypto.Cipher import AES, DES3
 import psec
+
+def _enforce_non_production_guardrail():
+    """
+    Refuses to run unless the operator interactively confirms they understand this script
+    is not suitable for production use. This is a lightweight guardrail, not a security
+    control, and cannot verify whether the target AWS account/credentials actually belong
+    to a production environment -- it only forces a deliberate, affirmative step (typed at
+    a terminal, not settable via an environment variable or flag) before this
+    development/testing tool handles cleartext key material.
+    """
+    print("\n" + "=" * 78)
+    print("WARNING: This script is for DEVELOPMENT / TESTING purposes only.")
+    print("It handles cleartext key material and self-signed certificates and is")
+    print("likely NOT compliant with production payment key-management requirements")
+    print("(e.g. PCI PIN Security, PCI DSS). Do not use it against production key")
+    print("material or production AWS accounts.")
+    print("=" * 78 + "\n")
+
+    try:
+        confirmation = input(
+            "Type 'yes' to confirm you understand this and want to proceed "
+            "(development/testing environments only): "
+        ).strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        confirmation = ""
+
+    if confirmation != "yes":
+        print("Confirmation not received. Exiting without making any changes.")
+        sys.exit(1)
+
 
 RECEIVER_KEY_ALIAS = "alias/import-ecdh-receiver"
 SENDER_ROOT_CA_ALIAS = "alias/import-ecdh-sender-root"
@@ -226,7 +277,9 @@ def get_or_create_sender_credentials():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Import a symmetric key into AWS Payment Cryptography using ECDH"
+        description="Import a symmetric key into AWS Payment Cryptography using ECDH. "
+                     "DEVELOPMENT/TESTING USE ONLY -- see the warning banner printed above "
+                     "and at the top of this file; not compliant for production key material."
     )
     parser.add_argument("--region", required=True, help="AWS Region")
     parser.add_argument("--profile", default=None, help="AWS Profile (optional, uses default credential chain if omitted)")
@@ -272,6 +325,10 @@ def main():
     )
 
     args = parser.parse_args()
+
+    # Confirmation happens after argument parsing so --help exits immediately without
+    # requiring interactive confirmation first.
+    _enforce_non_production_guardrail()
 
     # HMAC (M7) validation
     if args.key_type == "M7":
