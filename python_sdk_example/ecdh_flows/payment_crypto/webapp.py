@@ -37,6 +37,7 @@ field in the UI (and the `pan` field accepted below) exists only so this demo ca
 without building out account lookup/authentication -- it is not representative of how a real
 cardholder-facing "Select PIN" flow would obtain the PAN.
 """
+import logging
 import os
 import sys
 
@@ -49,6 +50,8 @@ from payment_crypto.ecdh.backend import Backend
 from payment_crypto.ecdh.setup import setup
 
 api_call_log.install()
+
+logger = logging.getLogger(__name__)
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "web_static")
 
@@ -123,8 +126,12 @@ def sign_csr():
     try:
         with api_call_log.track_api_calls() as calls:
             signed_certificate = backend.sign_csr(csr_pem)
-    except Exception as exc:  # surfaced to the demo UI for troubleshooting
-        return jsonify({"error": str(exc)}), 502
+    except Exception:
+        # Log the full exception server-side (visible in this process's own terminal, run
+        # by whoever started the demo) but do not reflect exception details -- which may
+        # include internal paths, AWS error internals, etc. -- back to the HTTP client.
+        logger.exception("sign-csr failed")
+        return jsonify({"error": "Failed to sign CSR. See server logs for details."}), 502
 
     return jsonify({"signedCertificate": signed_certificate, "apiCalls": calls})
 
@@ -172,8 +179,10 @@ def set_pin():
     try:
         with api_call_log.track_api_calls() as calls:
             backend.set_pin_with_signed_certificate(pan, encrypted_pin_block, signed_certificate, shared_info)
-    except Exception as exc:  # surfaced to the demo UI for troubleshooting
-        return jsonify({"error": str(exc)}), 502
+    except Exception:
+        # See the comment in sign_csr() above: log full details server-side only.
+        logger.exception("set-pin failed")
+        return jsonify({"error": "Failed to set PIN. See server logs for details."}), 502
 
     return jsonify({
         "status": "success",
@@ -184,4 +193,9 @@ def set_pin():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    # debug=False: the Werkzeug debugger (debug=True) lets anyone who can reach this
+    # server execute arbitrary code via the browser. Even for a localhost-only demo,
+    # that's not a pattern worth normalizing. Flask's auto-reloader (via `use_reloader`)
+    # is independent of debug mode and not needed here, so it's left at its default (off).
+    logging.basicConfig(level=logging.INFO)
+    app.run(host="127.0.0.1", port=5000, debug=False)
