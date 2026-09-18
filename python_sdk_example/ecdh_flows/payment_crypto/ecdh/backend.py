@@ -46,24 +46,45 @@ class Backend:
     def sign_with_private_ca(self, csr):
         """
         Signs the client-side ECDH Key with AWS Private CA and returns the Certificate and Certificate Chain
-        :param csr: Certificate Signing Request
+        :param csr: Certificate Signing Request. Either a `cryptography` x509 CSR object (as produced by the
+                    Python CLI flow) or a PEM-encoded CSR as `str`/`bytes` (as produced by a browser client
+                    using pkijs, where PIN block formatting and CSR generation happen client-side).
         :return:
         """
         validity = {
             'Type': 'DAYS',
             'Value': 1
         }
-        return CryptoUtils.sign_with_private_ca(self.aws_private_ca_arn, csr.public_bytes(serialization.Encoding.PEM),
-                                                validity)
+        if hasattr(csr, "public_bytes"):
+            csr_pem = csr.public_bytes(serialization.Encoding.PEM)
+        elif isinstance(csr, str):
+            csr_pem = csr.encode('utf-8')
+        else:
+            csr_pem = csr
+        return CryptoUtils.sign_with_private_ca(self.aws_private_ca_arn, csr_pem, validity)
 
     def store_pvv(self, pvv):
         # here we would store the PVV in a safe storage
         self.pvv = pvv
 
+    def sign_csr(self, ecdsa_csr):
+        """
+        Signs a client-generated CSR with the demo AWS Private CA, proving the client's
+        ephemeral public key is trusted for this ECDH exchange. This is a distinct, explicit
+        step so callers (e.g. the browser demo) can surface it as its own operation rather
+        than have it happen silently inside set_pin()/reset_pin()/get_ecdh_pinblock().
+        :param ecdsa_csr: Certificate Signing Request (see sign_with_private_ca for accepted types)
+        :return: PEM-encoded signed client certificate (str)
+        """
+        signed_client_certificate, ca_chain = self.sign_with_private_ca(ecdsa_csr)
+        return signed_client_certificate
+
     def set_pin(self, pan, encrypted_pinblock, ecdsa_csr, shared_info):
         # Sign the client's CSR
-        signed_client_certificate, ca_chain = self.sign_with_private_ca(ecdsa_csr)
+        signed_client_certificate = self.sign_csr(ecdsa_csr)
+        return self.set_pin_with_signed_certificate(pan, encrypted_pinblock, signed_client_certificate, shared_info)
 
+    def set_pin_with_signed_certificate(self, pan, encrypted_pinblock, signed_client_certificate, shared_info):
         # request ECDSA Symmetric to PEK translation
         newEncryptedPinBlock = dataplane_client.translate_pin_data(
             EncryptedPinBlock=encrypted_pinblock,

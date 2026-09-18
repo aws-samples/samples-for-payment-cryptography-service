@@ -1,0 +1,128 @@
+:root {
+  color-scheme: light dark;
+  --fg: #1a1a2e;
+  --bg: #f7f7fb;
+  --card-bg: #ffffff;
+  --border: #d7d9e3;
+  --accent: #1f6feb;
+  --success: #1a7f37;
+  --error: #cf222e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+h1 {
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  color: #555;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+form label {
+  display: block;
+  font-weight: 600;
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.9rem;
+}
+
+form input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+button {
+  margin-top: 1.25rem;
+  padding: 0.65rem 1.25rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status {
+  min-height: 1.5rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.status--working {
+  color: #9a6700;
+}
+
+.status--success {
+  color: var(--success);
+}
+
+.status--error {
+  color: var(--error);
+}
+
+.result__note {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.field-error {
+  color: var(--error);
+  font-size: 0.85rem;
+  margin-top: 0.35rem;
+}
+
+.field-note {
+  color: #6a6a6a;
+  font-size: 0.8rem;
+  font-style: italic;
+  margin-top: 0.35rem;
+}
+
+.log-card summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.log {
+  margin-top: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  color: #333;
+  max-height: 260px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
