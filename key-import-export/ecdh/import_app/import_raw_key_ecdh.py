@@ -68,6 +68,68 @@ def _enforce_non_production_guardrail():
         sys.exit(1)
 
 
+# Minimum boto3 version that includes the AWS Payment Cryptography ECDH key-exchange
+# support this script relies on (ImportKey with a DiffieHellmanTr31KeyBlock / ECDH-derived
+# key material). This API shape shipped in boto3/botocore 1.37.23; older versions will
+# fail with a confusing parameter-validation or "unknown parameter" error instead of a
+# clear message. See the botocore CHANGELOG entry for 1.37.23 (payment-cryptography:
+# "...uses ECDH to derive a one-time key transport key...").
+MIN_BOTO3_VERSION = (1, 37, 23)
+
+
+def _parse_version(version_string):
+    """Parse a dotted version like '1.37.23' into a comparable tuple of ints.
+
+    Only the leading numeric components are used; any pre-release/build suffix
+    (e.g. '1.37.23.dev0') is ignored so the comparison stays robust.
+    """
+    parts = []
+    for component in version_string.split("."):
+        number = ""
+        for ch in component:
+            if ch.isdigit():
+                number += ch
+            else:
+                break
+        if number == "":
+            break
+        parts.append(int(number))
+    return tuple(parts)
+
+
+def _enforce_boto3_version():
+    """Fail fast with a clear, actionable message if boto3 is too old.
+
+    The ECDH import path used by this script requires the Payment Cryptography
+    API additions in boto3 1.37.23+. Running on an older boto3 produces an opaque
+    error deep inside the ImportKey call; this check surfaces the real cause and
+    tells the operator exactly how to fix it.
+    """
+    installed = getattr(boto3, "__version__", "0")
+    if _parse_version(installed) < MIN_BOTO3_VERSION:
+        required = ".".join(str(n) for n in MIN_BOTO3_VERSION)
+        print("\n" + "=" * 78, file=sys.stderr)
+        print("ERROR: boto3 is too old for this script.", file=sys.stderr)
+        print(f"  installed: {installed}", file=sys.stderr)
+        print(f"  required : >= {required}", file=sys.stderr)
+        print(
+            "\nThe AWS Payment Cryptography ECDH key-exchange APIs this script uses were\n"
+            "added in boto3 "
+            f"{required}. Upgrade boto3, ideally inside a virtual environment:\n"
+            "\n"
+            "  python3 -m venv venv\n"
+            "  source venv/bin/activate       # Windows: venv\\Scripts\\activate\n"
+            "  pip install -r requirements.txt\n"
+            "\n"
+            "Or upgrade boto3 directly:\n"
+            "\n"
+            "  pip install --upgrade 'boto3>=" + required + "'\n",
+            file=sys.stderr,
+        )
+        print("=" * 78 + "\n", file=sys.stderr)
+        sys.exit(1)
+
+
 RECEIVER_KEY_ALIAS = "alias/import-ecdh-receiver"
 SENDER_ROOT_CA_ALIAS = "alias/import-ecdh-sender-root"
 IMPORTED_KEY_ALIAS = "alias/import-ecdh-result"
@@ -325,6 +387,11 @@ def main():
     )
 
     args = parser.parse_args()
+
+    # Fail fast on an unsupported boto3 before doing any work, so the operator gets a
+    # clear upgrade message instead of an opaque error inside the ImportKey call. Runs
+    # after parse_args() so --help still exits immediately.
+    _enforce_boto3_version()
 
     # Confirmation happens after argument parsing so --help exits immediately without
     # requiring interactive confirmation first.
