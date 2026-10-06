@@ -21,10 +21,17 @@ Note: As this script handles cleartext key material, it is intended strictly for
 ## Prerequisites
 
 ### Python Dependencies
-This script relies on the `cryptography` library for low-level cryptographic operations, `psec` for TR-31 related operations, `pycryptodome` for KCV calculation, and `boto3` for AWS interactions.
+
+> **Requires boto3 >= 1.37.23** (the release that added the Payment Cryptography ECDH
+> APIs). The script checks this at startup; `requirements.txt` pins it.
+
+Install into a virtual environment (keeps a current `boto3` isolated from your system Python):
 
 ```bash
-pip install boto3 cryptography pycryptodome psec
+# From this directory (key-import-export/ecdh/export_app)
+python3 -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
 ### AWS Permissions
@@ -155,6 +162,26 @@ Unlike the import script, no new symmetric key is created in APC -- the target k
 
 ### TR-31 Header
 The TR-31 header returned by APC in the wrapped key block reflects the target key's actual `KeyUsage`, `KeyAlgorithm`, `KeyModesOfUse`, and exportability, as originally configured when the key was created/imported into APC (or, for IPEK export, the derived IPEK's `B1` usage). The script reads this header back after unwrapping and prints it for reference.
+
+The header uses short TR-31 codes. These map back to the AWS Payment Cryptography key
+attributes as follows (same mapping the import script applies when creating a key):
+
+| TR-31 code in header | APC attribute |
+| :--- | :--- |
+| Key usage `K0` | `TR31_K0_KEY_ENCRYPTION_KEY` |
+| Key usage `K1` | `TR31_K1_KEY_BLOCK_PROTECTION_KEY` |
+| Key usage `B0` | `TR31_B0_BASE_DERIVATION_KEY` |
+| Key usage `B1` | derived IPEK (DUKPT initial key) — shown instead of `B0` on a `--ksn` export |
+| Key usage `D0` | `TR31_D0_SYMMETRIC_DATA_ENCRYPTION_KEY` |
+| Key usage `P0` | `TR31_P0_PIN_ENCRYPTION_KEY` |
+| Mode of use `B` | `Encrypt = true, Decrypt = true` |
+| Mode of use `X` | `DeriveKey = true` |
+| Mode of use `E` / `D` | `Encrypt = true` / `Decrypt = true` |
+| Mode of use `G` / `V` / `C` | `Generate` / `Verify` / both |
+| Mode of use `N` | `NoRestrictions = true` |
+| Algorithm `A` / `T` / `R` | `AES_*` / `TDES_*` / `RSA_*` |
+
+See [Understanding key attributes](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/keys-validattributes.html) for the full list and which combinations are valid.
 
 ### Shared Information
 The Key Derivation Function (KDF) uses a randomly-generated `SharedInformation` hex string by default (override with `--shared-info` if you need a specific value). This is passed to the AWS `ExportKey` API's `DerivationData.SharedInformation` field to ensure APC derives the exact same wrapping key that this script derives locally.

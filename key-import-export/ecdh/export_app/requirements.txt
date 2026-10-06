@@ -1,0 +1,8 @@
+# boto3 1.37.23 is the first release with the AWS Payment Cryptography ECDH
+# key-exchange support this script requires (ExportKey with ECDH-derived key
+# material). Older versions fail with an opaque error. The script also enforces
+# this minimum at runtime.
+boto3>=1.37.23
+cryptography>=3.4.8
+pycryptodome>=3.15.0
+psec>=1.2.0

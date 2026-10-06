@@ -23,10 +23,17 @@ Note: As this script handles cleartext key material via CLI arguments, it is int
 ## Prerequisities
 
 ### Python Dependencies
-Ensure you have the following Python libraries installed. This script relies heavily on the `cryptography` library for low-level cryptographic operations, `psec` for TR-31 related operations and `boto3` for AWS interactions.
+
+> **Requires boto3 >= 1.37.23** (the release that added the Payment Cryptography ECDH
+> APIs). The script checks this at startup; `requirements.txt` pins it.
+
+Install into a virtual environment (keeps a current `boto3` isolated from your system Python):
 
 ```bash
-pip install boto3 cryptography argparse psec
+# From this directory (key-import-export/ecdh/import_app)
+python3 -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
 ### AWS Permissions
@@ -61,10 +68,64 @@ Run the script from the command line passing the AWS Region, AWS CLI Profile, an
 python import_raw_key_ecdh.py --region <region> --profile <profile_name> --clearkey <hex_key> \
                          [--component1 <hex> --component2 <hex> --component3 <hex>] \
                          [--export-mode <E|S|N>] \
-                         [--key-type <K0|B0|D0|P0|D1>] \
+                         [--key-type <K0|K1|B0|D0|D1|P0|M7>] \
                          [--mode-of-use <B|X|N|E|D|G|C|V>] \
-                         [--algorithm <A|T|R>]
+                         [--algorithm <A|T|R|H>] \
+                         [--hash-algorithm <HMAC_SHA1|HMAC_SHA256|HMAC_SHA384|HMAC_SHA512>]
 ```
+
+### How the options map to AWS Payment Cryptography
+
+The short codes passed on the command line are standard TR-31 values. They map directly to
+the AWS Payment Cryptography key attributes you'd see on the created key, as follows.
+
+#### `--key-type` → APC `KeyUsage`
+
+| `--key-type` | APC `KeyUsage` |
+| :--- | :--- |
+| `K0` | `TR31_K0_KEY_ENCRYPTION_KEY` |
+| `K1` | `TR31_K1_KEY_BLOCK_PROTECTION_KEY` |
+| `B0` | `TR31_B0_BASE_DERIVATION_KEY` |
+| `D0` | `TR31_D0_SYMMETRIC_DATA_ENCRYPTION_KEY` |
+| `D1` | `TR31_D1_ASYMMETRIC_KEY_FOR_DATA_ENCRYPTION` |
+| `P0` | `TR31_P0_PIN_ENCRYPTION_KEY` |
+| `M7` | `TR31_M7_HMAC_KEY` |
+
+#### `--mode-of-use` → APC `KeyModesOfUse`
+
+| `--mode-of-use` | APC `KeyModesOfUse` |
+| :--- | :--- |
+| `B` | `Encrypt = true, Decrypt = true` (both) |
+| `E` | `Encrypt = true` |
+| `D` | `Decrypt = true` |
+| `X` | `DeriveKey = true` |
+| `G` | `Generate = true` |
+| `V` | `Verify = true` |
+| `C` | `Generate = true, Verify = true` (both) |
+| `N` | `NoRestrictions = true` |
+
+#### `--algorithm` → APC `KeyAlgorithm`
+
+Length determines the exact algorithm (key length comes from `--clearkey` / components).
+
+| `--algorithm` | APC `KeyAlgorithm` |
+| :--- | :--- |
+| `A` | `AES_128` / `AES_192` / `AES_256` |
+| `T` | `TDES_2KEY` / `TDES_3KEY` |
+| `R` | `RSA_2048` / `RSA_3072` / `RSA_4096` |
+| `H` | HMAC (TDES/AES-backed; requires `--key-type M7` and `--hash-algorithm`) |
+
+#### `--export-mode` → APC exportability
+
+| `--export-mode` | Meaning |
+| :--- | :--- |
+| `E` | Exportable |
+| `S` | Sensitive (exportable only under a KEK, per TR-31) |
+| `N` | Non-exportable |
+
+> Not every combination is valid — APC enforces which modes of use are allowed for each key
+> usage (e.g. a `B0` base derivation key only allows `DeriveKey`). See
+> [Understanding key attributes](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/keys-validattributes.html).
 
 ### Examples
 
