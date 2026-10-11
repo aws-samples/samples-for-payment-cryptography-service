@@ -23,6 +23,41 @@ class Apc(object):
         session = boto3.Session(profile_name=config.get("profile") or None)
         self.apc_client = session.client("payment-cryptography", region_name=config["region"])
 
+    @staticmethod
+    def _key_check_value_algorithm(key_algorithm: SymmetricKeyAlgorithm) -> str:
+        """
+        Resolves the KeyCheckValueAlgorithm for the transferred key: ANSI_X9_24
+        for TDES keys, CMAC otherwise. Mirrors the reference pattern in
+        key-import-export/rsa/import_app/import_raw_key_rsa.py (TDES -> ANSI_X9_24,
+        AES -> CMAC). See:
+        https://docs.aws.amazon.com/payment-cryptography/latest/APIReference/API_ImportKey.html
+        """
+        if key_algorithm.name.startswith("TDES"):
+            return "ANSI_X9_24"
+        return "CMAC"
+
+    @staticmethod
+    def _key_check_value_algorithm_from_key_block(transport_key: str) -> str:
+        """
+        Resolves the KeyCheckValueAlgorithm from a payShield/TR-31 key block
+        header instead of a declared algorithm: ANSI_X9_24 for TDES keys, CMAC
+        otherwise.
+
+        Used by the ECDH flow, where the transport key's own algorithm must not
+        be conflated with the AES ECDH-derived KEK used to wrap it. ECDH always
+        uses a key-block LMK (variant LMK is rejected up front), so the transport
+        key is always an 'S1'-scheme TR-31 key block. The algorithm indicator is
+        the single character following the scheme byte, block-version byte and
+        the 4-char length field (e.g. "S1" + "0096" + "E2" + "T"...), where
+        T=TDES, A=AES, D=single DES.
+        """
+        try:
+            algorithm_char = transport_key[8].upper()
+        except (IndexError, TypeError):
+            # Fall back to CMAC if the header cannot be parsed.
+            return "CMAC"
+        return "ANSI_X9_24" if algorithm_char == "T" else "CMAC"
+
     def create_symmetric_key(
         self, key_algorithm: SymmetricKeyAlgorithm, key_usage: SymmetricKeyUsage
     ):
@@ -155,6 +190,7 @@ class Apc(object):
         kdh_ca_certificate_trusted,
         tr34_payload,
         nonce,
+        key_algorithm: SymmetricKeyAlgorithm,
     ):
         kdh_certificate_base64 = base64.b64encode(
             kdh_certificate.public_bytes(encoding=serialization.Encoding.PEM)
@@ -171,10 +207,14 @@ class Apc(object):
             }
         }
 
-        response = self.apc_client.import_key(Enabled=True, KeyMaterial=key_material)
+        response = self.apc_client.import_key(
+            Enabled=True,
+            KeyCheckValueAlgorithm=self._key_check_value_algorithm(key_algorithm),
+            KeyMaterial=key_material,
+        )
         return response["Key"]["KeyArn"], response["Key"]["KeyCheckValue"]
 
-    def import_symmetric_key_using_tr31(self, key_to_import, kek):
+    def import_symmetric_key_using_tr31(self, key_to_import, kek, key_algorithm: SymmetricKeyAlgorithm):
         key_material = {
             "Tr31KeyBlock": {
                 "WrappingKeyIdentifier": kek,
@@ -182,7 +222,11 @@ class Apc(object):
             }
         }
 
-        response = self.apc_client.import_key(Enabled=True, KeyMaterial=key_material)
+        response = self.apc_client.import_key(
+            Enabled=True,
+            KeyCheckValueAlgorithm=self._key_check_value_algorithm(key_algorithm),
+            KeyMaterial=key_material,
+        )
         return response["Key"]["KeyArn"], response["Key"]["KeyCheckValue"]
 
     # Default APC KeyUsage and KeyModesOfUse for each coarse SymmetricKeyUsage.
@@ -265,7 +309,11 @@ class Apc(object):
             }
         }
 
-        response = self.apc_client.import_key(Enabled=True, KeyMaterial=key_material)
+        response = self.apc_client.import_key(
+            Enabled=True,
+            KeyCheckValueAlgorithm=self._key_check_value_algorithm(key_algorithm),
+            KeyMaterial=key_material,
+        )
         return response["Key"]["KeyArn"], response["Key"]["KeyCheckValue"]
 
     def import_symmetric_key_using_ecdh(
@@ -278,10 +326,17 @@ class Apc(object):
         hash_algorithm: KeyDerivationHashAlgorithm,
         shared_info,
         key_to_import,
+        transport_key_block: str,
     ):
         response = self.apc_client.import_key(
             Enabled=True,
-            KeyCheckValueAlgorithm="CMAC",
+            # KCV algorithm is derived from the transport key's own TR-31 key
+            # block header (T=TDES -> ANSI_X9_24, else CMAC), NOT from the AES
+            # ECDH-derived KEK used to wrap it. This keeps the KCV correct for a
+            # TDES transport key without affecting the wrap key-block version.
+            KeyCheckValueAlgorithm=self._key_check_value_algorithm_from_key_block(
+                transport_key_block
+            ),
             KeyMaterial={
                 "DiffieHellmanTr31KeyBlock": {
                     "CertificateAuthorityPublicKeyIdentifier": ca_certificate_trusted,
