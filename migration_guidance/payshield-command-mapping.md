@@ -179,13 +179,55 @@ This document maps Thales payShield HSM commands to their equivalent AWS Payment
 | Y | Generate CVV | CVV (service code varies, typically 101 or 121) | GenerateCardData | CardGenerationAttributes=CardVerificationValue1 | | [Link](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/use-cases-issuers.generalfunctions.cvv.html) |
 | Y | Generate CVV2 | CVV2 (service code of 000) | GenerateCardData | CardGenerationAttributes=CardVerificationValue2 | CVV2 is the three digit value historically on the back of a card and used for e-commerce transactions. | [Link](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/use-cases-issuers.generalfunctions.cvv2.html) |
 | Y | Generate iCVV | iCVV (service code of 999) | GenerateCardData | CardGenerationAttributes=CardVerificationValue1 | | [Link](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/use-cases-issuers.generalfunctions.icvv.html) |
-| Y | Generates various kinds of card data | | GenerateCardData | | | |
+| Y | Generates various kinds of card data | | GenerateCardData | | The CVK (C0) must have mode of use C, G or V. CVKs migrated from payShield with mode of use N must be re-moded first. See [CVK mode of use N](#cvk-mode-of-use-n-migrated-from-payshield). | |
 
 ### Verify Card Data (CY)
 
 | Supported | Description | Command | APC Equivalent | Notes |
 |-----------|-------------|---------|----------------|-------|
-| Y | Verify a Card Verification Code or Value | CY | Verify Card Data | |
+| Y | Verify a Card Verification Code or Value | CY | Verify Card Data | The CVK (C0) must have mode of use C or V. CVKs migrated from payShield with mode of use N must be re-moded first. See [CVK mode of use N](#cvk-mode-of-use-n-migrated-from-payshield). |
+
+### CVK mode of use N (migrated from payShield)
+
+payShield lets you create and export a CVK (TR-31 key usage `C0`) with mode of use `N` (no restrictions). X9.143 doesn't allow mode `N` for a `C0` key. AWS Payment Cryptography (APC) follows X9.143, so `GenerateCardData` (CW) and `VerifyCardData` (CY) won't use a CVK whose mode of use is `N`.
+
+You can't fix this by editing the header byte in the TR-31 block. The header is bound to the key block MAC, so any change makes the block invalid. Instead, APC narrows the mode of use during a re-wrap:
+
+1. Import the mode `N` CVK into APC under your existing KEK.
+2. Export it under a temporary KEK, setting `KeyBlockHeaders.KeyModesOfUse` to the target mode.
+3. Import the new block under the temporary KEK. The key is the same, so the KCV matches the source.
+4. Delete the temporary KEK.
+
+[`cvk-mode-of-use/apc_remode_cvk.py`](cvk-mode-of-use/apc_remode_cvk.py) runs these steps for you:
+
+| Target mode | APC KeyModesOfUse | Works with |
+|-------------|-------------------|------------|
+| `C` (default) | Generate + Verify | CW and CY |
+| `G` | Generate | CW only |
+| `V` | Verify | CY only |
+
+```bash
+pip install -r cvk-mode-of-use/requirements.txt
+
+# Check the mode of use in a TR-31 block header (doesn't call APC)
+python3 cvk-mode-of-use/apc_remode_cvk.py --parse-only --key-block B0080C0TN00S0000...
+
+# Import a payShield-exported CVK block (mode N) and re-mode it to C
+python3 cvk-mode-of-use/apc_remode_cvk.py --region us-east-1 \
+    --kek-arn <KEK ARN or alias> \
+    --key-block B0080C0TN00S0000...
+
+# Re-mode a CVK that's already in APC with mode N
+python3 cvk-mode-of-use/apc_remode_cvk.py --region us-east-1 \
+    --cvk-arn <CVK ARN> --mode C
+```
+
+Notes:
+- The KEK used with `--key-block` must already be in APC. You can import it with [`key-import-export/ecdh/import_app/import_raw_key_ecdh.py`](../key-import-export/ecdh/import_app/import_raw_key_ecdh.py) (`--key-type K0 --algorithm T --mode-of-use B --export-mode E`).
+- The script checks that the re-imported key's KCV matches the source, then schedules the temporary KEK for deletion (3 days, the APC minimum). This runs even if an earlier step fails.
+- The original mode `N` key stays in APC. Add `--delete-original` to schedule it for deletion as well.
+- Exportability is carried over from the source key.
+- See the [script README](cvk-mode-of-use/README.md) for the IAM permissions it needs.
 
 ### Console Key Operations (Console-IK, Console-KG)
 
