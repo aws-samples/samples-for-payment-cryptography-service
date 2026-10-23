@@ -1,6 +1,6 @@
 # Re-mode a CVK from mode of use N
 
-`apc_remode_cvk.py` changes a CVK (TR-31 key usage `C0`) in AWS Payment Cryptography from mode of use `N` (no restrictions) to `C` (Generate + Verify), `G` (Generate) or `V` (Verify), so you can use it with `GenerateCardData` (CW) and `VerifyCardData` (CY).
+`remode_cvk.py` changes a CVK (TR-31 key usage `C0`) in AWS Payment Cryptography from mode of use `N` (no restrictions) to `C` (Generate + Verify), `G` (Generate) or `V` (Verify), so you can use it with `GenerateCardData` (CW) and `VerifyCardData` (CY).
 
 For background on why this is needed and usage examples, see [CVK mode of use N](../payshield-command-mapping.md#cvk-mode-of-use-n-migrated-from-payshield) in the command mapping.
 
@@ -48,4 +48,4 @@ Example policy:
 
 `Resource` uses `key/*` because the temporary KEK and the re-imported CVK don't exist until the script runs, so their ARNs aren't known in advance.
 
-The KEK passed with `--kek-arn` must already exist in APC. Importing it (for example with [`import_raw_key_ecdh.py`](../../key-import-export/ecdh/import_app/import_raw_key_ecdh.py)) needs its own permissions, which aren't listed here.
+The KEK passed with `--kek-arn` must already exist in AWS Payment Cryptography. Importing it (for example with [`import_raw_key_ecdh.py`](../../key-import-export/ecdh/import_app/import_raw_key_ecdh.py)) needs its own permissions, which aren't listed here.

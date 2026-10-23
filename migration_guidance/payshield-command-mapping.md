@@ -189,18 +189,18 @@ This document maps Thales payShield HSM commands to their equivalent AWS Payment
 
 ### CVK mode of use N (migrated from payShield)
 
-payShield lets you create and export a CVK (TR-31 key usage `C0`) with mode of use `N` (no restrictions). X9.143 doesn't allow mode `N` for a `C0` key. AWS Payment Cryptography (APC) follows X9.143, so `GenerateCardData` (CW) and `VerifyCardData` (CY) won't use a CVK whose mode of use is `N`.
+payShield lets you create and export a CVK (TR-31 key usage `C0`) with mode of use `N` (no restrictions). X9.143 doesn't allow mode `N` for a `C0` key. AWS Payment Cryptography follows X9.143, so `GenerateCardData` (CW) and `VerifyCardData` (CY) won't use a CVK whose mode of use is `N`.
 
-You can't fix this by editing the header byte in the TR-31 block. The header is bound to the key block MAC, so any change makes the block invalid. Instead, APC narrows the mode of use during a re-wrap:
+You can't fix this by editing the header byte in the TR-31 block. The header is bound to the key block MAC, so any change makes the block invalid. Instead, AWS Payment Cryptography narrows the mode of use during a re-wrap:
 
-1. Import the mode `N` CVK into APC under your existing KEK.
+1. Import the mode `N` CVK into AWS Payment Cryptography under your existing KEK.
 2. Export it under a temporary KEK, setting `KeyBlockHeaders.KeyModesOfUse` to the target mode.
 3. Import the new block under the temporary KEK. The key is the same, so the KCV matches the source.
 4. Delete the temporary KEK.
 
-[`cvk-mode-of-use/apc_remode_cvk.py`](cvk-mode-of-use/apc_remode_cvk.py) runs these steps for you:
+[`cvk-mode-of-use/remode_cvk.py`](cvk-mode-of-use/remode_cvk.py) runs these steps for you:
 
-| Target mode | APC KeyModesOfUse | Works with |
+| Target mode | KeyModesOfUse | Works with |
 |-------------|-------------------|------------|
 | `C` (default) | Generate + Verify | CW and CY |
 | `G` | Generate | CW only |
@@ -209,23 +209,23 @@ You can't fix this by editing the header byte in the TR-31 block. The header is 
 ```bash
 pip install -r cvk-mode-of-use/requirements.txt
 
-# Check the mode of use in a TR-31 block header (doesn't call APC)
-python3 cvk-mode-of-use/apc_remode_cvk.py --parse-only --key-block B0080C0TN00S0000...
+# Check the mode of use in a TR-31 block header (doesn't call AWS Payment Cryptography)
+python3 cvk-mode-of-use/remode_cvk.py --parse-only --key-block B0080C0TN00S0000...
 
 # Import a payShield-exported CVK block (mode N) and re-mode it to C
-python3 cvk-mode-of-use/apc_remode_cvk.py --region us-east-1 \
+python3 cvk-mode-of-use/remode_cvk.py --region us-east-1 \
     --kek-arn <KEK ARN or alias> \
     --key-block B0080C0TN00S0000...
 
-# Re-mode a CVK that's already in APC with mode N
-python3 cvk-mode-of-use/apc_remode_cvk.py --region us-east-1 \
+# Re-mode a CVK that's already in AWS Payment Cryptography with mode N
+python3 cvk-mode-of-use/remode_cvk.py --region us-east-1 \
     --cvk-arn <CVK ARN> --mode C
 ```
 
 Notes:
-- The KEK used with `--key-block` must already be in APC. You can import it with [`key-import-export/ecdh/import_app/import_raw_key_ecdh.py`](../key-import-export/ecdh/import_app/import_raw_key_ecdh.py) (`--key-type K0 --algorithm T --mode-of-use B --export-mode E`).
-- The script checks that the re-imported key's KCV matches the source, then schedules the temporary KEK for deletion (3 days, the APC minimum). This runs even if an earlier step fails.
-- The original mode `N` key stays in APC. Add `--delete-original` to schedule it for deletion as well.
+- The KEK used with `--key-block` must already be in AWS Payment Cryptography. You can import it with [`key-import-export/ecdh/import_app/import_raw_key_ecdh.py`](../key-import-export/ecdh/import_app/import_raw_key_ecdh.py) (`--key-type K0 --algorithm T --mode-of-use B --export-mode E`).
+- The script checks that the re-imported key's KCV matches the source, then schedules the temporary KEK for deletion (3 days, the AWS Payment Cryptography minimum). This runs even if an earlier step fails.
+- The original mode `N` key stays in AWS Payment Cryptography. Add `--delete-original` to schedule it for deletion as well.
 - Exportability is carried over from the source key.
 - See the [script README](cvk-mode-of-use/README.md) for the IAM permissions it needs.
 

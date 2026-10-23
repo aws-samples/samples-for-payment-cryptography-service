@@ -5,7 +5,7 @@ Re-mode a CVK (C0) in AWS Payment Cryptography from mode of use 'N'
 so it works with GenerateCardData / VerifyCardData.
 
 Mode N is accepted by a payShield but doesn't meet X9.143 requirements for a
-C0 key, and APC doesn't support it.
+C0 key, and AWS Payment Cryptography doesn't support it.
 
 The TR-31 header is MAC-bound, so the mode byte can't be edited in place.
 Instead the key is exported under a temporary KEK with KeyBlockHeaders
@@ -16,7 +16,7 @@ Flow:
        ../../key-import-export/ecdh/import_app/import_raw_key_ecdh.py \
          --clearkey <hex> --key-type K0 --algorithm T --mode-of-use B --export-mode E
      -> KEK_ARN (pass as --kek-arn)
-  2. Create a temporary AES-256 KEK in APC                       -> KEK2_ARN
+  2. Create a temporary AES-256 KEK                              -> KEK2_ARN
   3. Import the sample CVK (TR-31, mode N) under KEK_ARN          -> CVK (mode N)
      (skipped if --cvk-arn is given instead of --key-block)
   4. Export the CVK under KEK2_ARN, changing mode of use N -> --mode (default C)
@@ -25,14 +25,14 @@ Flow:
   Optional: --delete-original also schedules the mode-N CVK for deletion.
 
 Examples:
-  python3 apc_remode_cvk.py --region us-east-1 \
+  python3 remode_cvk.py --region us-east-1 \
       --kek-arn alias/import-kek-ecdh-result \
       --key-block B0080C0TN00S0000...   # TR-31 CVK block wrapped under the KEK
 
-  python3 apc_remode_cvk.py --region us-east-1 --cvk-arn arn:...:key/abcd1234
+  python3 remode_cvk.py --region us-east-1 --cvk-arn arn:...:key/abcd1234
 
-  # Decode a block header without calling APC:
-  python3 apc_remode_cvk.py --parse-only --key-block B0080C0TN00S0000...
+  # Decode a block header without calling AWS Payment Cryptography:
+  python3 remode_cvk.py --parse-only --key-block B0080C0TN00S0000...
 """
 
 import argparse
@@ -55,7 +55,7 @@ MODE_NAMES = {
 }
 
 
-# Target modes X9.143 allows for a C0 CVK -> APC KeyModesOfUse
+# Target modes X9.143 allows for a C0 CVK -> AWS Payment Cryptography KeyModesOfUse
 TARGET_MODES = {
     "C": {"Generate": True, "Verify": True},
     "G": {"Generate": True},
@@ -104,7 +104,8 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--key-block", help="TR-31 CVK block (mode N) wrapped under --kek-arn")
-    src.add_argument("--cvk-arn", help="Existing CVK in APC to re-mode (skips step 3)")
+    src.add_argument("--cvk-arn",
+                     help="Existing CVK in AWS Payment Cryptography to re-mode (skips step 3)")
     ap.add_argument("--kek-arn", help="KEK_ARN from step 1 (required with --key-block)")
     ap.add_argument("--mode", choices=TARGET_MODES, default="C",
                     help="Target mode of use: C=Generate+Verify (default), G=Generate, V=Verify")
@@ -112,7 +113,8 @@ def main() -> int:
     ap.add_argument("--delete-original", action="store_true",
                     help="Also schedule the mode-N CVK for deletion")
     ap.add_argument("--parse-only", action="store_true",
-                    help="Decode --key-block header and exit without calling APC")
+                    help="Decode --key-block header and exit without calling "
+                         "AWS Payment Cryptography")
     args = ap.parse_args()
 
     if args.parse_only:
@@ -200,12 +202,13 @@ def main() -> int:
         print(f"   {final['KeyArn']}")
         return 0
 
-    except Exception as exc:  # surface the APC error text as-is
+    except Exception as exc:  # surface the AWS Payment Cryptography error text as-is
         print(f"\n❌ Failed: {exc}")
         return 1
 
     finally:
-        # 6. KEK2 was only temporary. APC's minimum deletion window is 3 days.
+        # 6. KEK2 was only temporary. AWS Payment Cryptography's minimum deletion
+        # window is 3 days.
         if kek2_arn:
             try:
                 cp.delete_key(KeyIdentifier=kek2_arn, DeleteKeyInDays=3)
