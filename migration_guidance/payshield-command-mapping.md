@@ -478,15 +478,15 @@ Notes:
 
 ### HMAC Key and Generation (L0, LQ)
 
-| Supported | Description | Sub-Command | APC Equivalent | APC Sub-Command | Notes |
-|-----------|-------------|-------------|----------------|-----------------|-------|
-| Y | Generate HMAC key | | Create Key | | |
-| N/A | Used for loading keys to HSM | LA | N/A | | Payment Cryptography abstracts HSM and there is no need to load keys. |
-| Y | Generate HMAC | 05 — SHA-224 | GenerateMac | Algorithm=HMAC_SHA224 | |
-| Y | Generate HMAC | 06 — SHA-256 | GenerateMac | Algorithm=HMAC_SHA256 | |
-| Y | Generate HMAC | 07 — SHA-384 | GenerateMac | Algorithm=HMAC_SHA384 | |
-| Y | Generate HMAC | 08 — SHA-512 | GenerateMac | Algorithm=HMAC_SHA512 | |
-| Y | Generate an HMAC on a Block of Data | | GenerateMac | | The HMAC key (M7) must have mode of use C or G. Keys migrated from payShield with mode of use N must be re-moded first. See [Keys with mode of use N](#keys-with-mode-of-use-n-migrated-from-payshield). |
+| Supported | Description | Command | Sub-Command | APC Equivalent | APC Sub-Command | Notes |
+|-----------|-------------|---------|-------------|----------------|-----------------|-------|
+| Y | Generate HMAC key | L0 | | Create Key | | |
+| N/A | Used for loading keys to HSM | LA | | N/A | | Payment Cryptography abstracts HSM and there is no need to load keys. |
+| Y | Generate HMAC | LQ | 05 — SHA-224 | GenerateMac | Algorithm=HMAC_SHA224 | |
+| Y | Generate HMAC | LQ | 06 — SHA-256 | GenerateMac | Algorithm=HMAC_SHA256 | |
+| Y | Generate HMAC | LQ | 07 — SHA-384 | GenerateMac | Algorithm=HMAC_SHA384 | |
+| Y | Generate HMAC | LQ | 08 — SHA-512 | GenerateMac | Algorithm=HMAC_SHA512 | |
+| Y | Generate an HMAC on a Block of Data | LQ | | GenerateMac | | The HMAC key (M7) must have mode of use C or G. Keys migrated from payShield with mode of use N must be re-moded first. See [Keys with mode of use N](#keys-with-mode-of-use-n-migrated-from-payshield). |
 
 ### Verify HMAC (LS)
 
@@ -496,13 +496,13 @@ Notes:
 
 ### HMAC Import/Export (LU, LW, LY)
 
-| Supported | Description | Sub-Command | APC Equivalent | APC Sub-Command | Notes |
-|-----------|-------------|-------------|----------------|-----------------|-------|
-| Y | Import HMAC | TR-31 | ImportKey | KeyMaterial=Tr31KeyBlock | HMAC keys are a special case of TR-31/X9.143 as they have the hash algorithm embedded. The service supports this using the standard import/export functions. |
-| Y | Import an HMAC | | ImportKey | | HMAC require use of TR-31 optional header HM and can only be imported protected by AES-256 KEK. |
-| Y | Export HMAC | TR-31 | ExportKey | KeyMaterial=Tr31KeyBlock | Same as import — the service supports this using the standard import/export functions. |
-| Y | Export an HMAC | | ExportKey | | The service will automatically include the required HM header. KEK must be AES-256 to protect HMAC keys. |
-| N/A | Rotate LMK protecting HMAC | LY | N/A | | The service doesn't expose MFK-protected keys and handles key rotation as part of shared responsibility. |
+| Supported | Description | Command | Sub-Command | APC Equivalent | APC Sub-Command | Notes |
+|-----------|-------------|---------|-------------|----------------|-----------------|-------|
+| Y | Import HMAC | LU | TR-31 | ImportKey | KeyMaterial=Tr31KeyBlock | HMAC keys are a special case of TR-31/X9.143 as they have the hash algorithm embedded. The service supports this using the standard import/export functions. |
+| Y | Import an HMAC | LU | | ImportKey | | HMAC require use of TR-31 optional header HM and can only be imported protected by AES-256 KEK. The wrapping key must have key usage K0 (`TR31_K0_KEY_ENCRYPTION_KEY`), not K1 (`TR31_K1_KEY_BLOCK_PROTECTION_KEY`). |
+| Y | Export HMAC | LW | TR-31 | ExportKey | KeyMaterial=Tr31KeyBlock | Same as import — the service supports this using the standard import/export functions. |
+| Y | Export an HMAC | LW | | ExportKey | | The service will automatically include the required HM header. KEK must be AES-256 to protect HMAC keys. The wrapping key must have key usage K0 (`TR31_K0_KEY_ENCRYPTION_KEY`), not K1 (`TR31_K1_KEY_BLOCK_PROTECTION_KEY`). |
+| N/A | Rotate LMK protecting HMAC | LY | | N/A | | The service doesn't expose MFK-protected keys and handles key rotation as part of shared responsibility. |
 
 ### PIN Translation — Main Key (LE, LG)
 
