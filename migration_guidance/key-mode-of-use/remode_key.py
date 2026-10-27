@@ -14,6 +14,10 @@ Cryptography imports these keys, but:
   - E5 (card personalization) isn't used by any AWS Payment Cryptography
     operation, but can still be re-moded.
 
+X9.143 only technically allows mode N for a very limited set of uses. Any
+other use of mode N is for legacy reasons only, so re-moding is recommended
+even where it's optional.
+
 The TR-31 header is MAC-bound, so the mode byte can't be edited in place.
 Instead the key is exported under a temporary KEK with KeyBlockHeaders
 narrowing the modes of use, then re-imported from that new block.

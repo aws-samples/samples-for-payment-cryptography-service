@@ -2,6 +2,8 @@
 
 `remode_key.py` changes a symmetric key in AWS Payment Cryptography from TR-31 mode of use `N` (no restrictions) to a mode X9.143 allows for its key usage. Keys exported from payShield often have mode `N`, and many AWS Payment Cryptography operations refuse them. For example, `GenerateCardData` (CW) won't use a mode `N` CVK.
 
+X9.143 only technically allows mode `N` for a very limited set of uses. Any other use of mode `N` is for legacy reasons only, so re-moding is recommended even where AWS Payment Cryptography still accepts the key.
+
 | Key usages | Target modes (default first) |
 |------------|------------------------------|
 | `B0`, `E0`, `E1`, `E2`, `E4`, `E5`, `E6` | `X` (DeriveKey) |
