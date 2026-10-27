@@ -502,9 +502,9 @@ Notes:
 | Supported | Description | Command | Sub-Command | APC Equivalent | APC Sub-Command | Notes |
 |-----------|-------------|---------|-------------|----------------|-----------------|-------|
 | Y | Import HMAC | LU | Transport Format = 05 (TR-31) | ImportKey | KeyMaterial=Tr31KeyBlock | HMAC keys are a special case of TR-31/X9.143 as they have the hash algorithm embedded. The service supports this using the standard import/export functions. |
-| Y | Import an HMAC | LU | | ImportKey | | HMAC require use of TR-31 optional header HM and can only be imported protected by AES-256 KEK. payShield LU only supports a wrapping key with key usage K0. AWS Payment Cryptography supports both K0 (`TR31_K0_KEY_ENCRYPTION_KEY`) and K1 (`TR31_K1_KEY_BLOCK_PROTECTION_KEY`), so use a K0 wrapping key when exchanging HMAC keys with a payShield. |
+| Y | Import an HMAC | LU | | ImportKey | | HMAC require use of TR-31 optional header HM and can only be imported protected by AES-256 KEK. |
 | Y | Export HMAC | LW | Transport Format = 05 (TR-31) | ExportKey | KeyMaterial=Tr31KeyBlock | Same as import — the service supports this using the standard import/export functions. |
-| Y | Export an HMAC | LW | | ExportKey | | The service will automatically include the required HM header. KEK must be AES-256 to protect HMAC keys. payShield LW only supports a wrapping key with key usage K0. AWS Payment Cryptography supports both K0 (`TR31_K0_KEY_ENCRYPTION_KEY`) and K1 (`TR31_K1_KEY_BLOCK_PROTECTION_KEY`), so use a K0 wrapping key when exchanging HMAC keys with a payShield. |
+| Y | Export an HMAC | LW | | ExportKey | | The service will automatically include the required HM header. KEK must be AES-256 to protect HMAC keys. |
 | N/A | Rotate LMK protecting HMAC | LY | | N/A | | The service doesn't expose MFK-protected keys and handles key rotation as part of shared responsibility. |
 
 ### PIN Translation — Main Key (LE, LG)
