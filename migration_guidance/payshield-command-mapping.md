@@ -5,6 +5,7 @@ This document maps Thales payShield HSM commands to their equivalent AWS Payment
 **Legend:**
 - **Y** — Supported
 - **N/A** — Not applicable (managed by the service or not needed)
+- **\*** — Keys migrated from payShield with mode of use `N` must be re-moded first. See [Keys with mode of use N](#keys-with-mode-of-use-n-migrated-from-payshield).
 
 ---
 
@@ -109,7 +110,7 @@ This document maps Thales payShield HSM commands to their equivalent AWS Payment
 | Y | Generate ISO9797-1 Algo 3 — X9.19/Retail MAC | Mode 1 — X9.19 | GenerateMac | Algorithm=ISO9797_ALGORITHM3 | Supports up to 8192 hex characters or 4096 bytes. All inputs are in hex binary. |
 | Y | Generate AS2805 4.1 MAB | Mode 2 — AS2805 4.1 MAB | GenerateMac | Algorithm=AS2805_4_1 | Supports up to 8192 hex characters or 4096 bytes. All inputs are in hex binary. |
 | Y | Generate AS2805 4.1 MAC | Mode 3 — AS2805 4.1 MAC | GenerateMac | Algorithm=AS2805_4_1 | Supports up to 8192 hex characters or 4096 bytes. All inputs are in hex binary. |
-| Y | Generate MAC (General command) | | GenerateMac | | |
+| Y | Generate MAC (General command) | | GenerateMac | | MAC key (M1, M3, M6) needs mode of use C or G.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ### Verify MAC (C4)
 
@@ -119,7 +120,7 @@ This document maps Thales payShield HSM commands to their equivalent AWS Payment
 | Y | Verify ISO9797-1 Algo 3 — X9.19/Retail MAC | Mode 1 — X9.19 | VerifyMac | Algorithm=ISO9797_ALGORITHM3 | |
 | Y | Verify AS2805 4.1 MAB | Mode 2 — AS2805 4.1 MAB | VerifyMac | Algorithm=AS2805_4_1 | |
 | Y | Verify AS2805 4.1 MAC | Mode 3 — AS2805 4.1 MAC | VerifyMac | Algorithm=AS2805_4_1 | |
-| Y | Verify MAC (General command) | | VerifyMac | | |
+| Y | Verify MAC (General command) | | VerifyMac | | MAC key (M1, M3, M6) needs mode of use C or V.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ---
 
@@ -179,55 +180,85 @@ This document maps Thales payShield HSM commands to their equivalent AWS Payment
 | Y | Generate CVV | CVV (service code varies, typically 101 or 121) | GenerateCardData | CardGenerationAttributes=CardVerificationValue1 | | [Link](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/use-cases-issuers.generalfunctions.cvv.html) |
 | Y | Generate CVV2 | CVV2 (service code of 000) | GenerateCardData | CardGenerationAttributes=CardVerificationValue2 | CVV2 is the three digit value historically on the back of a card and used for e-commerce transactions. | [Link](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/use-cases-issuers.generalfunctions.cvv2.html) |
 | Y | Generate iCVV | iCVV (service code of 999) | GenerateCardData | CardGenerationAttributes=CardVerificationValue1 | | [Link](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/use-cases-issuers.generalfunctions.icvv.html) |
-| Y | Generates various kinds of card data | | GenerateCardData | | The CVK (C0) must have mode of use C, G or V. CVKs migrated from payShield with mode of use N must be re-moded first. See [CVK mode of use N](#cvk-mode-of-use-n-migrated-from-payshield). | |
+| Y | Generates various kinds of card data | | GenerateCardData | | CVK (C0) needs mode of use C or G.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) | |
 
 ### Verify Card Data (CY)
 
 | Supported | Description | Command | APC Equivalent | Notes |
 |-----------|-------------|---------|----------------|-------|
-| Y | Verify a Card Verification Code or Value | CY | Verify Card Data | The CVK (C0) must have mode of use C or V. CVKs migrated from payShield with mode of use N must be re-moded first. See [CVK mode of use N](#cvk-mode-of-use-n-migrated-from-payshield). |
+| Y | Verify a Card Verification Code or Value | CY | Verify Card Data | CVK (C0) needs mode of use C or V.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
-### CVK mode of use N (migrated from payShield)
+### Keys with mode of use N (migrated from payShield)
 
-payShield lets you create and export a CVK (TR-31 key usage `C0`) with mode of use `N` (no restrictions). X9.143 doesn't allow mode `N` for a `C0` key. AWS Payment Cryptography follows X9.143, so `GenerateCardData` (CW) and `VerifyCardData` (CY) won't use a CVK whose mode of use is `N`.
+payShield lets you create and export keys with TR-31 mode of use `N` (no restrictions). AWS Payment Cryptography imports these keys, but whether they work depends on the key usage. Re-moding a key restricts it to the modes X9.143 allows for its usage.
+
+X9.143 only technically allows mode `N` for a very limited set of uses. Any other use of mode `N` is for legacy reasons only, so re-moding is recommended even where the table below says it's optional.
+
+| Key usage | Mode `N` key in AWS Payment Cryptography | Re-mode to (default first) |
+|-----------|------------------------------------------|----------------------------|
+| `C0` CVK | Refused by `GenerateCardData` (CW) and `VerifyCardData` (CY). Must be re-moded. | `C`, `G`, `V` |
+| `E0` EMV MK, application cryptograms | Refused by `VerifyAuthRequestCryptogram` (KQ, KW). Must be re-moded. | `X` |
+| `E1` EMV MK, secure messaging confidentiality | Refused by `EncryptData` (EMV). Must be re-moded. | `X` |
+| `E4` EMV MK, dynamic numbers | Refused by `GenerateCardValidationData` (dCVC3). Must be re-moded. | `X` |
+| `E6` EMV MK, other | Refused by `GenerateCardValidationData` (dCVV). Must be re-moded. | `X` |
+| `M1`, `M3`, `M6`, `M7` MAC keys | Refused by `GenerateMac`. Must be re-moded. | `C`, `G`, `V` |
+| `V1`, `V2` PIN verification keys | Refused by `GeneratePinData`. Must be re-moded. | `C`, `G`, `V` |
+| `B0` BDK | Works. Re-moding is optional. | `X` |
+| `E2` EMV MK, secure messaging integrity | Works. Re-moding is optional. | `X` |
+| `E5` EMV MK, card personalization | Not used by any operation. Re-moding is optional. | `X` |
+| `D0` Data encryption key | Works. Re-moding is optional. | `B`, `E`, `D` |
+| `K0`, `K1` Key encryption / block protection keys | Works. Re-moding is optional. | `B`, `E`, `D` |
+| `P0` PIN encryption key | Works. Re-moding is optional. | `B`, `E`, `D` |
+
+Use `E` or `D` for a key that only ever encrypts or decrypts, such as a terminal-side PIN encryption key, and `G` or `V` for a key that only generates or verifies.
 
 You can't fix this by editing the header byte in the TR-31 block. The header is bound to the key block MAC, so any change makes the block invalid. Instead, AWS Payment Cryptography narrows the mode of use during a re-wrap:
 
-1. Import the mode `N` CVK into AWS Payment Cryptography under your existing KEK.
+1. Import the mode `N` key into AWS Payment Cryptography under your existing KEK.
 2. Export it under a temporary KEK, setting `KeyBlockHeaders.KeyModesOfUse` to the target mode.
 3. Import the new block under the temporary KEK. The key is the same, so the KCV matches the source.
 4. Delete the temporary KEK.
 
-[`cvk-mode-of-use/remode_cvk.py`](cvk-mode-of-use/remode_cvk.py) runs these steps for you:
+[`key-mode-of-use/remode_key.py`](key-mode-of-use/remode_key.py) runs these steps for you. It reads the key usage from the TR-31 header (or from the existing key with `--key-arn`) and picks the default target mode from the table above. Use `--mode` to choose another allowed mode.
 
-| Target mode | KeyModesOfUse | Works with |
-|-------------|-------------------|------------|
-| `C` (default) | Generate + Verify | CW and CY |
-| `G` | Generate | CW only |
-| `V` | Verify | CY only |
+| Target mode | KeyModesOfUse |
+|-------------|---------------|
+| `C` | Generate + Verify |
+| `G` | Generate |
+| `V` | Verify |
+| `X` | DeriveKey |
+| `B` | Encrypt + Decrypt + Wrap + Unwrap |
+| `E` | Encrypt + Wrap |
+| `D` | Decrypt + Unwrap |
+
+All other `KeyModesOfUse` flags, including `NoRestrictions`, are set to false.
 
 ```bash
-pip install -r cvk-mode-of-use/requirements.txt
+pip install -r key-mode-of-use/requirements.txt
 
 # Check the mode of use in a TR-31 block header (doesn't call AWS Payment Cryptography)
-python3 cvk-mode-of-use/remode_cvk.py --parse-only --key-block B0080C0TN00S0000...
+python3 key-mode-of-use/remode_key.py --parse-only --key-block B0080C0TN00E0000...
 
 # Import a payShield-exported CVK block (mode N) and re-mode it to C
-python3 cvk-mode-of-use/remode_cvk.py --region us-east-1 \
+python3 key-mode-of-use/remode_key.py --region us-east-1 \
     --kek-arn <KEK ARN or alias> \
-    --key-block B0080C0TN00S0000...
+    --key-block B0080C0TN00E0000...
 
-# Re-mode a CVK that's already in AWS Payment Cryptography with mode N
-python3 cvk-mode-of-use/remode_cvk.py --region us-east-1 \
-    --cvk-arn <CVK ARN> --mode C
+# Re-mode a key that's already in AWS Payment Cryptography with mode N
+python3 key-mode-of-use/remode_key.py --region us-east-1 --key-arn <key ARN>
+
+# Re-mode a PIN encryption key to encrypt-only
+python3 key-mode-of-use/remode_key.py --region us-east-1 \
+    --kek-arn <KEK ARN or alias> \
+    --key-block B0080P0TN00E0000... --mode E
 ```
 
 Notes:
 - The KEK used with `--key-block` must already be in AWS Payment Cryptography. You can import it with [`key-import-export/ecdh/import_app/import_raw_key_ecdh.py`](../key-import-export/ecdh/import_app/import_raw_key_ecdh.py) (`--key-type K0 --algorithm T --mode-of-use B --export-mode E`).
-- The script checks that the re-imported key's KCV matches the source, then schedules the temporary KEK for deletion (3 days, the AWS Payment Cryptography minimum). This runs even if an earlier step fails.
+- The script checks that the re-imported key's KCV and modes of use match, then schedules the temporary KEK for deletion (3 days, the AWS Payment Cryptography minimum). This runs even if an earlier step fails.
 - The original mode `N` key stays in AWS Payment Cryptography. Add `--delete-original` to schedule it for deletion as well.
 - Exportability is carried over from the source key.
-- See the [script README](cvk-mode-of-use/README.md) for the IAM permissions it needs.
+- See the [script README](key-mode-of-use/README.md) for the IAM permissions it needs.
 
 ### Console Key Operations (Console-IK, Console-KG)
 
@@ -244,20 +275,20 @@ Notes:
 
 | Supported | Description | Command | APC Equivalent | Notes |
 |-----------|-------------|---------|----------------|-------|
-| Y | Verify pin using IBM3624 offset | DA | Verify Pin Data | |
+| Y | Verify pin using IBM3624 offset | DA | Verify Pin Data | PIN verification key (V1) needs mode of use C or V.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ### Verify PIN — ABA/Visa PVV (DC)
 
 | Supported | Description | Command | APC Equivalent | Notes |
 |-----------|-------------|---------|----------------|-------|
-| Y | Verify pin using ABA/Visa PVV | DC | Verify Pin Data | |
+| Y | Verify pin using ABA/Visa PVV | DC | Verify Pin Data | PIN verification key (V2) needs mode of use C or V.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ### Generate PIN Offset/PVV (DE, DG)
 
 | Supported | Description | Command | APC Equivalent | Notes |
 |-----------|-------------|---------|----------------|-------|
-| Y | Generate IBM3624 offset for an encrypted pin | DE | Generate Pin Data | |
-| Y | Generate ABA/Visa PVV value for an encrypted pin | DG | Generate Pin Data | |
+| Y | Generate IBM3624 offset for an encrypted pin | DE | Generate Pin Data | PIN verification key (V1) needs mode of use C or G.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
+| Y | Generate ABA/Visa PVV value for an encrypted pin | DG | Generate Pin Data | PIN verification key (V2) needs mode of use C or G.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ### Legacy BDK Import/Export (DW, DY)
 
@@ -285,9 +316,9 @@ Notes:
 
 | Supported | Description | Command | APC Equivalent | Notes |
 |-----------|-------------|---------|----------------|-------|
-| Y | Verify Pin using IBM3624 offset | EA | Verify Pin Data with IBM Offset Option | |
-| Y | Verify Pin using ABA/Visa PVV | EC | VerifyPinData | |
-| Y | Generate Random Pin and output IBM3624 offset | EE | Generate Pin Data | |
+| Y | Verify Pin using IBM3624 offset | EA | Verify Pin Data with IBM Offset Option | PIN verification key (V1) needs mode of use C or V.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
+| Y | Verify Pin using ABA/Visa PVV | EC | VerifyPinData | PIN verification key (V2) needs mode of use C or V.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
+| Y | Generate Random Pin and output IBM3624 offset | EE | Generate Pin Data | PIN verification key (V1) needs mode of use C or G.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ---
 
@@ -412,7 +443,7 @@ Notes:
 | Y | Visa VIS — CVN17 | Scheme 0 Visa | VerifyAuthRequest | MajorKeyDerivationMode=A, SessionKeyDerivation=Visa | This algorithm does not use ATC or UN despite being mandatory fields in payShield interface, hence they are not available in service interface for this option. | [Link](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/use-cases-issuers.networkfunctions.visa.html#use-cases-issuers.networkfunctions.visa.cvn10) |
 | Y | Mastercard SKD | Scheme 1 Mastercard SKD | VerifyAuthRequest | MajorKeyDerivationMode=A, SessionKeyDerivation=Mastercard | | |
 | Y | Amex AEIPS | Scheme 2 Amex | VerifyAuthRequest | MajorKeyDerivationMode=A, SessionKeyDerivation=Amex | This algorithm does not use ATC or UN despite being mandatory fields in payShield interface. | |
-| Y | Verify ARQC for older algorithms | | VerifyAuthRequest | | | |
+| Y | Verify ARQC for older algorithms | | VerifyAuthRequest | | Issuer master key (E0) needs mode of use X.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) | |
 
 ### Generate EMV MAC (KU)
 
@@ -423,7 +454,7 @@ Notes:
 | Y | Generate EMV MAC — Amex | Scheme 2 — Amex AEIPS | EMV MAC, Generate Offline PIN, EMV Encrypt | SessionKeyDerivationMode=Amex | |
 | Y | Generate EMV MAC — JCB 01 | Scheme 3 — JCB CVN 01 | EMV MAC, Generate Offline PIN, EMV Encrypt | SessionKeyDerivationMode=Visa | The Visa, Amex and JCB 01 schemes are all the same and can be used interchangeably. |
 | Y | Generate EMV MAC — JCB 04 | Scheme 5 — JCB CVN 04 | EMV MAC, Generate Offline PIN, EMV Encrypt | SessionKeyDerivationMode=EmvCommon | |
-| Y | Main Record — Generate EMV MAC, EMV encrypted data or EMV Pin Change | | EMV MAC, Generate Offline PIN | | |
+| Y | Main Record — Generate EMV MAC, EMV encrypted data or EMV Pin Change | | EMV MAC, Generate Offline PIN | | EMV encryption master key (E1) needs mode of use X.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ### Verify EMV Auth Cryptogram (KW)
 
@@ -432,7 +463,7 @@ Notes:
 | Y | Verify ARQC for JCB CVN 01 | Option A — Validate — JCB CVN 01 | VerifyAuthRequestCryptogram | | |
 | Y | Verify EMV Auth Cryptogram | Validate — EMV Option A/B | VerifyAuthRequestCryptogram | MajorKeyDerivationMode=A, MajorKeyDerivationMode=B, SessionKeyDerivation=EmvCommon | |
 | Y | Verify EMV Auth Cryptogram | Validate — JCB CVN 04 | VerifyAuthRequestCryptogram | MajorKeyDerivationMode=A, SessionKeyDerivation=EmvCommon | |
-| Y | ARQC Validation — General Record | | VerifyAuthRequestCryptogram | | |
+| Y | ARQC Validation — General Record | | VerifyAuthRequestCryptogram | | Issuer master key (E0) needs mode of use X.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ### Generate EMV Issuer Scripts (KY)
 
@@ -442,7 +473,7 @@ Notes:
 | Y | Generate EMV Issuer Scripts | Mode 2 — Integrity and Confidentiality | GenerateMac, EncryptData | EmvMac (GenerateMac), Emv (Encrypt Data) | Encrypting Data and MAC-ing data are completed separately unless the purpose is pin change. Evaluate using CSU in ARQC for script updates. |
 | Y | Generate EMV Issuer Scripts | Mode 4 — Integrity and Pin Change | GenerateMacEmvPinChange | | Supports EmvCommon, Visa, Mastercard, EMV2000, Amex key derivation methods. |
 | Y | Generate EMV Issuer Scripts | Mode 5 — Integrity Only | GenerateMac | EmvMac | Evaluate using CSU in ARQC for script updates. |
-| Y | General EMV MAC, EMV encrypted data or pin change using EMV 4.x standards | | GenerateMac | | |
+| Y | General EMV MAC, EMV encrypted data or pin change using EMV 4.x standards | | GenerateMac | | EMV encryption master key (E1) needs mode of use X.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ---
 
@@ -450,31 +481,31 @@ Notes:
 
 ### HMAC Key and Generation (L0, LQ)
 
-| Supported | Description | Sub-Command | APC Equivalent | APC Sub-Command | Notes |
-|-----------|-------------|-------------|----------------|-----------------|-------|
-| Y | Generate HMAC key | | Create Key | | |
-| N/A | Used for loading keys to HSM | LA | N/A | | Payment Cryptography abstracts HSM and there is no need to load keys. |
-| Y | Generate HMAC | 05 — SHA-224 | GenerateMac | Algorithm=HMAC_SHA224 | |
-| Y | Generate HMAC | 06 — SHA-256 | GenerateMac | Algorithm=HMAC_SHA256 | |
-| Y | Generate HMAC | 07 — SHA-384 | GenerateMac | Algorithm=HMAC_SHA384 | |
-| Y | Generate HMAC | 08 — SHA-512 | GenerateMac | Algorithm=HMAC_SHA512 | |
-| Y | Generate an HMAC on a Block of Data | | GenerateMac | | |
+| Supported | Description | Command | Sub-Command | APC Equivalent | APC Sub-Command | Notes |
+|-----------|-------------|---------|-------------|----------------|-----------------|-------|
+| Y | Generate HMAC key | L0 | | Create Key | | |
+| N/A | Used for loading keys to HSM | LA | | N/A | | Payment Cryptography abstracts HSM and there is no need to load keys. |
+| Y | Generate HMAC | LQ | 05 — SHA-224 | GenerateMac | Algorithm=HMAC_SHA224 | |
+| Y | Generate HMAC | LQ | 06 — SHA-256 | GenerateMac | Algorithm=HMAC_SHA256 | |
+| Y | Generate HMAC | LQ | 07 — SHA-384 | GenerateMac | Algorithm=HMAC_SHA384 | |
+| Y | Generate HMAC | LQ | 08 — SHA-512 | GenerateMac | Algorithm=HMAC_SHA512 | |
+| Y | Generate an HMAC on a Block of Data | LQ | | GenerateMac | | HMAC key (M7) needs mode of use C or G.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ### Verify HMAC (LS)
 
 | Supported | Description | Command | APC Equivalent | Notes |
 |-----------|-------------|---------|----------------|-------|
-| Y | Verify an HMAC on a Block of Data | LS | VerifyMac | |
+| Y | Verify an HMAC on a Block of Data | LS | VerifyMac | HMAC key (M7) needs mode of use C or V.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ### HMAC Import/Export (LU, LW, LY)
 
-| Supported | Description | Sub-Command | APC Equivalent | APC Sub-Command | Notes |
-|-----------|-------------|-------------|----------------|-----------------|-------|
-| Y | Import HMAC | TR-31 | ImportKey | KeyMaterial=Tr31KeyBlock | HMAC keys are a special case of TR-31/X9.143 as they have the hash algorithm embedded. The service supports this using the standard import/export functions. |
-| Y | Import an HMAC | | ImportKey | | HMAC require use of TR-31 optional header HM and can only be imported protected by AES-256 KEK. |
-| Y | Export HMAC | TR-31 | ExportKey | KeyMaterial=Tr31KeyBlock | Same as import — the service supports this using the standard import/export functions. |
-| Y | Export an HMAC | | ExportKey | | The service will automatically include the required HM header. KEK must be AES-256 to protect HMAC keys. |
-| N/A | Rotate LMK protecting HMAC | LY | N/A | | The service doesn't expose MFK-protected keys and handles key rotation as part of shared responsibility. |
+| Supported | Description | Command | Sub-Command | APC Equivalent | APC Sub-Command | Notes |
+|-----------|-------------|---------|-------------|----------------|-----------------|-------|
+| Y | Import HMAC | LU | Transport Format = 05 (TR-31) | ImportKey | KeyMaterial=Tr31KeyBlock | HMAC keys are a special case of TR-31/X9.143 as they have the hash algorithm embedded. The service supports this using the standard import/export functions. |
+| Y | Import an HMAC | LU | | ImportKey | | HMAC require use of TR-31 optional header HM and can only be imported protected by AES-256 KEK. |
+| Y | Export HMAC | LW | Transport Format = 05 (TR-31) | ExportKey | KeyMaterial=Tr31KeyBlock | Same as import — the service supports this using the standard import/export functions. |
+| Y | Export an HMAC | LW | | ExportKey | | The service will automatically include the required HM header. KEK must be AES-256 to protect HMAC keys. |
+| N/A | Rotate LMK protecting HMAC | LY | | N/A | | The service doesn't expose MFK-protected keys and handles key rotation as part of shared responsibility. |
 
 ### PIN Translation — Main Key (LE, LG)
 
@@ -528,7 +559,7 @@ Notes:
 | Y | Generate MAC — Wholesale MAC | MAC option 1 (ISO9797-1 algorithm 1, TDES) | GenerateMac | Algorithm=ISO9797_ALGORITHM1 | The service expects all inputs to be hex-encoded binary (equivalent to HSM input format 1). Uses ISO9797 padding method 1. Methods 2 or 3 can be performed in code prior to calling the service. |
 | Y | Generate MAC — Retail MAC | MAC option 3 (X9.19 or ISO9797-1 algo 3) | GenerateMac | Algorithm=ISO9797_ALGORITHM3 | Same as above. |
 | Y | Generate MAC — CMAC | MAC option 6 (AES CMAC) | GenerateMac | Algorithm=CMAC | The service expects all inputs to be hex-encoded binary. |
-| Y | Generate MAC — General Listing | | GenerateMac | | |
+| Y | Generate MAC — General Listing | | GenerateMac | | MAC key (M1, M3, M6) needs mode of use C or G.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ### Verify MAC — Extended (M8)
 
@@ -537,7 +568,7 @@ Notes:
 | Y | Verify MAC — Retail MAC | MAC option 1 (ISO9797-1 algorithm 3, TDES) | VerifyMac | Algorithm=ISO9797_ALGORITHM1 | Same input format notes as M6. |
 | Y | Verify MAC — Retail MAC | MAC option 3 (X9.19 or ISO9797-1 algo 3) | VerifyMac | Algorithm=ISO9797_ALGORITHM3 | |
 | Y | Verify MAC — CMAC | MAC option 6 (AES CMAC) | VerifyMac | Algorithm=CMAC | |
-| Y | Verify MAC — General Listing | | | | |
+| Y | Verify MAC — General Listing | | | | MAC key (M1, M3, M6) needs mode of use C or V.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ### Legacy MAC Commands (MA, MG, MI, MQ, MS)
 
@@ -557,7 +588,7 @@ Notes:
 | Y | Verify MAC and then re-generate using a different key | MAC option 3 (X9.19 or ISO9797-1 algo 3) | VerifyMac, GenerateMac | Same as above. |
 | Y | Verify MAC and then re-generate using a different key | MAC option 5 CBC MAC (AES) | VerifyMac, GenerateMac | Same as above. |
 | Y | Verify MAC and then re-generate using a different key | MAC option 6 CMAC (AES) | VerifyMac, GenerateMac | Same as above. |
-| Y | Verify MAC and then re-generate using a different key | | | |
+| Y | Verify MAC and then re-generate using a different key | | | MAC key (M1, M3, M6) needs mode of use C.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ---
 
@@ -611,7 +642,7 @@ Notes:
 | Supported | Description | Sub-Command | APC Equivalent | APC Sub-Command | Notes |
 |-----------|-------------|-------------|----------------|-----------------|-------|
 | Y | Generate Dynamic Card Values | 0 Visa DCVV | GenerateCardVerificationData | DynamicCardVerificationValue | ATC value should represent the counter as expressed as a hex number. For instance, the 50th transaction is represented in hex as a value of 32. |
-| Y | Generate Dynamic Card Verification Values (Main Record) | | GenerateCardVerificationData | | |
+| Y | Generate Dynamic Card Verification Values (Main Record) | | GenerateCardVerificationData | | Issuer master key (E6 for dCVV, E4 for dCVC3) needs mode of use X.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) |
 
 ---
 
@@ -630,7 +661,7 @@ Notes:
 | Y | Generate Amex CSC | 0 Version 1 | GenerateCardVerificationData | AmexCardSecurityCodeVersion1 | Always use expiration date as YYMM for Amex. Service supports CSC length of 3, 4, 5. | [Link](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/use-cases-issuers.networkfunctions.amex.html#use-cases-issuers.networkfunctions.amex.csc) |
 | Y | Generate Amex CSC | 1 Version 2 | GenerateCardVerificationData | AmexCardSecurityCodeVersion2 | Always use expiration date as YYMM for Amex. Service supports CSC length of 3, 4, 5. Service code is set according to card capabilities and usage such as 999 for iCSC. | [Link](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/use-cases-issuers.networkfunctions.amex.html#use-cases-issuers.networkfunctions.amex.csc2) |
 | Y | Generate Amex CSC | 2 AEVV | GenerateCardVerificationData | AmexCardSecurityCodeVersion2 | | [Link](https://docs.aws.amazon.com/payment-cryptography/latest/userguide/use-cases-issuers.networkfunctions.amex.html#use-cases-issuers.networkfunctions.amex.aevv) |
-| Y | Verify AMEX CSC (Main Record) | | VerifyCardVerificationData | | | |
+| Y | Verify AMEX CSC (Main Record) | | VerifyCardVerificationData | | CSC key (C0) needs mode of use C or V.[\*](#keys-with-mode-of-use-n-migrated-from-payshield) | |
 
 ---
 
