@@ -1,15 +1,17 @@
 # flake8: noqa: E402
+# flake8: noqa: E402
 
-import argparse
-import json
 import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import json
+
 from key_exchange.hsm.futurex.futurex_hsm import FuturexHsm
 from key_exchange.hsm.payshield.payshield_hsm import PayshieldHsm
 from key_exchange.utils.apc import Apc
+from key_exchange.utils import phases
 from key_exchange.utils.enums import (
     AsymmetricKeyUsage,
     KeyExchangeType,
@@ -18,83 +20,75 @@ from key_exchange.utils.enums import (
     SymmetricKeyAlgorithm,
     SymmetricKeyUsage,
 )
+from key_exchange.utils.serialization import (
+    certificate_from_pem,
+    certificate_to_pem,
+)
+
+FLOW = "rsa"
+DEFAULT_PARAMS_FILE = phases.default_params_file(FLOW)
+DEFAULT_EXPORT_FILE = phases.default_export_file(FLOW)
 
 
 def _get_command_line_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--kdh",
-        help="Key Distribution Host. Options are [futurex, payshield]",
-        required=True,
-        choices=["futurex", "payshield"],
+    parser = phases.new_parser(
+        description=(
+            "Exchange a symmetric key from a KDH (HSM) to a KRD (AWS Payment "
+            "Cryptography) as an RSA key cryptogram. Run the whole flow end to "
+            "end (--mode full), or split it into get-params (APC), export "
+            "(HSM), and import (APC) so the HSM and APC can run in separate "
+            "environments."
+        )
     )
-    parser.add_argument(
-        "--krd",
-        help="Key Receiving Device. Options are [apc]",
-        required=False,
-        default="apc",
-        choices=["apc"],
-    )
-
     return parser.parse_args()
 
 
-def _get_kdh_krd_hosts(kdh, krd, kdh_config, krd_config):
-    # For KRD, only APC is supported for now
-    krd_host = Apc(krd_config)
-
+def _get_kdh_host(kdh, kdh_config):
     if "futurex" == kdh:
-        kdh_host = FuturexHsm(kdh_config)
+        return FuturexHsm(kdh_config)
     elif "payshield" == kdh:
-        kdh_host = PayshieldHsm(kdh_config)
+        return PayshieldHsm(kdh_config)
+    raise ValueError("Unsupported KDH: {}".format(kdh))
 
-    return kdh_host, krd_host
+
+def _get_krd_host(krd, krd_config):
+    # For KRD, only APC is supported for now
+    return Apc(krd_config)
 
 
-def main():
-    args = _get_command_line_args()
-    config = dict()
+def _load_config():
     with open(os.path.dirname(__file__) + "/input_config.json", "r") as jsonfile:
-        config = json.load(jsonfile)
+        return json.load(jsonfile)
 
-    kdh = args.kdh
-    krd = args.krd
 
-    print("\n####### Key Exchange using RSA (Key Cryptogram) #######")
-    print("\nKey Distribution Host (KDH) : ", kdh.upper())
-    print("Key Receiving Device (KRD) : ", krd.upper())
-
-    kdh_config = config["kdh"][kdh]
-    krd_config = config["krd"][krd]
-    kdh_host, krd_host = _get_kdh_krd_hosts(kdh, krd, kdh_config, krd_config)
-
-    # Transport key metadata (algorithm and usage) is read from the KDH's rsa
-    # config so it matches the actual key being exported. This is what APC
-    # validates against the wrapped key material during import; a mismatch
-    # raises "Actual KeyAlgorithm of the WrappedKey is mismatching ...".
-    # Defaults preserve the previous behaviour when not specified in config.
+def _rsa_metadata(kdh_config):
+    """Reads the transport key metadata from the KDH's rsa config block."""
     rsa_config = kdh_config.get("rsa", {})
     key_algorithm = SymmetricKeyAlgorithm(rsa_config.get("key_algorithm", "TDES_3KEY"))
-
-    # Coarse usage used only for HSM-side key generation (when the transport key
-    # is not provided in config and a new key is created on the KDH). APC import
-    # uses apc_key_usage / apc_key_modes_of_use below.
-    key_usage = SymmetricKeyUsage.KEK
-
     # APC key metadata used when importing into APC (KRD). apc_key_usage maps
     # directly to a TR31_* KeyUsage value and apc_key_modes_of_use to a
-    # KeyModesOfUse dict. When omitted, they default from key_usage above. See:
+    # KeyModesOfUse dict. When omitted, they default inside the Apc client. See:
     # https://docs.aws.amazon.com/payment-cryptography/latest/userguide/crypto-ops-validkeys-ops.html
     apc_key_usage = rsa_config.get("apc_key_usage")
     apc_key_modes_of_use = rsa_config.get("apc_key_modes_of_use")
+    return key_algorithm, apc_key_usage, apc_key_modes_of_use
+
+
+def phase_get_params(krd, krd_config, key_algorithm, apc_key_usage, apc_key_modes_of_use):
+    """
+    APC side. Calls GetParametersForImport and returns the state needed by the
+    HSM export phase: the import token and the RSA wrapping certificate + chain.
+    """
+    krd_host = _get_krd_host(krd, krd_config)
 
     # APC returns an RSA wrapping public key certificate (and chain) for the
     # cryptogram import. RSA_4096 is used as the wrapping key algorithm.
     krd_wrapping_key_algorithm = RsaKeyAlgorithm.RSA_4096
-    wrapping_spec = RsaWrappingSpec.RSA_OAEP_SHA_512
 
     print(
-        "\nStep 1 ({}) : Get the RSA wrapping public key certificate and chain.".format(krd.upper())
+        "\nPhase 'get-params' ({}) : Get the RSA wrapping public key certificate and chain.".format(
+            krd.upper()
+        )
     )
     print("KRD Wrapping Key Algorithm : {}".format(krd_wrapping_key_algorithm.name))
     krd_ca_certificate, import_token, krd_certificate = krd_host.generate_certificate_and_chain(
@@ -107,15 +101,42 @@ def main():
     print("KRD Import Token : {}".format(import_token))
     print("KRD Certificate : {}".format(krd_certificate))
 
+    return {
+        "krd": krd,
+        "krd_wrapping_key_algorithm": krd_wrapping_key_algorithm.name,
+        "key_algorithm": key_algorithm.name,
+        "apc_key_usage": apc_key_usage,
+        "apc_key_modes_of_use": apc_key_modes_of_use,
+        "import_token": import_token,
+        "krd_certificate_pem": certificate_to_pem(krd_certificate),
+        "krd_ca_certificate_pem": certificate_to_pem(krd_ca_certificate),
+    }
+
+
+def phase_export(kdh, kdh_config, params_state, key_algorithm, wrapping_spec):
+    """
+    HSM side. Uses the KRD wrapping certificate from the get-params phase to
+    RSA-wrap the transport key, returning the RSA key cryptogram.
+    """
+    kdh_host = _get_kdh_host(kdh, kdh_config)
+
+    krd_certificate = certificate_from_pem(params_state["krd_certificate_pem"])
+    krd_ca_certificate = certificate_from_pem(params_state["krd_ca_certificate_pem"])
+    krd_wrapping_key_algorithm = RsaKeyAlgorithm[params_state["krd_wrapping_key_algorithm"]]
+
+    # Coarse usage used only for HSM-side key generation (when the transport key
+    # is not provided in config and a new key is created on the KDH).
+    key_usage = SymmetricKeyUsage.KEK
+
     transport_key = kdh_config["rsa"]["transport_key"]
     transport_key_kcv = kdh_config["rsa"]["transport_key_kcv"]
     if transport_key and transport_key_kcv:
-        print("\nStep 2 ({}) : Using the transport key from input config".format(kdh.upper()))
+        print("\nPhase 'export' ({}) : Using the transport key from input config".format(kdh.upper()))
         print("Transport Key : ", transport_key)
         print("KCV : ", transport_key_kcv)
     else:
         print(
-            "\nStep 2 ({}) : Generate symmetric transport key with KeyUsage : {} and KeyAlgorithm : {}".format(
+            "\nPhase 'export' ({}) : Generate symmetric transport key with KeyUsage : {} and KeyAlgorithm : {}".format(
                 kdh.upper(), key_usage.name, key_algorithm.name
             )
         )
@@ -124,7 +145,7 @@ def main():
         print("KCV : ", transport_key_kcv)
 
     print(
-        "\nStep 3 ({}) : Export the transport key as an RSA key cryptogram (WrappingSpec : {}).".format(
+        "\nPhase 'export' ({}) : Export the transport key as an RSA key cryptogram (WrappingSpec : {}).".format(
             kdh.upper(), wrapping_spec.name
         )
     )
@@ -152,7 +173,33 @@ def main():
         )
     print("RSA Key Cryptogram : {}".format(rsa_cryptogram))
 
-    print("\nStep 4 ({}) : Import the transport key using the RSA key cryptogram.".format(krd.upper()))
+    # Carry forward everything the import phase needs.
+    export_state = dict(params_state)
+    export_state["kdh"] = kdh
+    export_state["rsa_cryptogram"] = rsa_cryptogram
+    export_state["transport_key_kcv"] = transport_key_kcv
+    export_state["wrapping_spec"] = wrapping_spec.name
+    return export_state
+
+
+def phase_import(krd, krd_config, export_state):
+    """
+    APC side. Imports the RSA key cryptogram produced by the export phase using
+    the import token from the get-params phase.
+    """
+    krd_host = _get_krd_host(krd, krd_config)
+
+    import_token = export_state["import_token"]
+    rsa_cryptogram = export_state["rsa_cryptogram"]
+    key_algorithm = SymmetricKeyAlgorithm(export_state["key_algorithm"])
+    wrapping_spec = RsaWrappingSpec(export_state["wrapping_spec"])
+    apc_key_usage = export_state.get("apc_key_usage")
+    apc_key_modes_of_use = export_state.get("apc_key_modes_of_use")
+
+    # Coarse usage retained only as the enum-based fallback inside the Apc client.
+    key_usage = SymmetricKeyUsage.KEK
+
+    print("\nPhase 'import' ({}) : Import the transport key using the RSA key cryptogram.".format(krd.upper()))
     imported_key, imported_key_kcv = krd_host.import_symmetric_key_using_rsa(
         import_token,
         rsa_cryptogram,
@@ -164,6 +211,57 @@ def main():
     )
     print("\nImported Key : {}".format(imported_key))
     print("Imported Key KCV : {}".format(imported_key_kcv))
+    return imported_key, imported_key_kcv
+
+
+def main():
+    args = _get_command_line_args()
+    config = _load_config()
+
+    kdh = args.kdh
+    krd = args.krd
+    mode = args.mode
+
+    print("\n####### Key Exchange using RSA (Key Cryptogram) #######")
+    print("Mode : ", mode)
+    print("Key Distribution Host (KDH) : ", kdh.upper())
+    print("Key Receiving Device (KRD) : ", krd.upper())
+
+    kdh_config = config["kdh"][kdh]
+    krd_config = config["krd"][krd]
+
+    key_algorithm, apc_key_usage, apc_key_modes_of_use = _rsa_metadata(kdh_config)
+    wrapping_spec = RsaWrappingSpec.RSA_OAEP_SHA_512
+
+    if mode == phases.MODE_GET_PARAMS:
+        output_file = args.output_file or DEFAULT_PARAMS_FILE
+        state = phase_get_params(
+            krd, krd_config, key_algorithm, apc_key_usage, apc_key_modes_of_use
+        )
+        phases.save_state(output_file, state)
+        print("\nWrote import parameters to : {}".format(output_file))
+        print("Transfer this file to the HSM environment and run --mode export.")
+
+    elif mode == phases.MODE_EXPORT:
+        input_file = args.input_file or DEFAULT_PARAMS_FILE
+        output_file = args.output_file or DEFAULT_EXPORT_FILE
+        params_state = phases.load_state(input_file)
+        state = phase_export(kdh, kdh_config, params_state, key_algorithm, wrapping_spec)
+        phases.save_state(output_file, state)
+        print("\nWrote RSA key cryptogram output to : {}".format(output_file))
+        print("Transfer this file to the APC environment and run --mode import.")
+
+    elif mode == phases.MODE_IMPORT:
+        input_file = args.input_file or DEFAULT_EXPORT_FILE
+        export_state = phases.load_state(input_file)
+        phase_import(krd, krd_config, export_state)
+
+    else:  # full
+        params_state = phase_get_params(
+            krd, krd_config, key_algorithm, apc_key_usage, apc_key_modes_of_use
+        )
+        export_state = phase_export(kdh, kdh_config, params_state, key_algorithm, wrapping_spec)
+        phase_import(krd, krd_config, export_state)
 
 
 if __name__ == "__main__":
